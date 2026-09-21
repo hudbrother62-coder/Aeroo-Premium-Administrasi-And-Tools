@@ -42,7 +42,10 @@ async function dataset(req: NextRequest) {
 }
 
 function binaryResponse(body: Uint8Array | ArrayBuffer, contentType: string, filename: string) {
-  return new Response(body, {
+  // Node's fetch runtime accepts ArrayBuffer/Uint8Array bodies, while the
+  // DOM typings used by Next can be narrower depending on the TypeScript lib.
+  const responseBody = body as unknown as BodyInit;
+  return new Response(responseBody, {
     headers: {
       'Content-Type': contentType,
       'Content-Disposition': `attachment; filename="${filename}"`,
