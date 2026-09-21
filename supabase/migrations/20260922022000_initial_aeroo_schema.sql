@@ -1,0 +1,7 @@
+-- Applied to Supabase project hzbsdzlhjmfgtexmhccv as migration initial_aeroo_schema.
+-- Canonical schema: categories, members, member_categories, levels, caberawit,
+-- activity_types, attendance_events, attendance_records, journals,
+-- journal_attachments, agenda, learning_targets, caberawit_progress.
+-- All application tables have RLS enabled with no anon/authenticated policies.
+-- Runtime database access is server-only through SUPABASE_SERVICE_ROLE_KEY.
+-- See docs/SCHEMA.md for constraints and behavior. Future schema changes must be migrations.
