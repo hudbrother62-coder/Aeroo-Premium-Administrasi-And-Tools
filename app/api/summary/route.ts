@@ -1,6 +1,8 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
 
+type AttendanceStatus='H'|'I'|'A';
+
 export async function GET(req:NextRequest){
   const s=await db();
   const month=req.nextUrl.searchParams.get('month')||new Date().toISOString().slice(0,7);
@@ -17,11 +19,14 @@ export async function GET(req:NextRequest){
   const has=(m:any,slug:string)=>m.member_categories?.some((c:any)=>c.categories?.slug===slug);
   const rows=(members.data??[]).map((m:any)=>({id:m.id,name:m.name,categories:m.member_categories?.map((c:any)=>c.categories?.name).filter(Boolean)??[],class_name:m.classes?.name??'',level_name:m.levels?.name??'',H:0,I:0,A:0,percentage:0,journals:0}));
   const map=new Map(rows.map(x=>[x.id,x]));
-  const attendance={H:0,I:0,A:0,meetings:events.data?.length??0};
+  const attendance:{H:number;I:number;A:number;meetings:number}={H:0,I:0,A:0,meetings:events.data?.length??0};
+
   for(const e of events.data??[])for(const r of e.attendance_records??[]){
     if(r.status!=='H'&&r.status!=='I'&&r.status!=='A')continue;
-    attendance[r.status]++;
-    const p=map.get(r.member_id);if(p)p[r.status]++;
+    const status=r.status as AttendanceStatus;
+    attendance[status]++;
+    const p=map.get(r.member_id);
+    if(p)p[status]++;
   }
   for(const j of journals.data??[]){if(j.member_id&&map.has(j.member_id))map.get(j.member_id)!.journals++}
   for(const p of rows){const total=p.H+p.I+p.A;p.percentage=total?Math.round(p.H/total*1000)/10:0}
