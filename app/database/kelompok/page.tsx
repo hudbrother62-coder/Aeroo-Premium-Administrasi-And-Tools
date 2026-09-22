@@ -39,7 +39,7 @@ export default function Page(){
   return <>
     <div className="pageHeader">
       <div><div className="eyebrow">Database</div><h1>Database Kelompok</h1><p>Master anggota kelompok. Satu orang dapat memiliki beberapa kategori tanpa membuat data ganda.</p></div>
-      <Link href="/database/kelompok/tambah" className="btn">+ Tambah Anggota</Link>
+      <Link href="/database/kelompok/tambah" className="btn writeOnly">+ Tambah Anggota</Link>
     </div>
 
     <div className="card">
@@ -75,7 +75,7 @@ export default function Page(){
           <div className="emptyIcon">K</div>
           <h3>Belum ada anggota</h3>
           <p>Tambahkan anggota pertama. Data ini akan menjadi sumber peserta untuk presensi Kelompok, Muda-Mudi, Ibu-Ibu, dan Pengurus.</p>
-          <Link href="/database/kelompok/tambah" className="btn" style={{marginTop:16}}>+ Tambah Anggota</Link>
+          <Link href="/database/kelompok/tambah" className="btn writeOnly" style={{marginTop:16}}>+ Tambah Anggota</Link>
         </div>}
       </div>
     </section>
