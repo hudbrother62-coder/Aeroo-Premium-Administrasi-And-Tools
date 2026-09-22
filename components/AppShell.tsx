@@ -129,7 +129,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {section.items.map(item=>{
           const active=item.href==='/'?path==='/':path.startsWith(item.href);
           return <Link className={active?'navItem active':'navItem'} href={item.href} key={item.href}>
-            <span className="navIcon"><Icon name={item.icon}/></span><span>{item.label}</span>
+            <span className="navIcon"><Icon name={item.icon}/></span><span>{user?.role==='DEWAN_GURU'&&item.href==='/database/kelompok'?'Database Muda-Mudi':item.label}</span>
           </Link>;
         })}
       </div>)}
