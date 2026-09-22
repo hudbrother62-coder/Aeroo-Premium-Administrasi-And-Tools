@@ -4,9 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
+type Role='ADMIN'|'DEWAN_GURU'|'KELOMPOK'|'VIEWER';
+type AppUser={id:string;username:string;display_name:string|null;role:Role;active:boolean};
+
 type IconName =
   | 'home' | 'users' | 'child' | 'check' | 'book' | 'target'
-  | 'calendar' | 'chart' | 'file' | 'sun' | 'moon' | 'menu' | 'close';
+  | 'calendar' | 'chart' | 'file' | 'sun' | 'moon' | 'menu' | 'close'
+  | 'shield' | 'logout';
 
 const paths: Record<IconName, React.ReactNode> = {
   home: <><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-7h6v7"/></>,
@@ -16,133 +20,145 @@ const paths: Record<IconName, React.ReactNode> = {
   book: <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V5H6.5A2.5 2.5 0 0 0 4 7.5v12Z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20"/><path d="M8 8h8M8 12h6"/></>,
   target: <><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></>,
   calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></>,
-  chart: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></>,
+  chart: <path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>,
   file: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></>,
   sun: <><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></>,
   moon: <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>,
-  menu: <><path d="M4 6h16M4 12h16M4 18h16"/></>,
-  close: <><path d="m6 6 12 12M18 6 6 18"/></>,
+  menu: <path d="M4 6h16M4 12h16M4 18h16"/>,
+  close: <path d="m6 6 12 12M18 6 6 18"/>,
+  shield: <><path d="M12 3 5 6v5c0 5 3.3 8 7 10 3.7-2 7-5 7-10V6l-7-3Z"/><path d="M9 12l2 2 4-4"/></>,
+  logout: <><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M21 19V5a2 2 0 0 0-2-2h-6"/></>,
 };
 
 function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
 
+const ALL:Role[]=['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'];
 const sections = [
-  {
-    label: 'Utama',
-    items: [
-      { href: '/', label: 'Dashboard', icon: 'home' as IconName },
-    ],
-  },
-  {
-    label: 'Database',
-    items: [
-      { href: '/database/kelompok', label: 'Database Kelompok', icon: 'users' as IconName },
-      { href: '/database/caberawit', label: 'Database Caberawit', icon: 'child' as IconName },
-    ],
-  },
-  {
-    label: 'Operasional',
-    items: [
-      { href: '/presensi', label: 'Presensi', icon: 'check' as IconName },
-      { href: '/jurnal', label: 'Jurnal Kegiatan', icon: 'book' as IconName },
-      { href: '/target', label: 'Target & Perkembangan', icon: 'target' as IconName },
-      { href: '/agenda', label: 'Agenda', icon: 'calendar' as IconName },
-    ],
-  },
-  {
-    label: 'Analisis',
-    items: [
-      { href: '/rekap', label: 'Rekap', icon: 'chart' as IconName },
-      { href: '/laporan', label: 'Laporan', icon: 'file' as IconName },
-    ],
-  },
+  {label:'Utama',items:[{href:'/',label:'Dashboard',icon:'home' as IconName,roles:ALL}]},
+  {label:'Database',items:[
+    {href:'/database/kelompok',label:'Database Kelompok',icon:'users' as IconName,roles:ALL},
+    {href:'/database/caberawit',label:'Database Caberawit',icon:'child' as IconName,roles:['ADMIN','DEWAN_GURU','VIEWER'] as Role[]},
+  ]},
+  {label:'Operasional',items:[
+    {href:'/presensi',label:'Presensi',icon:'check' as IconName,roles:ALL},
+    {href:'/jurnal',label:'Jurnal Kegiatan',icon:'book' as IconName,roles:ALL},
+    {href:'/target',label:'Target & Perkembangan',icon:'target' as IconName,roles:['ADMIN','DEWAN_GURU','VIEWER'] as Role[]},
+    {href:'/agenda',label:'Agenda',icon:'calendar' as IconName,roles:ALL},
+  ]},
+  {label:'Analisis',items:[
+    {href:'/rekap',label:'Rekap',icon:'chart' as IconName,roles:ALL},
+    {href:'/laporan',label:'Laporan',icon:'file' as IconName,roles:ALL},
+  ]},
+  {label:'Sistem',items:[
+    {href:'/tim-akses',label:'Tim Akses',icon:'shield' as IconName,roles:['ADMIN'] as Role[]},
+  ]},
 ];
+
+const roleLabel:Record<Role,string>={
+  ADMIN:'Admin Utama',DEWAN_GURU:'Dewan Guru',KELOMPOK:'Kelompok',VIEWER:'Viewer'
+};
 
 function Brand() {
   return <div className="brandBlock" aria-label="Aeroo Premium Administrasi">
     <div className="brandMark"><span>A</span></div>
-    <div>
-      <div className="brandWord">AEROO <span>Premium</span></div>
-      <div className="brandSub">Administrasi</div>
-    </div>
+    <div><div className="brandWord">AEROO <span>Premium</span></div><div className="brandSub">Administrasi</div></div>
   </div>;
 }
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
-  const [dark, setDark] = useState(false);
-  const [drawer, setDrawer] = useState(false);
+  const isLogin = path === '/login';
+  const [dark,setDark]=useState(false);
+  const [drawer,setDrawer]=useState(false);
+  const [user,setUser]=useState<AppUser|null>(null);
+  const [checking,setChecking]=useState(!isLogin);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('aeroo-theme');
-    const next = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-    setDark(next);
-  }, []);
+  useEffect(()=>{
+    const saved=localStorage.getItem('aeroo-theme');
+    setDark(saved?saved==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches);
+  },[]);
 
-  useEffect(() => {
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-    localStorage.setItem('aeroo-theme', dark ? 'dark' : 'light');
-  }, [dark]);
+  useEffect(()=>{
+    document.documentElement.dataset.theme=dark?'dark':'light';
+    localStorage.setItem('aeroo-theme',dark?'dark':'light');
+  },[dark]);
 
-  useEffect(() => setDrawer(false), [path]);
+  useEffect(()=>{
+    if(isLogin){setChecking(false);return}
+    setChecking(true);
+    fetch('/api/auth/me',{cache:'no-store'}).then(async r=>{
+      if(!r.ok){window.location.href='/login';return null}
+      return r.json();
+    }).then(v=>{if(v)setUser(v)}).finally(()=>setChecking(false));
+  },[isLogin]);
 
-  useEffect(() => {
-    document.body.style.overflow = drawer ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [drawer]);
+  useEffect(()=>setDrawer(false),[path]);
+  useEffect(()=>{
+    document.body.style.overflow=drawer?'hidden':'';
+    return()=>{document.body.style.overflow=''};
+  },[drawer]);
 
-  const title = useMemo(() => {
-    const flat = sections.flatMap(s => s.items);
-    return flat.find(item => item.href === path)?.label ?? 'Aeroo Premium Administrasi';
-  }, [path]);
+  const visibleSections=useMemo(()=>sections.map(s=>({
+    ...s,items:s.items.filter(i=>!user||i.roles.includes(user.role))
+  })).filter(s=>s.items.length),[user]);
 
-  const navContent = <div className="navInner">
-    <Brand />
+  const title=useMemo(()=>{
+    const flat=sections.flatMap(s=>s.items);
+    return flat.find(item=>item.href==='/'?path==='/':path.startsWith(item.href))?.label??'Aeroo Premium Administrasi';
+  },[path]);
+
+  async function logout(){
+    await fetch('/api/auth/logout',{method:'POST'});
+    window.location.href='/login';
+  }
+
+  if(isLogin) return <>{children}</>;
+
+  const navContent=<div className="navInner">
+    <Brand/>
     <div className="navSections">
-      {sections.map(section => <div className="navSection" key={section.label}>
+      {visibleSections.map(section=><div className="navSection" key={section.label}>
         <div className="navLabel">{section.label}</div>
-        {section.items.map(item => {
-          const active = item.href === '/' ? path === '/' : path.startsWith(item.href);
-          return <Link className={active ? 'navItem active' : 'navItem'} href={item.href} key={item.href}>
-            <span className="navIcon"><Icon name={item.icon} /></span>
-            <span>{item.label}</span>
+        {section.items.map(item=>{
+          const active=item.href==='/'?path==='/':path.startsWith(item.href);
+          return <Link className={active?'navItem active':'navItem'} href={item.href} key={item.href}>
+            <span className="navIcon"><Icon name={item.icon}/></span><span>{item.label}</span>
           </Link>;
         })}
       </div>)}
     </div>
 
-    <button className="themeButton" onClick={() => setDark(v => !v)}>
-      <span className="navIcon"><Icon name={dark ? 'sun' : 'moon'} /></span>
-      <span>{dark ? 'Mode Terang' : 'Mode Gelap'}</span>
+    <button className="themeButton" onClick={()=>setDark(v=>!v)}>
+      <span className="navIcon"><Icon name={dark?'sun':'moon'}/></span>
+      <span>{dark?'Mode Terang':'Mode Gelap'}</span>
     </button>
 
     <div className="sidebarFoot">
-      <span className="statusDot" />
-      <div><strong>Aeroo Premium</strong><small>Sistem administrasi aktif</small></div>
+      <span className="statusDot"/>
+      <div style={{minWidth:0,flex:1}}>
+        <strong>{user?.display_name||user?.username||'Aeroo'}</strong>
+        <small>{user?roleLabel[user.role]:'Memeriksa akses…'}</small>
+      </div>
+      <button className="miniLogout" aria-label="Keluar" onClick={()=>void logout()}><Icon name="logout" size={18}/></button>
     </div>
   </div>;
 
   return <div className="appShell">
     <aside className="desktopSidebar">{navContent}</aside>
-
-    <div className={drawer ? 'mobileOverlay show' : 'mobileOverlay'} onClick={() => setDrawer(false)} aria-hidden={!drawer} />
-    <aside className={drawer ? 'mobileDrawer open' : 'mobileDrawer'} aria-hidden={!drawer}>
-      <div className="drawerTop">
-        <Brand />
-        <button className="iconButton" aria-label="Tutup navigasi" onClick={() => setDrawer(false)}><Icon name="close" /></button>
-      </div>
+    <div className={drawer?'mobileOverlay show':'mobileOverlay'} onClick={()=>setDrawer(false)} aria-hidden={!drawer}/>
+    <aside className={drawer?'mobileDrawer open':'mobileDrawer'} aria-hidden={!drawer}>
+      <div className="drawerTop"><Brand/><button className="iconButton" aria-label="Tutup navigasi" onClick={()=>setDrawer(false)}><Icon name="close"/></button></div>
       {navContent}
     </aside>
-
     <main className="contentArea">
       <header className="mobileHeader">
-        <button className="iconButton menuButton" aria-label="Buka navigasi" onClick={() => setDrawer(true)}><Icon name="menu" /></button>
-        <div className="mobileHeaderTitle"><span>{title}</span><small>Aeroo Premium Administrasi</small></div>
-        <button className="iconButton" aria-label="Ganti tema" onClick={() => setDark(v => !v)}><Icon name={dark ? 'sun' : 'moon'} /></button>
+        <button className="iconButton menuButton" aria-label="Buka navigasi" onClick={()=>setDrawer(true)}><Icon name="menu"/></button>
+        <div className="mobileHeaderTitle"><span>{title}</span><small>{user?roleLabel[user.role]:'Aeroo Premium Administrasi'}</small></div>
+        <button className="iconButton" aria-label="Ganti tema" onClick={()=>setDark(v=>!v)}><Icon name={dark?'sun':'moon'}/></button>
       </header>
-      <div className="pageContent">{children}</div>
+      <div className="pageContent">{checking?<div className="card"><div className="skeleton" style={{height:72}}/></div>:children}</div>
     </main>
   </div>;
 }
