@@ -1,6 +1,7 @@
 import {NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
 
+type AttendanceStatus='H'|'I'|'A';
 function monthKey(d:Date){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}
 
 export async function GET(){
@@ -11,9 +12,8 @@ export async function GET(){
     start.setMonth(start.getMonth()-5);
     const startDate=monthKey(start)+'-01';
 
-    const [members,categories,events]=await Promise.all([
+    const [members,events]=await Promise.all([
       s.from('members').select('id,status,member_categories(categories(slug))').eq('status','ACTIVE'),
-      s.from('categories').select('id,slug'),
       s.from('attendance_events').select('event_date,attendance_records(status)').gte('event_date',startDate).order('event_date')
     ]);
 
@@ -31,7 +31,10 @@ export async function GET(){
       const k=String(e.event_date).slice(0,7);
       if(!trend[k])continue;
       for(const r of e.attendance_records??[]){
-        if(r.status==='H'||r.status==='I'||r.status==='A')trend[k][r.status]++;
+        if(r.status==='H'||r.status==='I'||r.status==='A'){
+          const status=r.status as AttendanceStatus;
+          trend[k][status]++;
+        }
       }
     }
     const nowKey=monthKey(new Date());
