@@ -30,6 +30,19 @@ export async function POST(req:NextRequest){
   const categories:string[]=body.category_ids??[];
   delete body.category_ids;
 
+  const{data:role}=await s.rpc('current_app_role');
+  if(role==='VIEWER')return NextResponse.json({error:'Akses hanya-baca.'},{status:403});
+
+  if(role==='DEWAN_GURU'){
+    if(!categories.length)return NextResponse.json({error:'Pilih kategori Caberawit atau Muda-Mudi.'},{status:400});
+    const{data:selectedCategories,error:catCheckError}=await s.from('categories').select('id,slug').in('id',categories);
+    if(catCheckError)return NextResponse.json({error:catCheckError.message},{status:400});
+    const allowed=new Set(['caberawit','muda-mudi']);
+    if((selectedCategories??[]).length!==categories.length||(selectedCategories??[]).some(c=>!allowed.has(c.slug))){
+      return NextResponse.json({error:'Dewan Guru hanya dapat menambah Caberawit atau Muda-Mudi.'},{status:403});
+    }
+  }
+
   const{data,error}=await s.from('members').insert({
     ...body,
     level_id:body.level_id||null,
