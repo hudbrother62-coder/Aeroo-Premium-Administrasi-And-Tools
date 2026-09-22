@@ -17,18 +17,19 @@ type AttendanceEvent = {
 async function dataset(req: NextRequest) {
   const from = req.nextUrl.searchParams.get('from');
   const to = req.nextUrl.searchParams.get('to');
-  const aud = req.nextUrl.searchParams.get('audience');
+  const audience = req.nextUrl.searchParams.get('audience');
 
   if (!from || !to) throw new Error('from dan to wajib diisi');
 
-  let q = (await db())
+  const s=await db();
+  let q = s
     .from('attendance_events')
     .select('title,event_date,audience,attendance_records(status)')
     .gte('event_date', from)
     .lte('event_date', to)
     .order('event_date');
 
-  if (aud) q = q.eq('audience', aud);
+  if (audience) q = q.eq('audience', audience);
 
   const { data, error } = await q;
   if (error) throw error;
@@ -36,14 +37,12 @@ async function dataset(req: NextRequest) {
   return {
     from,
     to,
-    aud: aud || 'Semua',
+    audience: audience || 'Semua',
     events: (data || []) as AttendanceEvent[],
   };
 }
 
 function binaryResponse(body: Uint8Array | ArrayBuffer, contentType: string, filename: string) {
-  // Node's fetch runtime accepts ArrayBuffer/Uint8Array bodies, while the
-  // DOM typings used by Next can be narrower depending on the TypeScript lib.
   const responseBody = body as unknown as BodyInit;
   return new Response(responseBody, {
     headers: {
@@ -59,12 +58,12 @@ export async function GET(req: NextRequest) {
     const d = await dataset(req);
     const format = req.nextUrl.searchParams.get('format') || 'xlsx';
 
-    const rows = d.events.map((e) => {
-      const records = e.attendance_records ?? [];
+    const rows = d.events.map((event) => {
+      const records = event.attendance_records ?? [];
       return {
-        Tanggal: e.event_date,
-        Kegiatan: e.title,
-        Kategori: e.audience,
+        Tanggal: event.event_date,
+        Kegiatan: event.title,
+        Kategori: event.audience,
         Hadir: records.filter((r) => r.status === 'H').length,
         Izin: records.filter((r) => r.status === 'I').length,
         Alfa: records.filter((r) => r.status === 'A').length,
