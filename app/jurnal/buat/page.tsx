@@ -63,7 +63,7 @@ export default function Page(){
         <label>Jenis jurnal<select className="select" value={form.journal_kind} onChange={e=>set('journal_kind',e.target.value)}>{kinds.map(([v,l])=><option value={v} key={v}>{l}</option>)}</select></label>
         <label>Tanggal<input className="input" type="date" value={form.journal_date} onChange={e=>set('journal_date',e.target.value)} required/></label>
         <label>Judul<input className="input" value={form.title} onChange={e=>set('title',e.target.value)} required/></label>
-        <label>Jenis kegiatan<select className="select" value={form.activity_type_id} onChange={e=>set('activity_type_id',e.target.value)}><option value="">Pilih</option>{currentActivities.map(a=><option value={a.id} key={a.id}>{a.name}</option>)}</select></label>
+        <label>Jenis kegiatan<select className="select" required value={form.activity_type_id} onChange={e=>set('activity_type_id',e.target.value)}><option value="">Pilih</option>{currentActivities.map(a=><option value={a.id} key={a.id}>{a.name}</option>)}</select></label>
 
         {form.journal_kind.startsWith('CABERAWIT')&&<label>Kelas<select className="select" value={form.class_id} onChange={e=>set('class_id',e.target.value)}><option value="">Pilih kelas</option>{cabClasses.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select></label>}
         {form.journal_kind==='CABERAWIT_INDIVIDUAL'&&<label>Individu<select className="select" value={form.member_id} onChange={e=>set('member_id',e.target.value)}><option value="">Pilih</option>{members.map(m=><option value={m.id} key={m.id}>{m.name}</option>)}</select></label>}
