@@ -86,12 +86,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   },[dark]);
 
   useEffect(()=>{
-    if(isLogin){setChecking(false);return}
+    if(isLogin){setChecking(false);document.documentElement.removeAttribute('data-role');return}
     setChecking(true);
     fetch('/api/auth/me',{cache:'no-store'}).then(async r=>{
       if(!r.ok){window.location.href='/login';return null}
       return r.json();
-    }).then(v=>{if(v)setUser(v)}).finally(()=>setChecking(false));
+    }).then(v=>{
+      if(v){
+        setUser(v);
+        document.documentElement.dataset.role=v.role;
+      }
+    }).finally(()=>setChecking(false));
   },[isLogin]);
 
   useEffect(()=>setDrawer(false),[path]);
