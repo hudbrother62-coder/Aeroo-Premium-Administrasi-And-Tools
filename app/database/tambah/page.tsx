@@ -10,12 +10,14 @@ export default function Page(){
   const[cats,setCats]=useState<Cat[]>([]);
   const[levels,setLevels]=useState<Level[]>([]);
   const[classes,setClasses]=useState<ClassRow[]>([]);
+  const[role,setRole]=useState('');
   const[saving,setSaving]=useState(false);
   const[error,setError]=useState('');
   const[form,setForm]=useState({name:'',gender:'',birth_place:'',birth_date:'',phone:'',address:'',level_id:'',class_id:'',notes:'',category_ids:[] as string[]});
 
-  useEffect(()=>{Promise.all([fetch('/api/categories').then(r=>r.json()),fetch('/api/levels').then(r=>r.json()),fetch('/api/classes').then(r=>r.json())]).then(([c,l,k])=>{setCats(c);setLevels(l);setClasses(k)})},[]);
+  useEffect(()=>{Promise.all([fetch('/api/categories').then(r=>r.json()),fetch('/api/levels').then(r=>r.json()),fetch('/api/classes').then(r=>r.json()),fetch('/api/auth/me').then(r=>r.json())]).then(([c,l,k,u])=>{setCats(c);setLevels(l);setClasses(k);setRole(u.role??'')})},[]);
   const toggle=(id:string)=>setForm(v=>({...v,category_ids:v.category_ids.includes(id)?v.category_ids.filter(x=>x!==id):[...v.category_ids,id]}));
+  const visibleCats=useMemo(()=>role==='DEWAN_GURU'?cats.filter(c=>['caberawit','muda-mudi'].includes(c.slug)):cats,[cats,role]);
   const selectedSlugs=useMemo(()=>cats.filter(c=>form.category_ids.includes(c.id)).map(c=>c.slug),[cats,form.category_ids]);
   const classOptions=useMemo(()=>classes.filter(c=>selectedSlugs.includes('caberawit')?c.audience==='CABERAWIT':selectedSlugs.includes('muda-mudi')?c.audience==='MUDA_MUDI':false),[classes,selectedSlugs]);
 
@@ -41,7 +43,7 @@ export default function Page(){
         {classOptions.length>0&&<label>Kelas<select className="select" value={form.class_id} onChange={e=>setForm({...form,class_id:e.target.value})}><option value="">Pilih kelas</option>{classOptions.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
         <label className="span2">Alamat<textarea className="textarea" value={form.address} onChange={e=>setForm({...form,address:e.target.value})}/></label>
       </div>
-      <div className="section"><h2>Kategori</h2><div className="chips">{cats.map(c=><button type="button" key={c.id} className={form.category_ids.includes(c.id)?'chip active':'chip'} onClick={()=>toggle(c.id)}>{c.name}</button>)}</div></div>
+      <div className="section"><h2>Kategori</h2><div className="chips">{visibleCats.map(c=><button type="button" key={c.id} className={form.category_ids.includes(c.id)?'chip active':'chip'} onClick={()=>toggle(c.id)}>{c.name}</button>)}</div></div>
       {error&&<div className="notice error section">{error}</div>}
       <div className="formActions"><a className="btn ghost" href="/database">Batal</a><button className="btn" disabled={saving}>{saving?'Menyimpan…':'Simpan'}</button></div>
     </form>
