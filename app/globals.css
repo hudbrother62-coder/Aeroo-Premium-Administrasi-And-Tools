@@ -163,3 +163,5 @@ html[data-theme="dark"] .eyebrow{color:#5fd3d0}
   .loginVisual>*{position:relative;z-index:1}.loginVisual h1{font-size:44px;max-width:680px;line-height:1.08}.loginVisual p{font-size:15px;line-height:1.75;color:rgba(255,255,255,.72);max-width:610px}
   .loginPanel{padding:48px}.loginCard{padding:34px}
 }
+
+html[data-role="VIEWER"] .writeOnly{display:none!important}
