@@ -30,3 +30,15 @@ RLS is enabled on every application table and there are intentionally no anon/au
 
 ## Deployment
 Not deployed yet by design. Vercel deployment is the final manual step.
+
+## Login & Tim Akses
+
+Aeroo memakai login privat tanpa halaman daftar. Runtime Vercel tidak membutuhkan Supabase service-role key. Akses data memakai publishable key dan session HttpOnly yang divalidasi melalui PostgreSQL/RLS.
+
+Role:
+- **Admin Utama** — seluruh menu + Tim Akses.
+- **Dewan Guru** — Caberawit dan Muda-Mudi beserta modul terkait.
+- **Kelompok** — data/kegiatan Kelompok, termasuk Muda-Mudi dalam konteks kelompok.
+- **Viewer** — baca saja.
+
+Akun tim baru hanya dapat dibuat dari menu **Tim Akses** oleh Admin Utama. Password tidak disimpan dalam bentuk plaintext.

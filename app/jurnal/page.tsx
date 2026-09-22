@@ -18,7 +18,7 @@ export default function Page(){
   return <>
     <div className="pageHeader">
       <div><div className="eyebrow">Operasional</div><h1>Jurnal Kegiatan</h1><p>Catat materi, hasil kegiatan, kendala, penanggung jawab, dan tindak lanjut dalam riwayat yang mudah dicari kembali.</p></div>
-      <Link href="/jurnal/buat" className="btn">+ Buat Jurnal</Link>
+      <Link href="/jurnal/buat" className="btn writeOnly">+ Buat Jurnal</Link>
     </div>
 
     <div className="card">
@@ -44,7 +44,7 @@ export default function Page(){
           <div className="emptyIcon">J</div>
           <h3>Belum ada jurnal kegiatan</h3>
           <p>Buat jurnal pertama setelah kegiatan berlangsung agar materi, hasil, kendala, dan tindak lanjut terdokumentasi rapi.</p>
-          <Link href="/jurnal/buat" className="btn" style={{marginTop:16}}>+ Buat Jurnal</Link>
+          <Link href="/jurnal/buat" className="btn writeOnly" style={{marginTop:16}}>+ Buat Jurnal</Link>
         </div>}
       </div>
     </section>

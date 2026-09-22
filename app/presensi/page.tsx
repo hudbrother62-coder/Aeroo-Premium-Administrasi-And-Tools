@@ -23,7 +23,7 @@ export default function Page(){
   return <>
     <div className="pageHeader">
       <div><div className="eyebrow">Operasional</div><h1>Presensi</h1><p>Catat kehadiran dengan cepat. Presensi Kelompok mencakup Muda-Mudi, sedangkan presensi Muda-Mudi hanya menampilkan peserta berkategori Muda-Mudi.</p></div>
-      <Link href="/presensi/buat" className="btn">+ Buat Presensi</Link>
+      <Link href="/presensi/buat" className="btn writeOnly">+ Buat Presensi</Link>
     </div>
 
     <div className="card">
@@ -52,7 +52,7 @@ export default function Page(){
           <div className="emptyIcon">✓</div>
           <h3>Belum ada presensi</h3>
           <p>Buat kegiatan pertama, pilih kategori peserta, lalu tandai Hadir, Izin, atau Alfa langsung dari HP.</p>
-          <Link href="/presensi/buat" className="btn" style={{marginTop:16}}>+ Buat Presensi</Link>
+          <Link href="/presensi/buat" className="btn writeOnly" style={{marginTop:16}}>+ Buat Presensi</Link>
         </div>}
       </div>
     </section>

@@ -25,13 +25,13 @@ export default function Page(){
   return <>
     <div className="pageHeader">
       <div><div className="eyebrow">Database</div><h1>Database Caberawit</h1><p>Kelola peserta Caberawit langsung di Aeroo dengan jenjang yang dapat ditambah sesuai kebutuhan.</p></div>
-      <Link href="/database/caberawit/tambah" className="btn">+ Tambah Caberawit</Link>
+      <Link href="/database/caberawit/tambah" className="btn writeOnly">+ Tambah Caberawit</Link>
     </div>
 
     <div className="card">
       <div className="searchBar">
         <input className="input" placeholder="Cari nama, wali, atau jenjang…" value={q} onChange={e=>setQ(e.target.value)}/>
-        <button className="btn secondary">Kelola Jenjang</button>
+        <Link href="/database/caberawit/jenjang" className="btn secondary writeOnly">Kelola Jenjang</Link>
       </div>
       <div className="notice">Jenjang tidak dikunci oleh sistem. Tambahkan dan gunakan jenjang sesuai struktur pendidikan yang berlaku di kelompok.</div>
     </div>
@@ -58,7 +58,7 @@ export default function Page(){
           <div className="emptyIcon">C</div>
           <h3>Belum ada data Caberawit</h3>
           <p>Tambahkan peserta agar presensi per jenjang, perkembangan, dan laporan Caberawit dapat digunakan.</p>
-          <Link href="/database/caberawit/tambah" className="btn" style={{marginTop:16}}>+ Tambah Caberawit</Link>
+          <Link href="/database/caberawit/tambah" className="btn writeOnly" style={{marginTop:16}}>+ Tambah Caberawit</Link>
         </div>}
       </div>
     </section>

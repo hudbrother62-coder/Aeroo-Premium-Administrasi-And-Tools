@@ -1,23 +1,23 @@
 import 'server-only';
+import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 
-const AEROO_SUPABASE_URL = 'https://hzbsdzlhjmfgtexmhccv.supabase.co';
+export const AEROO_SUPABASE_URL = 'https://hzbsdzlhjmfgtexmhccv.supabase.co';
+export const AEROO_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_rfEbE2jbGBvG5GbE3wTm7w_FxzAfZVm';
+export const AEROO_SESSION_COOKIE = 'aeroo_session';
 
-export function db() {
-  // The project URL is public metadata, so keeping a project-specific fallback
-  // lets Vercel require only the server secret at runtime.
-  const url = process.env.SUPABASE_URL ?? AEROO_SUPABASE_URL;
-  const key =
-    process.env.SUPABASE_SECRET_KEY ??
-    process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!key) {
-    throw new Error(
-      'Supabase server secret is not configured. Set SUPABASE_SECRET_KEY or SUPABASE_SERVICE_ROLE_KEY in Vercel.',
-    );
-  }
-
-  return createClient(url, key, {
+export function publicDb() {
+  return createClient(AEROO_SUPABASE_URL, AEROO_SUPABASE_PUBLISHABLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+export async function db() {
+  const store = await cookies();
+  const token = store.get(AEROO_SESSION_COOKIE)?.value ?? '';
+
+  return createClient(AEROO_SUPABASE_URL, AEROO_SUPABASE_PUBLISHABLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: token ? { headers: { 'x-aeroo-session': token } } : undefined,
   });
 }

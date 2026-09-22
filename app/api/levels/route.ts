@@ -1,0 +1,3 @@
+import { NextRequest, NextResponse } from 'next/server';import { db } from '@/lib/supabase-server';
+export async function GET(){const s=await db();const{data,error}=await s.from('levels').select('*').order('sort_order').order('name');return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data??[])}
+export async function POST(req:NextRequest){const s=await db();const b=await req.json();const name=String(b.name??'').trim();if(!name)return NextResponse.json({error:'Nama jenjang wajib diisi.'},{status:400});const{data,error}=await s.from('levels').insert({name,sort_order:Number(b.sort_order??0),active:true}).select().single();return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data,{status:201})}

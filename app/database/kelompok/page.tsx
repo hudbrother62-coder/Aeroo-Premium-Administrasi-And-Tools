@@ -12,6 +12,7 @@ const filters=['Semua','Muda-Mudi','Ibu-Ibu','Pengurus'];
 
 export default function Page(){
   const[data,setData]=useState<Member[]>([]);
+  const[role,setRole]=useState<string>('');
   const[q,setQ]=useState('');
   const[active,setActive]=useState('Semua');
   const[loading,setLoading]=useState(true);
@@ -28,7 +29,7 @@ export default function Page(){
     }finally{setLoading(false)}
   };
 
-  useEffect(()=>{void load()},[]);
+  useEffect(()=>{void load();fetch('/api/auth/me').then(r=>r.json()).then(u=>setRole(u.role??''))},[]);
 
   const shown=useMemo(()=>data.filter(x=>{
     if(active==='Semua')return true;
@@ -38,8 +39,8 @@ export default function Page(){
 
   return <>
     <div className="pageHeader">
-      <div><div className="eyebrow">Database</div><h1>Database Kelompok</h1><p>Master anggota kelompok. Satu orang dapat memiliki beberapa kategori tanpa membuat data ganda.</p></div>
-      <Link href="/database/kelompok/tambah" className="btn">+ Tambah Anggota</Link>
+      <div><div className="eyebrow">Database</div><h1>{role==='DEWAN_GURU'?'Database Muda-Mudi':'Database Kelompok'}</h1><p>{role==='DEWAN_GURU'?'Data Muda-Mudi yang menjadi area akses Dewan Guru.':'Master anggota kelompok. Satu orang dapat memiliki beberapa kategori tanpa membuat data ganda.'}</p></div>
+      <Link href="/database/kelompok/tambah" className="btn writeOnly">+ {role==='DEWAN_GURU'?'Tambah Muda-Mudi':'Tambah Anggota'}</Link>
     </div>
 
     <div className="card">
@@ -48,7 +49,7 @@ export default function Page(){
         <button className="btn secondary" onClick={()=>void load()}>Cari</button>
       </div>
       <div className="chips" aria-label="Filter kategori">
-        {filters.map(f=><button key={f} className={active===f?'chip active':'chip'} onClick={()=>setActive(f)}>{f}</button>)}
+        {(role==='DEWAN_GURU'?['Muda-Mudi']:filters).map(f=><button key={f} className={active===f?'chip active':'chip'} onClick={()=>setActive(f)}>{f}</button>)}
       </div>
     </div>
 
@@ -75,7 +76,7 @@ export default function Page(){
           <div className="emptyIcon">K</div>
           <h3>Belum ada anggota</h3>
           <p>Tambahkan anggota pertama. Data ini akan menjadi sumber peserta untuk presensi Kelompok, Muda-Mudi, Ibu-Ibu, dan Pengurus.</p>
-          <Link href="/database/kelompok/tambah" className="btn" style={{marginTop:16}}>+ Tambah Anggota</Link>
+          <Link href="/database/kelompok/tambah" className="btn writeOnly" style={{marginTop:16}}>+ Tambah Anggota</Link>
         </div>}
       </div>
     </section>
