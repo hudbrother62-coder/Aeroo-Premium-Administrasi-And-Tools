@@ -1,6 +1,7 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
 
+type AttendanceStatus='H'|'I'|'A';
 const slugByAudience:Record<string,string>={CABERAWIT:'caberawit',MUDA_MUDI:'muda-mudi',IBU_IBU:'ibu-ibu',PENGURUS:'pengurus'};
 
 export async function GET(req:NextRequest){
@@ -28,14 +29,15 @@ export async function GET(req:NextRequest){
   if(events.error)return NextResponse.json({error:events.error.message},{status:400});
 
   const eventDates:Record<string,number>={};
-  const summary={H:0,I:0,A:0};
+  const summary:Record<AttendanceStatus,number>={H:0,I:0,A:0};
   for(const e of events.data??[]){
     eventDates[e.event_date]=(eventDates[e.event_date]??0)+1;
     for(const r of e.attendance_records??[]){
       if(!r.member_id||!map.has(r.member_id))continue;
       if(r.status==='H'||r.status==='I'||r.status==='A'){
-        map.get(r.member_id)[r.status]++;
-        summary[r.status]++;
+        const status=r.status as AttendanceStatus;
+        map.get(r.member_id)[status]++;
+        summary[status]++;
       }
     }
   }
