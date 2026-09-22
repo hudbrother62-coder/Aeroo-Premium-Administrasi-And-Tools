@@ -21,7 +21,7 @@ async function dataset(req: NextRequest) {
 
   if (!from || !to) throw new Error('from dan to wajib diisi');
 
-  let q = db()
+  let q = (await db())
     .from('attendance_events')
     .select('title,event_date,audience,attendance_records(status)')
     .gte('event_date', from)
