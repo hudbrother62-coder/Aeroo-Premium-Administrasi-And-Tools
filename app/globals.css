@@ -143,3 +143,23 @@ html[data-theme="dark"] .eyebrow{color:#5fd3d0}
 }
 
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+
+.miniLogout{width:36px;height:36px;flex:0 0 36px;border-radius:11px;border:1px solid var(--border);background:var(--surface);color:var(--muted);display:grid;place-items:center;cursor:pointer;transition:background .16s,color .16s,transform .16s}
+.miniLogout:hover{background:var(--surface-2);color:var(--danger)}.miniLogout:active{transform:scale(.96)}
+.loginPage{min-height:100vh;display:grid;background:var(--bg)}
+.loginVisual{display:none}
+.loginPanel{display:grid;place-items:center;padding:24px 16px;min-height:100vh}
+.loginCard{width:min(100%,460px);background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:24px;box-shadow:var(--shadow-lg)}
+.loginMiniBrand{display:flex;align-items:center;gap:11px}.loginMiniBrand strong,.loginMiniBrand small{display:block}.loginMiniBrand strong{font-size:14px}.loginMiniBrand small{margin-top:2px;color:var(--muted);font-size:11px}
+.loginForm{display:grid;gap:15px;margin-top:26px}.loginForm label{display:grid;gap:7px;font-size:12px;font-weight:750;color:var(--muted)}
+.loginHint{margin:18px 0 0;text-align:center;color:var(--muted);font-size:11px;line-height:1.55}
+.loginPills{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}.loginPills span{padding:8px 11px;border-radius:999px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);font-size:11px;font-weight:700}
+.loginBrandMark{width:68px;height:68px;border-radius:22px;display:grid;place-items:center;background:linear-gradient(145deg,#1d537f,#20a9aa);font-size:34px;font-weight:900;margin-bottom:28px;box-shadow:0 20px 45px rgba(0,0,0,.18)}
+@media(min-width:900px){
+  .loginPage{grid-template-columns:minmax(0,1.05fr) minmax(440px,.95fr)}
+  .loginVisual{display:flex;flex-direction:column;justify-content:center;padding:64px clamp(48px,7vw,110px);background:linear-gradient(145deg,#07182d 0%,#0b294f 48%,#08777d 135%);color:#fff;position:relative;overflow:hidden}
+  .loginVisual:after{content:"";position:absolute;width:480px;height:480px;border-radius:50%;border:1px solid rgba(255,255,255,.08);right:-180px;top:-170px;box-shadow:0 0 0 80px rgba(255,255,255,.025),0 0 0 160px rgba(255,255,255,.015)}
+  .loginVisual>*{position:relative;z-index:1}.loginVisual h1{font-size:44px;max-width:680px;line-height:1.08}.loginVisual p{font-size:15px;line-height:1.75;color:rgba(255,255,255,.72);max-width:610px}
+  .loginPanel{padding:48px}.loginCard{padding:34px}
+}
