@@ -39,7 +39,7 @@ export default function Page(){
   return <>
     <div className="pageHeader">
       <div><h1>Presensi</h1></div>
-      <div className="row writeOnly"><Link href="/rekap-presensi" className="btn ghost">Lihat Rekap Presensi</Link><Link href="/presensi/buat" className="btn">+ Buat Presensi</Link></div>
+      <div className="row"><Link href="/rekap-presensi" className="btn ghost">Lihat Rekap Presensi</Link><Link href="/presensi/buat" className="btn writeOnly">+ Buat Presensi</Link></div>
     </div>
     <div className="toolbar card">
       <input className="input" type="month" value={month} onChange={e=>setMonth(e.target.value)}/>
