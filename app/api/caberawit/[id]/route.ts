@@ -1,3 +1,32 @@
-import {NextRequest,NextResponse} from 'next/server';import{db}from'@/lib/supabase-server';
-export async function PATCH(req:NextRequest,{params}:{params:Promise<{id:string}>}){const{id}=await params;const{data,error}=await (await (await db())).from('caberawit').update({...await req.json(),updated_at:new Date().toISOString()}).eq('id',id).select().single();return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data)}
-export async function DELETE(_:NextRequest,{params}:{params:Promise<{id:string}>}){const{id}=await params;const{data,error}=await (await (await db())).from('caberawit').update({status:'INACTIVE',updated_at:new Date().toISOString()}).eq('id',id).select().single();return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data)}
+import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/supabase-server';
+
+export async function PATCH(req:NextRequest,{params}:{params:Promise<{id:string}>}){
+  const {id}=await params;
+  const s=await db();
+  const {data,error}=await s
+    .from('caberawit')
+    .update({...await req.json(),updated_at:new Date().toISOString()})
+    .eq('id',id)
+    .select()
+    .single();
+
+  return error
+    ? NextResponse.json({error:error.message},{status:400})
+    : NextResponse.json(data);
+}
+
+export async function DELETE(_:NextRequest,{params}:{params:Promise<{id:string}>}){
+  const {id}=await params;
+  const s=await db();
+  const {data,error}=await s
+    .from('caberawit')
+    .update({status:'INACTIVE',updated_at:new Date().toISOString()})
+    .eq('id',id)
+    .select()
+    .single();
+
+  return error
+    ? NextResponse.json({error:error.message},{status:400})
+    : NextResponse.json(data);
+}
