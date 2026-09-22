@@ -66,7 +66,7 @@ export default function ReportPage(){
         {error&&<div className="notice error section">{error}</div>}{message&&<div className="notice section">{message}</div>}
         <button className="btn section" onClick={()=>void generate()} disabled={loading||!memberId||(format==='pptx'&&!templateId)}>{loading?'Menyusun laporan…':'Buat Laporan'}</button>
       </section>
-      <form className="card writeOnly" onSubmit={upload}>
+      <form className="card ownerOnly" onSubmit={upload}>
         <h2>Upload Template</h2>
         <div className="formGrid">
           <label>Nama template<input className="input" name="name" required/></label>
