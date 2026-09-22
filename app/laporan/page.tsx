@@ -1,80 +1,81 @@
 'use client';
 
-import { useState } from 'react';
+import {FormEvent,useEffect,useMemo,useState} from 'react';
 
-export default function Page(){
-  const now=new Date().toISOString().slice(0,10);
-  const[from,setFrom]=useState(now);
-  const[to,setTo]=useState(now);
-  const[aud,setAud]=useState('');
-  const[report,setReport]=useState<any>(null);
+type Member={id:string;name:string;classes?:{name?:string};levels?:{name?:string}};
+type Template={id:string;name:string;kind:'pptx'|'docx';file_name?:string};
+
+export default function ReportPage(){
+  const now=new Date();
+  const first=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+  const today=now.toISOString().slice(0,10);
+  const[members,setMembers]=useState<Member[]>([]);
+  const[templates,setTemplates]=useState<Template[]>([]);
+  const[memberId,setMemberId]=useState('');
+  const[from,setFrom]=useState(first);
+  const[to,setTo]=useState(today);
+  const[format,setFormat]=useState<'docx'|'pptx'>('docx');
+  const[templateId,setTemplateId]=useState('');
   const[loading,setLoading]=useState(false);
+  const[message,setMessage]=useState('');
   const[error,setError]=useState('');
 
-  const qs=()=>`from=${from}&to=${to}${aud?'&audience='+aud:''}`;
+  const load=()=>Promise.all([
+    fetch('/api/members?segment=CABERAWIT').then(r=>r.json()),
+    fetch('/api/report-templates').then(r=>r.json())
+  ]).then(([m,t])=>{setMembers(m);setTemplates(Array.isArray(t)?t:[]);if(!memberId&&m[0])setMemberId(m[0].id)});
+  useEffect(()=>{void load()},[]);
 
-  const preview=async()=>{
-    setLoading(true);setError('');
+  const matching=useMemo(()=>templates.filter(t=>t.kind===format),[templates,format]);
+
+  async function upload(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();setMessage('');setError('');
+    const fd=new FormData(e.currentTarget);
+    const r=await fetch('/api/report-templates',{method:'POST',body:fd});
+    const j=await r.json();
+    if(!r.ok){setError(j.error||'Upload template gagal.');return}
+    setMessage('Template tersimpan.');(e.currentTarget as HTMLFormElement).reset();await load();
+  }
+
+  async function generate(){
+    setLoading(true);setError('');setMessage('');
     try{
-      const r=await fetch(`/api/reports?${qs()}`);
-      const j=await r.json();
-      if(!r.ok)throw new Error(j.error||'Gagal membuat laporan');
-      setReport(j);
-    }catch(e:unknown){
-      setError(e instanceof Error?e.message:'Gagal membuat laporan');
-    }finally{setLoading(false)}
-  };
-
-  const exp=(format:string)=>{window.location.href=`/api/reports/export?${qs()}&format=${format}`};
+      const r=await fetch('/api/caberawit-report/generate',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({member_id:memberId,period_start:from,period_end:to,format,template_id:templateId||null})});
+      if(!r.ok){const j=await r.json();throw new Error(j.error||'Gagal membuat laporan.')}
+      const blob=await r.blob();
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');a.href=url;a.download=`laporan-caberawit-${from}-${to}.${format}`;a.click();URL.revokeObjectURL(url);
+      setMessage('Laporan berhasil dibuat.');
+    }catch(e){setError(e instanceof Error?e.message:'Gagal membuat laporan.')}
+    finally{setLoading(false)}
+  }
 
   return <>
-    <div className="pageHeader">
-      <div><div className="eyebrow">Analisis & Dokumen</div><h1>Laporan</h1><p>Buat rekap presensi dari satu hari sampai lintas bulan. Preview dan file ekspor menggunakan dataset yang sama.</p></div>
-    </div>
-
-    <div className="two">
+    <div className="pageHeader"><div><h1>Laporan Caberawit</h1></div></div>
+    <div className="dashboardGrid">
       <section className="card">
-        <div className="sectionTitle"><div><h2>Atur laporan</h2><p>Pilih periode dan kategori yang ingin direkap.</p></div></div>
+        <h2>Buat Laporan</h2>
         <div className="formGrid">
-          <label>Tanggal mulai<input type="date" className="input" value={from} max={to} onChange={e=>setFrom(e.target.value)}/></label>
-          <label>Tanggal akhir<input type="date" className="input" value={to} min={from} onChange={e=>setTo(e.target.value)}/></label>
-          <label>Kategori<select className="select" value={aud} onChange={e=>setAud(e.target.value)}>
-            <option value="">Semua kategori</option><option value="KELOMPOK">Kelompok</option><option value="MUDA_MUDI">Muda-Mudi</option><option value="CABERAWIT">Caberawit</option><option value="IBU_IBU">Ibu-Ibu</option><option value="PENGURUS">Pengurus</option>
-          </select></label>
+          <label>Individu<select className="select" value={memberId} onChange={e=>setMemberId(e.target.value)}><option value="">Pilih</option>{members.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+          <label>Format<select className="select" value={format} onChange={e=>{setFormat(e.target.value as 'docx'|'pptx');setTemplateId('')}}><option value="docx">Word (.docx)</option><option value="pptx">PowerPoint (.pptx)</option></select></label>
+          <label>Mulai<input className="input" type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label>
+          <label>Sampai<input className="input" type="date" value={to} onChange={e=>setTo(e.target.value)}/></label>
+          <label className="span2">Template<select className="select" value={templateId} onChange={e=>setTemplateId(e.target.value)}><option value="">{format==='docx'?'Gunakan format Word profesional bawaan':'Pilih template PPTX'}</option>{matching.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label>
         </div>
-        {error&&<div className="notice error" role="alert" style={{marginTop:14}}>{error}</div>}
-        <button className="btn" style={{marginTop:18,width:'100%'}} disabled={loading||from>to} onClick={()=>void preview()}>{loading?'Menyiapkan preview…':'Tampilkan Preview'}</button>
+        <div className="notice section">Placeholder template: <strong>{'{{NAMA}}'}</strong>, {'{{PERIODE}}'}, {'{{KELAS}}'}, {'{{JENJANG}}'}, {'{{HADIR}}'}, {'{{IZIN}}'}, {'{{ALFA}}'}, {'{{KEHADIRAN}}'}, {'{{PROGRES}}'}, {'{{CATATAN}}'}.</div>
+        {error&&<div className="notice error section">{error}</div>}{message&&<div className="notice section">{message}</div>}
+        <button className="btn section" onClick={()=>void generate()} disabled={loading||!memberId||(format==='pptx'&&!templateId)}>{loading?'Menyusun laporan…':'Buat Laporan'}</button>
       </section>
-
-      <section className="card">
-        <div className="sectionTitle"><div><h2>Ekspor dokumen</h2><p>Pilih format sesuai kebutuhan administrasi.</p></div></div>
-        <div className="list">
-          <button className="quickAction" onClick={()=>exp('xlsx')} style={{width:'100%',cursor:'pointer'}}>
-            <span className="quickIcon">X</span><div style={{textAlign:'left'}}><strong>Excel (.xlsx)</strong><small>Cocok untuk olah data dan arsip</small></div>
-          </button>
-          <button className="quickAction" onClick={()=>exp('docx')} style={{width:'100%',cursor:'pointer'}}>
-            <span className="quickIcon">W</span><div style={{textAlign:'left'}}><strong>Word (.docx)</strong><small>Cocok untuk dokumen yang akan diedit</small></div>
-          </button>
-          <button className="quickAction" onClick={()=>exp('pdf')} style={{width:'100%',cursor:'pointer'}}>
-            <span className="quickIcon">P</span><div style={{textAlign:'left'}}><strong>PDF (.pdf)</strong><small>Cocok untuk cetak dan dibagikan</small></div>
-          </button>
+      <form className="card writeOnly" onSubmit={upload}>
+        <h2>Upload Template</h2>
+        <div className="formGrid">
+          <label>Nama template<input className="input" name="name" required/></label>
+          <label>Jenis<select className="select" name="kind" required><option value="pptx">PowerPoint</option><option value="docx">Word</option></select></label>
+          <label className="span2">File<input className="input" type="file" name="file" accept=".pptx,.docx" required/></label>
         </div>
-      </section>
+        <button className="btn section">Upload Template</button>
+        <div className="list section">{templates.map(t=><div className="item row between" key={t.id}><div><div className="itemTitle">{t.name}</div><div className="itemMeta">{t.file_name}</div></div><span className="badge">{t.kind.toUpperCase()}</span></div>)}</div>
+      </form>
     </div>
-
-    {report&&<section className="card reportPreview section">
-      <div className="reportHeader">
-        <div className="brandWord">AEROO <span>PREMIUM</span> ADMINISTRASI</div>
-        <h2>Laporan Rekap Presensi</h2>
-        <div className="itemMeta">{report.period.from} — {report.period.to}</div>
-      </div>
-      <div className="grid section">
-        {[['Pertemuan',report.summary.meetings,'P'],['Hadir',report.summary.H,'H'],['Izin',report.summary.I,'I'],['Alfa',report.summary.A,'A']].map(([k,v,i])=><div className="statCard" style={{padding:14}} key={String(k)}>
-          <div className="statTop"><span className="muted" style={{fontSize:11,fontWeight:750}}>{k}</span><span className="statIcon">{i}</span></div>
-          <strong>{v}</strong>
-        </div>)}
-      </div>
-      <div className="notice section">Preview ini menggunakan sumber data yang sama dengan file Excel, Word, dan PDF untuk menjaga konsistensi angka.</div>
-    </section>}
   </>;
 }
