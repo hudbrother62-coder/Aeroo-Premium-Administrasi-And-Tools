@@ -23,11 +23,12 @@ export async function GET(req:NextRequest){
   const {data,error}=await q;
   if(error) return NextResponse.json({error:error.message},{status:400});
 
-  const totals={H:0,I:0,A:0};
+  const totals:{H:number;I:number;A:number}={H:0,I:0,A:0};
   data?.forEach(event=>{
     event.attendance_records?.forEach(record=>{
-      if(record.status==='H'||record.status==='I'||record.status==='A'){
-        totals[record.status]+=1;
+      const status=record.status as 'H'|'I'|'A';
+      if(status==='H'||status==='I'||status==='A'){
+        totals[status]+=1;
       }
     });
   });
