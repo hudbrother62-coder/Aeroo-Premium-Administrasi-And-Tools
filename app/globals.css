@@ -111,3 +111,5 @@ html[data-role="VIEWER"] .writeOnly{display:none!important}
 .targetVersion{text-align:left;cursor:pointer}
 .targetVersion.active{border-color:var(--teal);background:var(--teal-soft)}
 @media(min-width:700px){.two{grid-template-columns:1.6fr 1fr}.grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+html:not([data-role="ADMIN"]) .ownerOnly{display:none!important}
