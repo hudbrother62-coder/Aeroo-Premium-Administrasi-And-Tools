@@ -16,7 +16,7 @@ export async function POST(req:NextRequest){
     const supabase=publicDb();
     const{data,error}=await supabase.rpc('login_app',{p_username:username,p_password:password});
     const success=!error&&Boolean(data?.length);
-    await supabase.rpc('record_login_event',{p_username:username,p_success:success,p_ip_hash:ipHash,p_user_agent:userAgent}).catch(()=>null);
+    try{await supabase.rpc('record_login_event',{p_username:username,p_success:success,p_ip_hash:ipHash,p_user_agent:userAgent});}catch{}
 
     if(!success)return NextResponse.json({error:'Username atau password salah.'},{status:401});
 
