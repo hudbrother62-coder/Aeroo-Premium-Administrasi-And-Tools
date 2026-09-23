@@ -12,12 +12,15 @@ export function publicDb() {
   });
 }
 
-export async function db() {
-  const store = await cookies();
-  const token = store.get(AEROO_SESSION_COOKIE)?.value ?? '';
-
+export function sessionDb(token: string) {
   return createClient(AEROO_SUPABASE_URL, AEROO_SUPABASE_PUBLISHABLE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: token ? { headers: { 'x-aeroo-session': token } } : undefined,
   });
+}
+
+export async function db() {
+  const store = await cookies();
+  const token = store.get(AEROO_SESSION_COOKIE)?.value ?? '';
+  return sessionDb(token);
 }

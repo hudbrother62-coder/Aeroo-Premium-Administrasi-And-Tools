@@ -1,6 +1,69 @@
-'use client';import{FormEvent,useEffect,useState}from'react';type Level={id:string;name:string};type Target={id:string;title:string;description?:string;levels?:{name?:string}};type Child={id:string;name:string;level_id?:string};
-export default function Page(){const[levels,setLevels]=useState<Level[]>([]);const[targets,setTargets]=useState<Target[]>([]);const[children,setChildren]=useState<Child[]>([]);const[canWrite,setCanWrite]=useState(false);const[error,setError]=useState('');const[form,setForm]=useState({level_id:'',title:'',description:''});const[prog,setProg]=useState({caberawit_id:'',target_id:'',progress:0,notes:''});
-const load=()=>Promise.all([fetch('/api/levels').then(r=>r.json()),fetch('/api/targets').then(r=>r.json()),fetch('/api/caberawit').then(r=>r.json()),fetch('/api/auth/me').then(r=>r.json())]).then(([l,t,c,u])=>{setLevels(l);setTargets(t);setChildren(c);setCanWrite(u.role==='ADMIN'||u.role==='DEWAN_GURU')});useEffect(()=>{void load()},[]);
-async function addTarget(e:FormEvent){e.preventDefault();setError('');const r=await fetch('/api/targets',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(form)});const j=await r.json();if(!r.ok){setError(j.error||'Gagal menyimpan target.');return}setForm({level_id:'',title:'',description:''});await load()}
-async function saveProgress(e:FormEvent){e.preventDefault();setError('');const r=await fetch('/api/progress',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(prog)});const j=await r.json();if(!r.ok){setError(j.error||'Gagal menyimpan perkembangan.');return}setProg({...prog,progress:0,notes:''})}
-return <><div className="pageHeader"><div><div className="eyebrow">Caberawit</div><h1>Target & Perkembangan</h1><p>Target belajar disusun per jenjang lalu progres dicatat untuk setiap peserta.</p></div></div>{error&&<div className="notice error">{error}</div>}<div className="two section">{canWrite?<form className="card" onSubmit={addTarget}><div className="sectionTitle"><div><h2>Tambah target</h2><p>Target per jenjang.</p></div></div><label style={{display:'grid',gap:7}}>Jenjang<select className="select" required value={form.level_id} onChange={e=>setForm({...form,level_id:e.target.value})}><option value="">Pilih</option>{levels.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select></label><label style={{display:'grid',gap:7,marginTop:12}}>Judul<input className="input" required value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></label><label style={{display:'grid',gap:7,marginTop:12}}>Deskripsi<textarea className="textarea" value={form.description} onChange={e=>setForm({...form,description:e.target.value})}/></label><button className="btn section">Simpan Target</button></form>:<div className="card"><h2>Mode Viewer</h2><p className="muted">Akun ini hanya dapat melihat target dan perkembangan.</p></div>}{canWrite&&<form className="card" onSubmit={saveProgress}><div className="sectionTitle"><div><h2>Catat perkembangan</h2><p>Nilai 0–100 per target.</p></div></div><label style={{display:'grid',gap:7}}>Peserta<select className="select" required value={prog.caberawit_id} onChange={e=>setProg({...prog,caberawit_id:e.target.value})}><option value="">Pilih</option>{children.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label style={{display:'grid',gap:7,marginTop:12}}>Target<select className="select" required value={prog.target_id} onChange={e=>setProg({...prog,target_id:e.target.value})}><option value="">Pilih</option>{targets.map(t=><option key={t.id} value={t.id}>{t.title}</option>)}</select></label><label style={{display:'grid',gap:7,marginTop:12}}>Progress<input type="number" min="0" max="100" className="input" value={prog.progress} onChange={e=>setProg({...prog,progress:Number(e.target.value)})}/></label><label style={{display:'grid',gap:7,marginTop:12}}>Catatan<textarea className="textarea" value={prog.notes} onChange={e=>setProg({...prog,notes:e.target.value})}/></label><button className="btn section">Simpan Progress</button></form>}</div><section className="section"><div className="sectionTitle"><div><h2>Daftar target</h2><p>{targets.length} target aktif.</p></div></div><div className="list">{targets.map(t=><div className="item" key={t.id}><div className="row between"><div className="itemTitle">{t.title}</div><span className="badge">{t.levels?.name||'Jenjang'}</span></div>{t.description&&<p className="muted" style={{fontSize:13}}>{t.description}</p>}</div>)}{!targets.length&&<div className="emptyState"><div className="emptyIcon">T</div><h3>Belum ada target</h3><p>Tambahkan target pembelajaran per jenjang.</p></div>}</div></section></>}
+'use client';
+
+import {FormEvent,useEffect,useMemo,useState} from 'react';
+
+type Version={id:string;title:string;version:number;period_start?:string;period_end?:string;source_file_name?:string;analysis?:any;created_at:string};
+type Target={id:string;code?:string;title:string;description?:string;target_value?:number;target_unit?:string;levels?:{name?:string};classes?:{name?:string}};
+
+export default function TargetPage(){
+  const[versions,setVersions]=useState<Version[]>([]);
+  const[targets,setTargets]=useState<Target[]>([]);
+  const[selected,setSelected]=useState('');
+  const[uploading,setUploading]=useState(false);
+  const[error,setError]=useState('');
+  const[result,setResult]=useState('');
+
+  const load=async()=>{
+    const [v,t]=await Promise.all([fetch('/api/targets/import').then(r=>r.json()),fetch('/api/targets'+(selected?'?version_id='+selected:'')).then(r=>r.json())]);
+    setVersions(v);setTargets(t);
+  };
+  useEffect(()=>{void load()},[selected]);
+
+  async function upload(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();setUploading(true);setError('');setResult('');
+    const fd=new FormData(e.currentTarget);
+    const r=await fetch('/api/targets/import',{method:'POST',body:fd});
+    const j=await r.json();
+    if(!r.ok){setError(j.error||'Gagal membaca target.');setUploading(false);return}
+    setResult(`${j.inserted} target berhasil dipetakan dari Excel.`);
+    setSelected(j.version_id);setUploading(false);await load();
+  }
+
+  const current=useMemo(()=>versions.find(v=>v.id===selected),[versions,selected]);
+
+  return <>
+    <div className="pageHeader"><div><h1>Target & Progres</h1></div></div>
+    <div className="dashboardGrid">
+      <form className="card writeOnly" onSubmit={upload}>
+        <div className="cardHead"><div><h2>Upload Target Excel</h2><p>Struktur kolom dibaca otomatis dan disimpan sebagai versi baru.</p></div></div>
+        <div className="formGrid">
+          <label>Nama versi<input className="input" name="title" required placeholder="Target Semester 1"/></label>
+          <label>File Excel<input className="input" name="file" type="file" accept=".xlsx,.xls" required/></label>
+          <label>Periode mulai<input className="input" name="period_start" type="date"/></label>
+          <label>Periode akhir<input className="input" name="period_end" type="date"/></label>
+        </div>
+        {error&&<div className="notice error section">{error}</div>}
+        {result&&<div className="notice section">{result}</div>}
+        <button className="btn section" disabled={uploading}>{uploading?'Menganalisis Excel…':'Upload & Analisis'}</button>
+      </form>
+      <section className="card">
+        <div className="cardHead"><div><h2>Versi Target</h2><p>Target lama tetap tersimpan.</p></div></div>
+        <div className="list">
+          {versions.map(v=><button key={v.id} className={selected===v.id?'item targetVersion active':'item targetVersion'} onClick={()=>setSelected(v.id)}>
+            <div className="row between"><strong>{v.title}</strong><span className="badge">v{v.version}</span></div>
+            <div className="itemMeta">{v.source_file_name||'Input manual'}{v.period_start?' · '+v.period_start:''}</div>
+          </button>)}
+          {!versions.length&&<div className="emptyState">Belum ada versi target.</div>}
+        </div>
+      </section>
+    </div>
+    {current&&<div className="notice section">Struktur terdeteksi: {Object.keys(current.analysis?.columns||{}).join(', ')||'target standar'}.</div>}
+    <section className="section">
+      <div className="cardHead"><div><h2>Daftar Target</h2><p>{targets.length} target aktif.</p></div></div>
+      <div className="tableWrap"><table className="table"><thead><tr><th>Kode</th><th>Target</th><th>Jenjang</th><th>Kelas</th><th>Nilai</th></tr></thead><tbody>
+        {targets.map(t=><tr key={t.id}><td>{t.code||'-'}</td><td><strong>{t.title}</strong><div className="itemMeta">{t.description||''}</div></td><td>{t.levels?.name||'-'}</td><td>{t.classes?.name||'-'}</td><td>{t.target_value??'-'} {t.target_unit||''}</td></tr>)}
+        {!targets.length&&<tr><td colSpan={5}>Belum ada target.</td></tr>}
+      </tbody></table></div>
+    </section>
+  </>;
+}

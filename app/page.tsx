@@ -1,40 +1,55 @@
 'use client';
 
-import Link from 'next/link';
 import {useEffect,useMemo,useState} from 'react';
 
-type Role='ADMIN'|'DEWAN_GURU'|'KELOMPOK'|'VIEWER';
-type Stats={role:Role;kelompok:number;mudaMudi:number;caberawit:number;kegiatan:number;jurnal:number};
+type Trend={label:string;H:number;I:number;A:number};
+type Stats={
+  total:number;caberawit:number;mudaMudi:number;pengurus:number;
+  month:{H:number;I:number;A:number};trend:Trend[];
+};
 
-function Stat({label,value,icon,caption}:{label:string;value:number|string;icon:string;caption:string}){
-  return <div className="card statCard"><div className="statTop"><span className="muted" style={{fontSize:12,fontWeight:750}}>{label}</span><span className="statIcon">{icon}</span></div><strong>{value}</strong><small>{caption}</small></div>
+function Metric({label,value}:{label:string;value:number|string}){
+  return <div className="metricCard"><span>{label}</span><strong>{value}</strong></div>;
 }
 
 export default function Dashboard(){
-  const[s,setS]=useState<Stats|null>(null);const[err,setErr]=useState('');const[loading,setLoading]=useState(true);
-  useEffect(()=>{fetch('/api/dashboard').then(async r=>{if(!r.ok)throw new Error();return r.json()}).then(setS).catch(()=>setErr('Data dashboard belum dapat dimuat.')).finally(()=>setLoading(false))},[]);
-  const showKelompok=!s||s.role!=='DEWAN_GURU';
-  const showCaberawit=!s||s.role!=='KELOMPOK';
-  const quick=useMemo(()=>{
-    const role=s?.role;
-    const rows:{href:string;label:string;desc:string;no:string}[]=[];
-    if(role!=='DEWAN_GURU')rows.push({href:'/database/kelompok',label:'Database Kelompok',desc:'Anggota, kategori, dan status',no:'01'});
-    if(role!=='KELOMPOK')rows.push({href:'/database/caberawit',label:'Database Caberawit',desc:'Peserta dan jenjang',no:'02'});
-    rows.push({href:'/presensi',label:'Presensi',desc:'Catat H/I/A sesuai akses role',no:'03'});
-    rows.push({href:'/jurnal',label:'Jurnal Kegiatan',desc:'Materi, hasil, kendala, tindak lanjut',no:'04'});
-    return rows;
-  },[s?.role]);
+  const[data,setData]=useState<Stats|null>(null);
+  const[error,setError]=useState('');
+  useEffect(()=>{fetch('/api/dashboard').then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error);return j}).then(setData).catch(()=>setError('Dashboard belum dapat dimuat.'))},[]);
+  const max=useMemo(()=>Math.max(1,...(data?.trend??[]).map(x=>x.H+x.I+x.A)),[data]);
 
   return <>
-    <section className="hero"><div className="eyebrow" style={{color:'rgba(255,255,255,.72)'}}>Aeroo Premium Administrasi</div><h1>Administrasi kelompok, Caberawit, dan kegiatan dalam satu sistem.</h1><p>Menu dan data yang terlihat otomatis mengikuti akses akun yang sedang digunakan.</p><div className="heroMeta"><span className="heroPill">● Sistem aktif</span><span className="heroPill">Akses berbasis peran</span><span className="heroPill">Mobile-first</span></div></section>
-    {err&&<div className="notice error section" role="alert">{err}</div>}
-    <section className="section"><div className="sectionTitle"><div><h2>Ringkasan data</h2><p>Data yang tampil sudah mengikuti hak akses akun.</p></div></div><div className="grid">
-      {showKelompok&&<Stat label="Kelompok" value={loading?'…':s?.kelompok??0} icon="K" caption="anggota aktif"/>}
-      <Stat label="Muda-Mudi" value={loading?'…':s?.mudaMudi??0} icon="M" caption="anggota muda-mudi"/>
-      {showCaberawit&&<Stat label="Caberawit" value={loading?'…':s?.caberawit??0} icon="C" caption="peserta aktif"/>}
-      <Stat label="Kegiatan" value={loading?'…':s?.kegiatan??0} icon="A" caption="kegiatan yang dapat diakses"/>
-    </div></section>
-    <section className="section"><div className="sectionTitle"><div><h2>Akses cepat</h2><p>Menu utama sesuai role akun.</p></div></div><div className="quickGrid">{quick.map(x=><Link href={x.href} className="quickAction" key={x.href}><span className="quickIcon">{x.no}</span><div><strong>{x.label}</strong><small>{x.desc}</small></div></Link>)}</div></section>
-    <div className="two section"><section className="card"><div className="sectionTitle"><div><h2>Kehadiran & rekap</h2><p>Pantau aktivitas dari satu halaman rekap.</p></div><Link href="/rekap" className="btn secondary">Buka Rekap</Link></div><div className="notice">Rekap hanya menampilkan data yang memang diizinkan untuk role akun ini.</div></section><section className="card"><div className="sectionTitle"><div><h2>Jurnal tersimpan</h2><p>Dokumentasi kegiatan yang dapat diakses.</p></div></div><div style={{display:'flex',alignItems:'end',gap:10}}><strong style={{fontSize:38,lineHeight:1,letterSpacing:'-.04em'}}>{loading?'…':s?.jurnal??0}</strong><span className="muted" style={{fontSize:12,paddingBottom:3}}>jurnal kegiatan</span></div><Link href="/jurnal" className="btn ghost" style={{marginTop:18,width:'100%'}}>Lihat Jurnal</Link></section></div>
+    <div className="pageHeader"><div><h1>Dashboard</h1><p>Ringkasan data dan kehadiran.</p></div></div>
+    {error&&<div className="notice error">{error}</div>}
+    <div className="metricGrid">
+      <Metric label="Database keseluruhan" value={data?.total??'…'}/>
+      <Metric label="Caberawit" value={data?.caberawit??'…'}/>
+      <Metric label="Muda-Mudi" value={data?.mudaMudi??'…'}/>
+      <Metric label="Pengurus" value={data?.pengurus??'…'}/>
+    </div>
+    <div className="dashboardGrid section">
+      <section className="card">
+        <div className="cardHead"><div><h2>Tren Presensi 6 Bulan</h2><p>Hadir, izin, dan alfa per bulan.</p></div></div>
+        <div className="barChart">
+          {(data?.trend??[]).map(x=>{
+            const total=x.H+x.I+x.A;
+            return <div className="barCol" key={x.label}>
+              <div className="barValue">{total}</div>
+              <div className="barTrack"><div className="barFill" style={{height:`${Math.max(5,total/max*100)}%`}}/></div>
+              <span>{x.label}</span>
+            </div>;
+          })}
+          {!data&&[1,2,3,4,5,6].map(i=><div className="barCol" key={i}><div className="barTrack skeleton"/></div>)}
+        </div>
+      </section>
+      <section className="card">
+        <div className="cardHead"><div><h2>Bulan Ini</h2><p>Komposisi kehadiran.</p></div></div>
+        <div className="attendanceSummary">
+          <div><span>H</span><strong>{data?.month.H??0}</strong><small>Hadir</small></div>
+          <div><span>I</span><strong>{data?.month.I??0}</strong><small>Izin</small></div>
+          <div><span>A</span><strong>{data?.month.A??0}</strong><small>Alfa</small></div>
+        </div>
+      </section>
+    </div>
   </>;
 }
