@@ -1,6 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {createHash} from 'crypto';
-import {publicDb,AEROO_SESSION_COOKIE} from '@/lib/supabase-server';
+import {publicDb,sessionDb,AEROO_SESSION_COOKIE} from '@/lib/supabase-server';
 
 export async function POST(req:NextRequest){
   try{
@@ -16,11 +16,21 @@ export async function POST(req:NextRequest){
     const supabase=publicDb();
     const{data,error}=await supabase.rpc('login_app',{p_username:username,p_password:password});
     const success=!error&&Boolean(data?.length);
-    try{await supabase.rpc('record_login_event',{p_username:username,p_success:success,p_ip_hash:ipHash,p_user_agent:userAgent});}catch{}
 
     if(!success)return NextResponse.json({error:'Username atau password salah.'},{status:401});
 
     const session=data[0];
+
+    try{
+      const scoped=sessionDb(session.token);
+      await scoped.rpc('record_login_event',{
+        p_username:session.username,
+        p_success:true,
+        p_ip_hash:ipHash,
+        p_user_agent:userAgent
+      });
+    }catch{}
+
     const res=NextResponse.json({ok:true,user:{id:session.user_id,username:session.username,display_name:session.display_name,role:session.role}});
     res.cookies.set(AEROO_SESSION_COOKIE,session.token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:60*60*24*7});
     return res;
