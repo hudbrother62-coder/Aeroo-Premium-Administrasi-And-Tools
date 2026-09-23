@@ -1,5 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
+import {canWriteAudience} from '@/lib/access';
 
 export async function GET(req:NextRequest){
   const s=await db();
@@ -23,6 +24,11 @@ export async function GET(req:NextRequest){
 export async function POST(req:NextRequest){
   const s=await db();
   const{records,...event}=await req.json();
+  const{data:role}=await s.rpc('current_app_role');
+
+  if(!canWriteAudience(role,String(event.audience??''))){
+    return NextResponse.json({error:'Jenis presensi ini di luar akses akun.'},{status:403});
+  }
 
   const{data,error}=await s.from('attendance_events').insert({
     ...event,

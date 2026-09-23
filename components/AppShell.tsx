@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import {usePathname} from 'next/navigation';
+import {useEffect,useMemo,useState} from 'react';
 import {
-  LayoutDashboard, Database, ClipboardCheck, BarChart3, BookOpen, Target,
-  CalendarDays, ChartNoAxesCombined, FileText, Settings, Moon, Sun, Menu, X, LogOut
+  LayoutDashboard,Database,ClipboardCheck,BarChart3,BookOpen,Target,
+  CalendarDays,ChartNoAxesCombined,FileText,Settings,Moon,Sun,Menu,X,LogOut
 } from 'lucide-react';
 
 type Role='ADMIN'|'DEWAN_GURU'|'KELOMPOK'|'VIEWER';
@@ -27,8 +27,8 @@ const nav=[
 
 const roleLabel:Record<Role,string>={ADMIN:'Owner',DEWAN_GURU:'Dewan Guru',KELOMPOK:'Kelompok',VIEWER:'Viewer'};
 
-function Brand(){
-  return <Link href="/" className="brandLogo" aria-label="AEROO">
+function Brand({compact=false}:{compact?:boolean}){
+  return <Link href="/" className={compact?'brandLogo compact':'brandLogo'} aria-label="AEROO">
     <Image src="/aeroo-logo.svg" alt="AEROO" width={180} height={156} priority/>
   </Link>;
 }
@@ -72,35 +72,40 @@ export default function AppShell({children}:{children:React.ReactNode}){
 
   if(isLogin)return <>{children}</>;
 
-  const menu=<>
-    <Brand/>
-    <nav className="navList">
-      {visible.map(item=>{
-        const active=item.href==='/'?path==='/':path.startsWith(item.href);
-        const Icon=item.icon;
-        return <Link href={item.href} className={active?'navItem active':'navItem'} key={item.href}>
-          <Icon size={19}/><span>{item.label}</span>
-        </Link>;
-      })}
-    </nav>
-    <div className="sideActions">
-      <button className="sideButton" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}<span>{dark?'Mode terang':'Mode gelap'}</span></button>
-      <div className="userBox">
-        <div><strong>{user?.display_name||user?.username||'AEROO'}</strong><small>{user?roleLabel[user.role]:'Memuat…'}</small></div>
-        <button className="iconOnly" onClick={()=>void logout()} aria-label="Keluar"><LogOut size={18}/></button>
-      </div>
+  const navMenu=<nav className="navList">
+    {visible.map(item=>{
+      const active=item.href==='/'?path==='/':path.startsWith(item.href);
+      const Icon=item.icon;
+      return <Link href={item.href} className={active?'navItem active':'navItem'} key={item.href}>
+        <span className="navIcon"><Icon size={18}/></span><span>{item.label}</span>
+      </Link>;
+    })}
+  </nav>;
+
+  const account=<div className="sideActions">
+    <button className="sideButton" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}<span>{dark?'Mode terang':'Mode gelap'}</span></button>
+    <div className="userBox">
+      <div className="userIdentity"><strong>{user?.display_name||user?.username||'AEROO'}</strong><small>{user?roleLabel[user.role]:'Memuat…'}</small></div>
+      <button className="iconOnly" onClick={()=>void logout()} aria-label="Keluar"><LogOut size={18}/></button>
     </div>
-  </>;
+  </div>;
 
   return <div className="appShell">
-    <aside className="desktopSidebar">{menu}</aside>
+    <aside className="desktopSidebar"><Brand/>{navMenu}{account}</aside>
+
     <div className={drawer?'mobileOverlay show':'mobileOverlay'} onClick={()=>setDrawer(false)}/>
-    <aside className={drawer?'mobileDrawer open':'mobileDrawer'}>{menu}</aside>
+    <aside className={drawer?'mobileDrawer open':'mobileDrawer'} aria-hidden={!drawer}>
+      <div className="drawerHead"><Brand compact/><button className="iconOnly" onClick={()=>setDrawer(false)} aria-label="Tutup menu"><X size={20}/></button></div>
+      <div className="drawerRole"><span>{user?roleLabel[user.role]:'AEROO'}</span><small>{user?.display_name||user?.username||'Administrasi'}</small></div>
+      {navMenu}
+      {account}
+    </aside>
+
     <main className="contentArea">
       <header className="mobileHeader">
-        <button className="iconOnly" onClick={()=>setDrawer(true)} aria-label="Menu"><Menu size={22}/></button>
-        <strong>{title}</strong>
-        <button className="iconOnly" onClick={()=>setDark(v=>!v)} aria-label="Tema">{dark?<Sun size={20}/>:<Moon size={20}/>}</button>
+        <button className="iconOnly headerMenu" onClick={()=>setDrawer(true)} aria-label="Menu"><Menu size={21}/></button>
+        <div className="mobileTitle"><span className="mobileA">A</span><div><small>AEROO</small><strong>{title}</strong></div></div>
+        <button className="iconOnly headerTheme" onClick={()=>setDark(v=>!v)} aria-label="Tema">{dark?<Sun size={19}/>:<Moon size={19}/>}</button>
       </header>
       <div className="pageContent">{checking?<div className="card"><div className="skeleton" style={{height:90}}/></div>:children}</div>
     </main>
