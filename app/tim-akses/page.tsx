@@ -7,9 +7,9 @@ type TeamUser={id:string;username:string;display_name:string|null;role:Role;acti
 
 const roleInfo:Record<Role,{label:string;desc:string}> = {
   ADMIN:{label:'Admin Utama',desc:'Akses penuh termasuk Tim Akses dan seluruh data.'},
-  DEWAN_GURU:{label:'Dewan Guru',desc:'Akses Caberawit dan Muda-Mudi beserta presensi, jurnal, perkembangan, rekap, dan laporan terkait.'},
-  KELOMPOK:{label:'Kelompok',desc:'Akses data dan kegiatan Kelompok, termasuk Muda-Mudi dalam konteks kelompok.'},
-  VIEWER:{label:'Viewer',desc:'Akses baca tanpa hak menambah, mengubah, atau menghapus data.'},
+  DEWAN_GURU:{label:'Dewan Guru',desc:'Input dan pengelolaan Caberawit serta Muda-Mudi, termasuk presensi, jurnal, perkembangan, rekap, dan laporan terkait.'},
+  KELOMPOK:{label:'Kelompok',desc:'Input Kelompok, Ibu-Ibu, dan Pengurus. Data Muda-Mudi tetap dapat terlihat dalam konteks Kelompok, tetapi input Muda-Mudi dikelola Dewan Guru.'},
+  VIEWER:{label:'Viewer',desc:'Akses baca saja tanpa hak input, ubah, atau hapus data.'},
 };
 
 export default function TeamPage(){
