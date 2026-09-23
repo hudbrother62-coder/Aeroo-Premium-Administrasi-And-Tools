@@ -29,7 +29,7 @@ const roleLabel:Record<Role,string>={ADMIN:'Owner',DEWAN_GURU:'Dewan Guru',KELOM
 
 function Brand({compact=false}:{compact?:boolean}){
   return <Link href="/" className={compact?'brandLogo compact':'brandLogo'} aria-label="AEROO">
-    <Image src="/aeroo-logo.svg" alt="AEROO" width={180} height={156} priority/>
+    <Image src="/aeroo-logo-new.webp" alt="AEROO" width={220} height={222} priority/>
   </Link>;
 }
 
@@ -104,7 +104,10 @@ export default function AppShell({children}:{children:React.ReactNode}){
     <main className="contentArea">
       <header className="mobileHeader">
         <button className="iconOnly headerMenu" onClick={()=>setDrawer(true)} aria-label="Menu"><Menu size={21}/></button>
-        <div className="mobileTitle"><span className="mobileA">A</span><div><small>AEROO</small><strong>{title}</strong></div></div>
+        <div className="mobileTitle">
+          <span className="mobileLogoMark"><Image src="/aeroo-mark.webp" alt="" width={150} height={116} priority/></span>
+          <div><small>AEROO</small><strong>{title}</strong></div>
+        </div>
         <button className="iconOnly headerTheme" onClick={()=>setDark(v=>!v)} aria-label="Tema">{dark?<Sun size={19}/>:<Moon size={19}/>}</button>
       </header>
       <div className="pageContent">{checking?<div className="card"><div className="skeleton" style={{height:90}}/></div>:children}</div>

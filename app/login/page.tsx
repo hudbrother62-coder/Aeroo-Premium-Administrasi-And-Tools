@@ -24,7 +24,7 @@ export default function LoginPage(){
 
   return <main className="loginPage">
     <section className="loginBrandPanel">
-      <Image src="/aeroo-logo.svg" alt="AEROO" width={520} height={450} priority/>
+      <Image src="/aeroo-logo-new.webp" alt="AEROO" width={440} height={444} priority/>
     </section>
     <section className="loginPanel">
       <form className="loginCard" onSubmit={submit}>
