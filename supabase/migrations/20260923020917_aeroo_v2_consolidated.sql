@@ -160,3 +160,37 @@ grant execute on function public.can_write_journal_id(uuid) to anon,authenticate
 grant execute on function public.category_is_dewan_scope(uuid) to anon,authenticated;
 grant execute on function public.member_is_dewan_scope(uuid) to anon,authenticated;
 grant execute on function public.member_has_no_categories(uuid) to anon,authenticated;
+
+
+-- Login history writer only records events when the supplied AEROO session is valid.
+create or replace function public.record_login_event(
+  p_username text,
+  p_success boolean,
+  p_ip_hash text default null,
+  p_user_agent text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path=public,extensions
+set row_security=off
+as $$
+declare
+  v_user_id uuid;
+  v_username text;
+begin
+  v_user_id:=public.current_app_user_id();
+  if v_user_id is null then return; end if;
+
+  select username into v_username
+  from public.app_users
+  where id=v_user_id and active;
+
+  if v_username is null then return; end if;
+
+  insert into public.login_history(user_id,username,success,ip_hash,user_agent)
+  values(v_user_id,v_username,p_success,p_ip_hash,left(p_user_agent,500));
+end $$;
+
+revoke all on function public.record_login_event(text,boolean,text,text) from public;
+grant execute on function public.record_login_event(text,boolean,text,text) to anon,authenticated;
