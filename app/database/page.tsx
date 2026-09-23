@@ -2,12 +2,19 @@
 
 import Link from 'next/link';
 import {FormEvent,useEffect,useMemo,useState} from 'react';
+import {type Role} from '@/lib/access';
 
 type Member={id:string;name:string;gender?:string;phone?:string;levels?:{name?:string};classes?:{name?:string};member_categories?:Array<{categories?:{name?:string;slug?:string}}>};
 type ClassRow={id:string;name:string;audience:string;level_id?:string;levels?:{name?:string}};
 type Level={id:string;name:string};
 
-const tabs=[['ALL','Keseluruhan'],['CABERAWIT','Caberawit'],['MUDA_MUDI','Muda-Mudi'],['PENGURUS','Pengurus']] as const;
+const allTabs=[['ALL','Keseluruhan'],['KELOMPOK','Kelompok'],['CABERAWIT','Caberawit'],['MUDA_MUDI','Muda-Mudi'],['PENGURUS','Pengurus']] as const;
+
+function tabsForRole(role:Role|null){
+  if(role==='DEWAN_GURU')return allTabs.filter(([v])=>['ALL','CABERAWIT','MUDA_MUDI'].includes(v));
+  if(role==='KELOMPOK')return allTabs.filter(([v])=>['ALL','KELOMPOK','MUDA_MUDI','PENGURUS'].includes(v));
+  return allTabs;
+}
 
 export default function DatabasePage(){
   const[segment,setSegment]=useState('ALL');
@@ -16,13 +23,15 @@ export default function DatabasePage(){
   const[data,setData]=useState<Member[]>([]);
   const[classes,setClasses]=useState<ClassRow[]>([]);
   const[levels,setLevels]=useState<Level[]>([]);
-  const[role,setRole]=useState('');
+  const[role,setRole]=useState<Role|null>(null);
   const[showClass,setShowClass]=useState(false);
   const[classForm,setClassForm]=useState({name:'',audience:'CABERAWIT',level_id:''});
   const[savingClass,setSavingClass]=useState(false);
   const[loading,setLoading]=useState(true);
   const[error,setError]=useState('');
   const[classMessage,setClassMessage]=useState('');
+
+  const tabs=useMemo(()=>tabsForRole(role),[role]);
 
   const load=async()=>{
     setLoading(true);setError('');
@@ -40,14 +49,19 @@ export default function DatabasePage(){
       setData(await r.json());
       setClasses(await c.json());
       setLevels(await l.json());
-      setRole((await u.json()).role??'');
+      setRole((await u.json()).role??null);
     }catch{setError('Database belum dapat dimuat.')}
     finally{setLoading(false)}
   };
   useEffect(()=>{void load()},[segment,classId]);
 
+  useEffect(()=>{
+    if(!tabs.some(([v])=>v===segment)){setSegment('ALL');setClassId('')}
+  },[tabs,segment]);
+
   const classOptions=useMemo(()=>classes.filter(c=>segment==='ALL'||c.audience===segment),[classes,segment]);
   const canManageClass=role==='ADMIN'||role==='DEWAN_GURU';
+  const canAdd=role==='ADMIN'||role==='DEWAN_GURU'||role==='KELOMPOK';
 
   async function addClass(e:FormEvent){
     e.preventDefault();setSavingClass(true);setClassMessage('');setError('');
@@ -64,10 +78,10 @@ export default function DatabasePage(){
 
   return <>
     <div className="pageHeader">
-      <div><h1>Database</h1></div>
+      <div><h1>Database</h1><p>Satu sumber data, tampilan mengikuti akses akun.</p></div>
       <div className="row">
         {canManageClass&&<button className="btn ghost" onClick={()=>setShowClass(v=>!v)}>{showClass?'Tutup':'Kelola Kelas'}</button>}
-        <Link className="btn writeOnly" href="/database/tambah">+ Tambah Data</Link>
+        {canAdd&&<Link className="btn" href="/database/tambah">+ Tambah Data</Link>}
       </div>
     </div>
 
@@ -95,15 +109,20 @@ export default function DatabasePage(){
       </select>}
       <button className="btn secondary" onClick={()=>void load()}>Cari</button>
     </div>
+
+    {segment==='KELOMPOK'&&<div className="notice section">Database Kelompok juga menampilkan anggota yang termasuk Muda-Mudi.</div>}
     {error&&<div className="notice error section">{error}</div>}
-    <div className="tableWrap section">
-      <table className="table">
+
+    <div className="tableWrap responsiveWrap section">
+      <table className="table responsiveTable">
         <thead><tr><th>Nama</th><th>Kategori</th><th>Jenjang</th><th>Kelas</th><th>HP</th></tr></thead>
         <tbody>
           {loading?<tr><td colSpan={5}>Memuat data…</td></tr>:data.map(x=><tr key={x.id}>
-            <td><strong>{x.name}</strong></td>
-            <td>{x.member_categories?.map(c=>c.categories?.name).filter(Boolean).join(', ')||'-'}</td>
-            <td>{x.levels?.name||'-'}</td><td>{x.classes?.name||'-'}</td><td>{x.phone||'-'}</td>
+            <td data-label="Nama"><strong>{x.name}</strong></td>
+            <td data-label="Kategori">{x.member_categories?.map(c=>c.categories?.name).filter(Boolean).join(', ')||'-'}</td>
+            <td data-label="Jenjang">{x.levels?.name||'-'}</td>
+            <td data-label="Kelas">{x.classes?.name||'-'}</td>
+            <td data-label="HP">{x.phone||'-'}</td>
           </tr>)}
           {!loading&&!data.length&&<tr><td colSpan={5}>Belum ada data.</td></tr>}
         </tbody>
