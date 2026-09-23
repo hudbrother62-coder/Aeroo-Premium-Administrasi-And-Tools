@@ -13,11 +13,22 @@ export async function GET(req:NextRequest){
 export async function POST(req:NextRequest){
   const s=await db();
   const b=await req.json();
+  const{data:role}=await s.rpc('current_app_role');
+  const audience=String(b.audience??'');
+
+  if(role==='VIEWER'||role==='KELOMPOK'){
+    return NextResponse.json({error:'Akun ini tidak memiliki akses mengelola kelas.'},{status:403});
+  }
+  if(role==='DEWAN_GURU'&&!['CABERAWIT','MUDA_MUDI'].includes(audience)){
+    return NextResponse.json({error:'Dewan Guru hanya dapat mengelola kelas Caberawit dan Muda-Mudi.'},{status:403});
+  }
+
   const{data,error}=await s.from('classes').insert({
     name:String(b.name??'').trim(),
-    audience:b.audience,
+    audience,
     level_id:b.level_id||null,
     description:b.description||null
   }).select('*,levels(id,name)').single();
+
   return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data,{status:201});
 }
