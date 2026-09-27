@@ -43,23 +43,23 @@ export default function Home(){
   const total=(attendance?.present??0)+(attendance?.excused??0)+(attendance?.absent??0);
 
   return <div className="homePage">
-    <div className="pageHeader heroHeader"><div><div className="eyebrow">Administrasi Airo · Bulan ini</div><h1>{loggedIn?'Ringkasan kegiatan':'Pusat informasi kegiatan'}</h1><p>Anggota, pertemuan, kehadiran, dan jurnal dalam satu tempat.</p></div>
+    <div className="pageHeader heroHeader"><div><div className="eyebrow">Administrasi Airo · {loggedIn?'Bulan ini':viewerSpan===6?'Enam bulan sampai '+viewerMonth:'Bulan '+viewerMonth}</div><h1>{loggedIn?'Ringkasan kegiatan':'Pusat informasi kegiatan'}</h1><p>Anggota, pertemuan, kehadiran, dan jurnal dalam satu tempat.</p></div>
       {!loggedIn&&<Link className="btn" href="/login">Masuk pengelola <ArrowRight size={17}/></Link>}
     </div>
     {error&&<div className="notice error">{error}</div>}
     {!loggedIn&&<div className="toolbar card viewerFilters"><label>Bulan<input className="input" type="month" value={viewerMonth} onChange={e=>setViewerMonth(e.target.value)}/></label><label>Periode<select className="select" value={viewerSpan} onChange={e=>setViewerSpan(Number(e.target.value) as 1|6)}><option value={1}>Satu bulan</option><option value={6}>Enam bulan</option></select></label></div>}
     <div className="metricGrid">
       <div className="metricCard"><Database size={20}/><span>Anggota aktif</span><strong>{data?.members??'—'}</strong></div>
-      <div className="metricCard"><CalendarDays size={20}/><span>Pertemuan bulan ini</span><strong>{attendance?.meetings??'—'}</strong></div>
+      <div className="metricCard"><CalendarDays size={20}/><span>Pertemuan periode ini</span><strong>{attendance?.meetings??'—'}</strong></div>
       <div className="metricCard"><ClipboardCheck size={20}/><span>Kehadiran</span><strong>{total?`${Math.round((attendance?.present??0)/total*100)}%`:'—'}</strong></div>
-      <div className="metricCard"><FileText size={20}/><span>Jurnal bulan ini</span><strong>{data?.journals??'—'}</strong></div>
+      <div className="metricCard"><FileText size={20}/><span>Jurnal periode ini</span><strong>{data?.journals??'—'}</strong></div>
     </div>
     <div className="dashboardGrid section">
       <section className="card"><div className="cardHead"><div><h2>Anggota per bagian</h2><p>Jumlah anggota aktif dapat berada di lebih dari satu bagian.</p></div></div>
         <div className="categoryRows">{data?.categories?.map(x=><div className="categoryRow" key={x.name}><span>{x.name}</span><strong>{x.count}</strong></div>)}</div>
         {!data&&<div className="skeleton" style={{height:160}}/>}
       </section>
-      <section className="card"><div className="cardHead"><div><h2>Presensi bulan ini</h2><p>Hasil dari pertemuan yang sudah dicatat.</p></div></div>
+      <section className="card"><div className="cardHead"><div><h2>Presensi periode ini</h2><p>Hasil dari pertemuan yang sudah dicatat.</p></div></div>
         <div className="attendanceSummary"><div><span>H</span><strong>{attendance?.present??0}</strong><small>Hadir</small></div><div><span>I</span><strong>{attendance?.excused??0}</strong><small>Izin</small></div><div><span>A</span><strong>{attendance?.absent??0}</strong><small>Alfa</small></div></div>
         {loggedIn&&<Link className="textLink" href="/presensi?view=rekap">Lihat rekap lengkap <ArrowRight size={15}/></Link>}
       </section>
