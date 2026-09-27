@@ -21,7 +21,7 @@ export default function Page(){
   const[role,setRole]=useState<Role|null>(null);
   const[saving,setSaving]=useState(false);
   const[error,setError]=useState('');
-  const[form,setForm]=useState({name:'',gender:'',birth_place:'',birth_date:'',phone:'',address:'',level_id:'',class_id:'',notes:'',category_ids:[] as string[]});
+  const[form,setForm]=useState({name:'',gender:'',birth_place:'',birth_date:'',phone:'',address:'',section:'',level_id:'',class_id:'',notes:'',category_ids:[] as string[]});
 
   useEffect(()=>{
     Promise.all([fetch('/api/categories').then(r=>r.json()),fetch('/api/levels').then(r=>r.json()),fetch('/api/classes').then(r=>r.json()),fetch('/api/auth/me').then(r=>r.json())])
@@ -42,7 +42,7 @@ export default function Page(){
 
   async function save(e:FormEvent){
     e.preventDefault();setSaving(true);setError('');
-    const payload={...form,gender:form.gender||null,birth_place:form.birth_place||null,birth_date:form.birth_date||null,phone:form.phone||null,address:form.address||null,level_id:form.level_id||null,class_id:form.class_id||null,notes:form.notes||null};
+    const payload={...form,gender:form.gender||null,birth_place:form.birth_place||null,birth_date:form.birth_date||null,phone:form.phone||null,address:form.address||null,section:form.section||null,level_id:form.level_id||null,class_id:form.class_id||null,notes:form.notes||null};
     const r=await fetch('/api/members',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
     const j=await r.json();
     if(!r.ok){setError(j.error||'Gagal menyimpan data.');setSaving(false);return}
@@ -64,6 +64,7 @@ export default function Page(){
         <label>Nomor HP<input className="input" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></label>
         <label>Jenjang<select className="select" value={form.level_id} onChange={e=>setForm({...form,level_id:e.target.value,class_id:''})}><option value="">Tanpa jenjang</option>{levels.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
         {classOptions.length>0&&<label>Kelas<select className="select" value={form.class_id} onChange={e=>setForm({...form,class_id:e.target.value})}><option value="">Pilih kelas</option>{classOptions.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
+        {selectedSlugs.includes('pengurus')&&<label>Bagian pengurus<input className="input" value={form.section} onChange={e=>setForm({...form,section:e.target.value})} placeholder="Contoh: Sekretariat"/></label>}
         <label className="span2">Alamat<textarea className="textarea" value={form.address} onChange={e=>setForm({...form,address:e.target.value})}/></label>
       </div>
 

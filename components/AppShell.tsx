@@ -5,8 +5,8 @@ import Image from 'next/image';
 import {usePathname} from 'next/navigation';
 import {useEffect,useMemo,useState} from 'react';
 import {
-  LayoutDashboard,Database,ClipboardCheck,BarChart3,BookOpen,Target,
-  CalendarDays,ChartNoAxesCombined,FileText,Settings,Moon,Sun,Menu,X,LogOut
+  LayoutDashboard,Database,ClipboardCheck,BookOpen,Target,Users,
+  CalendarDays,ChartNoAxesCombined,FileText,Settings,Moon,Sun,Menu,X,LogOut,LogIn
 } from 'lucide-react';
 
 type Role='ADMIN'|'DEWAN_GURU'|'KELOMPOK'|'VIEWER';
@@ -16,12 +16,12 @@ const nav=[
   {href:'/',label:'Dashboard',icon:LayoutDashboard,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[]},
   {href:'/database',label:'Database',icon:Database,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[]},
   {href:'/presensi',label:'Presensi',icon:ClipboardCheck,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[]},
-  {href:'/rekap-presensi',label:'Rekap Presensi',icon:BarChart3,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[]},
   {href:'/jurnal',label:'Jurnal',icon:BookOpen,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[]},
   {href:'/target',label:'Target & Progres',icon:Target,roles:['ADMIN','DEWAN_GURU','VIEWER'] as Role[]},
   {href:'/agenda',label:'Agenda',icon:CalendarDays,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[]},
   {href:'/rekap',label:'Rekap Data',icon:ChartNoAxesCombined,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[]},
-  {href:'/laporan',label:'Laporan Caberawit',icon:FileText,roles:['ADMIN','DEWAN_GURU','VIEWER'] as Role[]},
+  {href:'/laporan',label:'Laporan Jabirawit',icon:FileText,roles:['ADMIN','DEWAN_GURU','VIEWER'] as Role[]},
+  {href:'/tim-akses',label:'Tim & Akses',icon:Users,roles:['ADMIN'] as Role[]},
   {href:'/pengaturan',label:'Pengaturan',icon:Settings,roles:['ADMIN'] as Role[]},
 ];
 
@@ -54,15 +54,15 @@ export default function AppShell({children}:{children:React.ReactNode}){
     if(isLogin){setChecking(false);return}
     setChecking(true);
     fetch('/api/auth/me',{cache:'no-store'}).then(async r=>{
-      if(!r.ok){window.location.href='/login';return null}
+      if(!r.ok){if(path!=='/')window.location.href='/login';setUser(null);document.documentElement.dataset.role='PUBLIC';return null}
       return r.json();
     }).then(v=>{
       if(v){setUser(v);document.documentElement.dataset.role=v.role}
     }).finally(()=>setChecking(false));
-  },[isLogin]);
+  },[isLogin,path]);
 
   useEffect(()=>setDrawer(false),[path]);
-  const visible=useMemo(()=>nav.filter(x=>!user||x.roles.includes(user.role)),[user]);
+  const visible=useMemo(()=>nav.filter(x=>user?x.roles.includes(user.role):x.href==='/'),[user]);
   const title=useMemo(()=>nav.find(x=>x.href==='/'?path==='/':path.startsWith(x.href))?.label??'AEROO',[path]);
 
   async function logout(){
@@ -86,7 +86,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
     <button className="sideButton" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}<span>{dark?'Mode terang':'Mode gelap'}</span></button>
     <div className="userBox">
       <div className="userIdentity"><strong>{user?.display_name||user?.username||'AEROO'}</strong><small>{user?roleLabel[user.role]:'Memuat…'}</small></div>
-      <button className="iconOnly" onClick={()=>void logout()} aria-label="Keluar"><LogOut size={18}/></button>
+      {user?<button className="iconOnly" onClick={()=>void logout()} aria-label="Keluar"><LogOut size={18}/></button>:<Link className="iconOnly" href="/login" aria-label="Masuk"><LogIn size={18}/></Link>}
     </div>
   </div>;
 

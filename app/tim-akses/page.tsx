@@ -4,16 +4,18 @@ import { FormEvent, useEffect, useState } from 'react';
 
 type Role='ADMIN'|'DEWAN_GURU'|'KELOMPOK'|'VIEWER';
 type TeamUser={id:string;username:string;display_name:string|null;role:Role;active:boolean;created_at:string};
+type Visit={id:string;display_name:string|null;device:string;visited_at:string};
 
 const roleInfo:Record<Role,{label:string;desc:string}> = {
   ADMIN:{label:'Admin Utama',desc:'Akses penuh termasuk Tim Akses dan seluruh data.'},
   DEWAN_GURU:{label:'Dewan Guru',desc:'Input dan pengelolaan Caberawit serta Muda-Mudi, termasuk presensi, jurnal, perkembangan, rekap, dan laporan terkait.'},
   KELOMPOK:{label:'Kelompok',desc:'Input Kelompok, Ibu-Ibu, dan Pengurus. Data Muda-Mudi tetap dapat terlihat dalam konteks Kelompok, tetapi input Muda-Mudi dikelola Dewan Guru.'},
-  VIEWER:{label:'Viewer',desc:'Akses baca saja tanpa hak input, ubah, atau hapus data.'},
+  VIEWER:{label:'Viewer publik',desc:'Ringkasan jumlah terbuka tanpa login. Akun Viewer lama tetap baca saja.'},
 };
 
 export default function TeamPage(){
   const[data,setData]=useState<TeamUser[]>([]);
+  const[visits,setVisits]=useState<Visit[]>([]);
   const[loading,setLoading]=useState(true);
   const[error,setError]=useState('');
   const[showForm,setShowForm]=useState(false);
@@ -26,6 +28,7 @@ export default function TeamPage(){
     const j=await r.json();
     if(!r.ok){setError(j.error||'Tidak dapat membuka Tim Akses.');setLoading(false);return}
     setData(j);setLoading(false);
+    fetch('/api/viewer-visits').then(r=>r.json()).then(v=>Array.isArray(v)&&setVisits(v)).catch(()=>{});
   }
   useEffect(()=>{void load()},[]);
 
@@ -92,5 +95,6 @@ export default function TeamPage(){
         </div>)}
       </div>
     </section>
+    <section className="section"><div className="sectionTitle"><div><h2>Kunjungan viewer</h2><p>100 kunjungan terbaru. Nama bersifat opsional; perangkat berasal dari browser.</p></div></div><div className="tableWrap"><table className="table"><thead><tr><th>Waktu</th><th>Nama</th><th>Perangkat</th></tr></thead><tbody>{visits.map(v=><tr key={v.id}><td>{new Date(v.visited_at).toLocaleString('id-ID')}</td><td>{v.display_name||'Anonim'}</td><td>{v.device.slice(0,120)}</td></tr>)}{!visits.length&&<tr><td colSpan={3}>Belum ada kunjungan.</td></tr>}</tbody></table></div></section>
   </>;
 }

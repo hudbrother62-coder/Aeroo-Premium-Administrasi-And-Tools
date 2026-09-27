@@ -23,6 +23,10 @@ export async function POST(req:NextRequest){
   const body=await req.json();
   const progress=body.progress;
   delete body.progress;
+  const {data:role}=await s.rpc('current_app_role');
+  const allowed=role==='ADMIN'||role==='DEWAN_GURU'&&['CABERAWIT_CLASS','CABERAWIT_INDIVIDUAL','MUDA_MUDI_INDIVIDUAL'].includes(body.journal_kind)||role==='KELOMPOK'&&['KELOMPOK','IBU_IBU','PENGURUS'].includes(body.journal_kind);
+  if(!allowed)return NextResponse.json({error:'Jenis jurnal di luar akses akun.'},{status:403});
+  if(progress&&(!Number.isFinite(Number(progress.progress_value))||Number(progress.progress_value)<0||Number(progress.progress_value)>100)&&progress.progress_value!=='')return NextResponse.json({error:'Progres harus antara 0 sampai 100.'},{status:400});
 
   const{data,error}=await s.from('journals').insert({
     ...body,
@@ -36,9 +40,11 @@ export async function POST(req:NextRequest){
   if(error)return NextResponse.json({error:error.message},{status:400});
 
   if(progress?.member_id&&progress?.progress_note){
+    const {data:person}=await s.from('members').select('name').eq('id',progress.member_id).single();
     const{error:pError}=await s.from('journal_progress').insert({
       journal_id:data.id,
       member_id:progress.member_id,
+      member_name_snapshot:person?.name??null,
       target_id:progress.target_id||null,
       progress_value:progress.progress_value===null||progress.progress_value===''?null:Number(progress.progress_value),
       progress_note:progress.progress_note,

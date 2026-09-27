@@ -2,7 +2,7 @@ import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
 import {writeScopesForRole} from '@/lib/access';
 
-const segmentSlug:Record<string,string>={CABERAWIT:'caberawit',MUDA_MUDI:'muda-mudi',PENGURUS:'pengurus',IBU_IBU:'ibu-ibu'};
+const segmentSlug:Record<string,string>={KELOMPOK:'kelompok',CABERAWIT:'caberawit',MUDA_MUDI:'muda-mudi',PENGURUS:'pengurus',IBU_IBU:'ibu-ibu'};
 
 export async function GET(req:NextRequest){
   const s=await db();
@@ -10,10 +10,11 @@ export async function GET(req:NextRequest){
   const segment=req.nextUrl.searchParams.get('segment')??'ALL';
   const classId=req.nextUrl.searchParams.get('class_id');
   const levelId=req.nextUrl.searchParams.get('level_id');
+  const archived=req.nextUrl.searchParams.get('archived')==='1';
 
   let query=s.from('members')
     .select('*,levels(id,name),classes(id,name,audience),member_categories(category_id,categories(id,name,slug))')
-    .eq('status','ACTIVE').order('name');
+    .eq('status',archived?'INACTIVE':'ACTIVE').order('name');
   if(q)query=query.ilike('name',`%${q}%`);
   if(classId)query=query.eq('class_id',classId);
   if(levelId)query=query.eq('level_id',levelId);
@@ -22,12 +23,8 @@ export async function GET(req:NextRequest){
   if(error)return NextResponse.json({error:error.message},{status:400});
 
   let rows=data??[];
-  if(segment==='KELOMPOK'){
-    rows=rows.filter((x:any)=>x.member_categories?.some((c:any)=>['kelompok','muda-mudi'].includes(c.categories?.slug)));
-  }else{
-    const slug=segmentSlug[segment];
-    if(slug)rows=rows.filter((x:any)=>x.member_categories?.some((c:any)=>c.categories?.slug===slug));
-  }
+  const slug=segmentSlug[segment];
+  if(slug)rows=rows.filter((x:any)=>x.member_categories?.some((c:any)=>c.categories?.slug===slug));
 
   return NextResponse.json(rows);
 }

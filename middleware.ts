@@ -8,6 +8,8 @@ export function middleware(req:NextRequest){
   if(
     pathname.startsWith('/_next') ||
     pathname === '/favicon.ico' ||
+    pathname === '/' ||
+    pathname.startsWith('/api/public/') ||
     pathname.startsWith('/api/auth/')
   ) return NextResponse.next();
 

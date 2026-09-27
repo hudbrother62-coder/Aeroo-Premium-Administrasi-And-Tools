@@ -30,6 +30,7 @@ export async function POST(req:NextRequest){
     description:b.description||null,
     target_value:b.target_value===null||b.target_value===''?null:Number(b.target_value),
     target_unit:b.target_unit||null,
+    target_month:b.target_month||null,
     sort_order:Number(b.sort_order??0),
     active:true
   }).select().single();

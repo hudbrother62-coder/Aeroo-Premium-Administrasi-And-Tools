@@ -2,6 +2,7 @@ import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
 import JSZip from 'jszip';
 import {AlignmentType,Document,HeadingLevel,Packer,Paragraph,Table,TableCell,TableRow,TextRun} from 'docx';
+import {analyzeJson} from '@/lib/gemini';
 
 export const runtime='nodejs';
 
@@ -45,7 +46,12 @@ export async function POST(req:NextRequest){
     const pr=(progress.data??[]) as any[];
     const values=pr.map(x=>Number(x.progress_value)).filter(Number.isFinite);
     const avg=values.length?Math.round(values.reduce((a,c)=>a+c,0)/values.length*10)/10:0;
-    const notes=pr.slice(0,5).map(x=>`${x.learning_targets?.title?x.learning_targets.title+': ':''}${x.progress_note}`).join(' | ')||'Belum ada catatan progres.';
+    let notes=pr.slice(0,5).map(x=>`${x.learning_targets?.title?x.learning_targets.title+': ':''}${x.progress_note}`).join(' | ')||'Belum ada catatan progres.';
+    if(b.ai_note){
+      const result=await analyzeJson<{note:string}>('Tulis satu paragraf catatan perkembangan yang faktual berdasarkan data. Jangan mengarang pencapaian, tanggal, atau diagnosis. Kembalikan JSON {"note":"..."}. Instruksi tambahan pengguna: '+String(b.ai_instruction??'').slice(0,500),{name:member.data.name,attendance:{H,I,A},progress:pr.slice(0,20).map(x=>({target:x.learning_targets?.title,value:x.progress_value,note:x.progress_note}))});
+      if(result?.note)notes=String(result.note).slice(0,2000);
+      else return NextResponse.json({error:'Analisis AI belum tersedia. Periksa kunci Gemini atau coba tanpa catatan AI.'},{status:503});
+    }
     const m:any=member.data;
     const vals:Record<string,string>={
       NAMA:m.name,PERIODE:`${from} s.d. ${to}`,KELAS:m.classes?.name||'-',JENJANG:m.levels?.name||'-',
@@ -61,10 +67,21 @@ export async function POST(req:NextRequest){
 
       const zip=await JSZip.loadAsync(Buffer.from(template.file_base64,'base64'));
       const targets=Object.keys(zip.files).filter(p=>format==='pptx'?/^ppt\/slides\/slide\d+\.xml$/.test(p):/^word\/(document|header\d+|footer\d+)\.xml$/.test(p));
+      let replaced=0;
       for(const path of targets){
-        const xml=await zip.file(path)!.async('string');
-        zip.file(path,replaceAllXml(xml,vals));
+        const original=await zip.file(path)!.async('string');
+        let xml=replaceAllXml(original,vals);
+        if(xml!==original)replaced++;
+        const mapping=(template.field_map?.mappings??[]) as Array<{path:string;existing:string;field:string}>;
+        for(const m of mapping.filter(m=>m.path===path&&Object.hasOwn(vals,m.field))){
+          const tag=format==='pptx'?'a:t':'w:t';
+          const before=xml;
+          xml=xml.replace(`<${tag}>${esc(m.existing)}</${tag}>`,`<${tag}>${esc(vals[m.field])}</${tag}>`);
+          if(before!==xml)replaced++;
+        }
+        zip.file(path,xml);
       }
+      if(!replaced)return NextResponse.json({error:'Template tidak memiliki placeholder atau posisi data yang dapat diisi. Tambahkan {{NAMA}}, {{KELAS}}, {{PROGRES}}, lalu unggah ulang.'},{status:400});
       const out=await zip.generateAsync({type:'uint8array'});
       return response(out,format==='pptx'?'application/vnd.openxmlformats-officedocument.presentationml.presentation':'application/vnd.openxmlformats-officedocument.wordprocessingml.document',`laporan-${m.name.replace(/[^a-z0-9]+/gi,'-').toLowerCase()}.${format}`);
     }

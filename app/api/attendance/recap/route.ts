@@ -2,7 +2,7 @@ import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
 
 type AttendanceStatus='H'|'I'|'A';
-const slugByAudience:Record<string,string>={CABERAWIT:'caberawit',MUDA_MUDI:'muda-mudi',IBU_IBU:'ibu-ibu',PENGURUS:'pengurus'};
+const slugByAudience:Record<string,string>={KELOMPOK:'kelompok',CABERAWIT:'caberawit',MUDA_MUDI:'muda-mudi',IBU_IBU:'ibu-ibu',PENGURUS:'pengurus'};
 
 export async function GET(req:NextRequest){
   const s=await db();
@@ -13,14 +13,14 @@ export async function GET(req:NextRequest){
   const days=new Date(year,mon,0).getDate();
   const from=month+'-01',to=month+'-'+String(days).padStart(2,'0');
 
-  let memberQ=s.from('members').select('id,name,class_id,classes(name),levels(name),member_categories(categories(slug,name))').eq('status','ACTIVE').order('name');
+  let memberQ=s.from('members').select('id,name,class_id,status,classes(name),levels(name),member_categories(categories(slug,name))').order('name');
   if(classId)memberQ=memberQ.eq('class_id',classId);
   const members=await memberQ;
   if(members.error)return NextResponse.json({error:members.error.message},{status:400});
 
   const slug=slugByAudience[audience];
   const people=(members.data??[]).filter((x:any)=>!slug||x.member_categories?.some((c:any)=>c.categories?.slug===slug));
-  const map=new Map<string,any>(people.map((p:any)=>[p.id,{id:p.id,name:p.name,class_name:p.classes?.name??'',level_name:p.levels?.name??'',H:0,I:0,A:0,total:0,percentage:0}]));
+  const map=new Map<string,any>(people.map((p:any)=>[p.id,{id:p.id,name:p.name,class_name:p.classes?.name??'',level_name:p.levels?.name??'',archived:p.status!=='ACTIVE',H:0,I:0,A:0,total:0,percentage:0,dates:{H:[],I:[],A:[]}}]));
 
   let eventQ=s.from('attendance_events').select('id,title,event_date,audience,class_id,attendance_records(member_id,status)').gte('event_date',from).lte('event_date',to).order('event_date');
   if(audience)eventQ=eventQ.eq('audience',audience);
@@ -37,6 +37,7 @@ export async function GET(req:NextRequest){
       if(r.status==='H'||r.status==='I'||r.status==='A'){
         const status=r.status as AttendanceStatus;
         map.get(r.member_id)[status]++;
+        map.get(r.member_id).dates[status].push(e.event_date);
         summary[status]++;
       }
     }

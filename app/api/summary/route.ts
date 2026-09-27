@@ -6,18 +6,21 @@ type AttendanceStatus='H'|'I'|'A';
 export async function GET(req:NextRequest){
   const s=await db();
   const month=req.nextUrl.searchParams.get('month')||new Date().toISOString().slice(0,7);
+  const span=req.nextUrl.searchParams.get('span')==='6'?6:1;
   const year=Number(month.slice(0,4)),mon=Number(month.slice(5,7)),days=new Date(year,mon,0).getDate();
-  const from=month+'-01',to=month+'-'+String(days).padStart(2,'0');
+  const start=new Date(year,mon-span,1);
+  const from=`${start.getFullYear()}-${String(start.getMonth()+1).padStart(2,'0')}-01`,to=month+'-'+String(days).padStart(2,'0');
 
   const[members,events,journals]=await Promise.all([
-    s.from('members').select('id,name,classes(name),levels(name),member_categories(categories(slug,name))').eq('status','ACTIVE').order('name'),
+    s.from('members').select('id,name,status,classes(name),levels(name),member_categories(categories(slug,name))').order('name'),
     s.from('attendance_events').select('id,event_date,attendance_records(member_id,status)').gte('event_date',from).lte('event_date',to),
     s.from('journals').select('id,member_id,journal_kind').gte('journal_date',from).lte('journal_date',to)
   ]);
   if(members.error||events.error||journals.error)return NextResponse.json({error:(members.error||events.error||journals.error)?.message},{status:400});
 
   const has=(m:any,slug:string)=>m.member_categories?.some((c:any)=>c.categories?.slug===slug);
-  const rows=(members.data??[]).map((m:any)=>({id:m.id,name:m.name,categories:m.member_categories?.map((c:any)=>c.categories?.name).filter(Boolean)??[],class_name:m.classes?.name??'',level_name:m.levels?.name??'',H:0,I:0,A:0,percentage:0,journals:0}));
+  const rows=(members.data??[]).map((m:any)=>({id:m.id,name:m.name,archived:m.status!=='ACTIVE',categories:m.member_categories?.map((c:any)=>c.categories?.name).filter(Boolean)??[],class_name:m.classes?.name??'',level_name:m.levels?.name??'',H:0,I:0,A:0,percentage:0,journals:0}));
+  const active=(members.data??[]).filter(m=>m.status==='ACTIVE');
   const map=new Map(rows.map(x=>[x.id,x]));
   const attendance:{H:number;I:number;A:number;meetings:number}={H:0,I:0,A:0,meetings:events.data?.length??0};
 
@@ -32,13 +35,13 @@ export async function GET(req:NextRequest){
   for(const p of rows){const total=p.H+p.I+p.A;p.percentage=total?Math.round(p.H/total*1000)/10:0}
 
   return NextResponse.json({
-    month,
+    month,span,
     counts:{
-      total:members.data?.length??0,
-      caberawit:(members.data??[]).filter((x:any)=>has(x,'caberawit')).length,
-      muda_mudi:(members.data??[]).filter((x:any)=>has(x,'muda-mudi')).length,
-      pengurus:(members.data??[]).filter((x:any)=>has(x,'pengurus')).length,
-      ibu_ibu:(members.data??[]).filter((x:any)=>has(x,'ibu-ibu')).length
+      total:active.length,
+      caberawit:active.filter((x:any)=>has(x,'caberawit')).length,
+      muda_mudi:active.filter((x:any)=>has(x,'muda-mudi')).length,
+      pengurus:active.filter((x:any)=>has(x,'pengurus')).length,
+      ibu_ibu:active.filter((x:any)=>has(x,'ibu-ibu')).length
     },
     attendance,journals:journals.data?.length??0,individuals:rows
   });

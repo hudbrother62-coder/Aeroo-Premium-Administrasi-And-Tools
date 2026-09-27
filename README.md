@@ -1,44 +1,25 @@
-# Aeroo Premium Administrasi
+# Airo / Aeroo Administrasi
 
-Mobile-first administration application for Kelompok, Muda Mudi, and Caberawit.
+Aplikasi Next.js untuk anggota, presensi, jurnal, target, agenda, rekap, dan laporan Jabirawit. Desktop dan ponsel memakai tata letak responsif. Ringkasan publik tersedia di `/`; data individu memerlukan sesi login.
 
-## Stack
-- Next.js 15 / React 19 / TypeScript
-- Supabase PostgreSQL
-- Server-only Supabase service-role access (no login UI, no browser DB credentials)
-- XLSX / DOCX / PDF report exports
+## Menjalankan
 
-## Local setup
-1. `npm install`
-2. Copy `.env.example` to `.env.local`.
-3. Fill `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` from the Aeroo Supabase project.
-4. `npm run dev`
+```bash
+npm ci
+npm run dev
+```
 
-The application opens directly to `/`; there is no login or registration route.
+Koneksi Supabase menggunakan publishable key dan cookie sesi HttpOnly yang diperiksa oleh fungsi PostgreSQL/RLS. Jangan menambahkan service role key ke kode klien. Migrasi SQL ada di `supabase/migrations` dan diterapkan ke proyek `hzbsdzlhjmfgtexmhccv`.
 
-## Security model
-RLS is enabled on every application table and there are intentionally no anon/authenticated policies. Database CRUD is performed only by Next.js server routes using `SUPABASE_SERVICE_ROLE_KEY`. Never prefix that key with `NEXT_PUBLIC_`.
+## Peran
 
-## Core domains
-- Database Kelompok with many-to-many categories
-- Database Caberawit with dynamic jenjang
-- Attendance events + H/I/A records
-- Jurnal Kegiatan Kelompok
-- Agenda
-- Caberawit learning targets/progress
-- Date-range recaps and Excel/Word/PDF export endpoints
+- **Admin Utama:** semua data, akun tim, dan kunjungan viewer.
+- **Dewan Guru:** Jabirawit dan Muda-Mudi sesuai lingkup RLS.
+- **Kelompok:** Kelompok, Ibu-Ibu, dan Pengurus sesuai lingkup RLS.
+- **Viewer publik:** jumlah anggota, pertemuan, presensi, dan jurnal tanpa identitas anggota. Akun Viewer lama tetap baca saja setelah login.
 
-## Deployment
-Not deployed yet by design. Vercel deployment is the final manual step.
+## Impor dan laporan
 
-## Login & Tim Akses
+Template XLSX anggota serta target dapat diunduh langsung dari halaman masing-masing. Target memakai kolom bulan `YYYY-MM` untuk rencana enam bulan. Template laporan DOCX/PPTX menerima placeholder seperti `{{NAMA}}`, `{{KELAS}}`, `{{KEHADIRAN}}`, `{{PROGRES}}`, dan `{{CATATAN}}`. Sistem mengganti data pada template dan menghasilkan dokumen yang tetap dapat diedit.
 
-Aeroo memakai login privat tanpa halaman daftar. Runtime Vercel tidak membutuhkan Supabase service-role key. Akses data memakai publishable key dan session HttpOnly yang divalidasi melalui PostgreSQL/RLS.
-
-Role:
-- **Admin Utama** — seluruh menu + Tim Akses.
-- **Dewan Guru** — Caberawit dan Muda-Mudi beserta modul terkait.
-- **Kelompok** — data/kegiatan Kelompok, termasuk Muda-Mudi dalam konteks kelompok.
-- **Viewer** — baca saja.
-
-Akun tim baru hanya dapat dibuat dari menu **Tim Akses** oleh Admin Utama. Password tidak disimpan dalam bentuk plaintext.
+Gemini bersifat opsional. Atur `GEMINI_API_KEY_1`, `GEMINI_API_KEY_2`, dan `GEMINI_API_KEY_3` sebagai environment variable server Vercel. AI hanya menyarankan pemetaan teks template, kolom target, atau catatan laporan jika diminta; pengisian dokumen dilakukan oleh kode. Tanpa kunci, placeholder eksplisit dan pemetaan kolom dasar tetap tersedia. `GEMINI_MODEL` dapat mengubah model dari nilai bawaan.

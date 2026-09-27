@@ -39,8 +39,12 @@ export async function POST(req:NextRequest){
   if(error)return NextResponse.json({error:error.message},{status:400});
 
   if(records?.length){
+    const ids=records.map((r:{member_id:string})=>r.member_id);
+    const {data:people,error:peopleError}=await s.from('members').select('id,name').in('id',ids);
+    if(peopleError){await s.from('attendance_events').delete().eq('id',data.id);return NextResponse.json({error:peopleError.message},{status:400})}
+    const names=new Map((people??[]).map(m=>[m.id,m.name]));
     const{error:recordError}=await s.from('attendance_records').insert(
-      records.map((r:Record<string,unknown>)=>({...r,event_id:data.id}))
+      records.map((r:Record<string,unknown>)=>({...r,event_id:data.id,member_name_snapshot:names.get(String(r.member_id))??null}))
     );
     if(recordError){
       await s.from('attendance_events').delete().eq('id',data.id);

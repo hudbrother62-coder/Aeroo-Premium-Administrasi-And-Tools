@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import {useEffect,useMemo,useState} from 'react';
 import {audienceLabels,readScopesForRole,writeScopesForRole,type Audience,type Role} from '@/lib/access';
+import Recap from '@/components/AttendanceRecap';
 
 type Event={id:string;title:string;event_date:string;audience:string;classes?:{name?:string};activity_types?:{name?:string};attendance_records?:unknown[]};
 type ClassRow={id:string;name:string;audience:string};
@@ -17,6 +18,8 @@ export default function Page(){
   const[role,setRole]=useState<Role|null>(null);
   const[loading,setLoading]=useState(true);
   const[error,setError]=useState('');
+  const[view,setView]=useState<'input'|'recap'>('input');
+  useEffect(()=>{if(new URLSearchParams(window.location.search).get('view')==='rekap')setView('recap')},[]);
 
   const readable=useMemo(()=>readScopesForRole(role),[role]);
   const writable=useMemo(()=>writeScopesForRole(role),[role]);
@@ -46,9 +49,11 @@ export default function Page(){
 
   return <>
     <div className="pageHeader">
-      <div><h1>Presensi</h1><p>Data yang tampil mengikuti akses akun.</p></div>
-      <div className="row"><Link href="/rekap-presensi" className="btn ghost">Lihat Rekap</Link>{writable.length>0&&<Link href="/presensi/buat" className="btn">+ Presensi</Link>}</div>
+      <div><h1>Presensi</h1><p>Isi daftar hadir dan telusuri hasil pertemuan.</p></div>
+      {view==='input'&&writable.length>0&&<Link href="/presensi/buat" className="btn">+ Presensi</Link>}
     </div>
+    <div className="tabBar"><button className={view==='input'?'tab active':'tab'} onClick={()=>setView('input')}>Daftar presensi</button><button className={view==='recap'?'tab active':'tab'} onClick={()=>setView('recap')}>Rekap & individu</button></div>
+    {view==='recap'?<Recap embedded/>:<>
     <div className="toolbar card">
       <input className="input" type="month" value={month} onChange={e=>setMonth(e.target.value)}/>
       <select className="select" value={audience} onChange={e=>{setAudience(e.target.value);setClassId('')}}>
@@ -66,5 +71,6 @@ export default function Page(){
       </div>)}
       {!loading&&!events.length&&<div className="emptyState">Belum ada presensi pada periode ini.</div>}
     </div>
+    </>}
   </>;
 }

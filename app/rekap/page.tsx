@@ -8,17 +8,19 @@ export default function RekapPage(){
   const now=new Date();
   const[month,setMonth]=useState(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`);
   const[mode,setMode]=useState<'ALL'|'PERSON'>('ALL');
+  const[span,setSpan]=useState<1|6>(1);
+  const[search,setSearch]=useState('');
   const[selected,setSelected]=useState('');
   const[data,setData]=useState<Summary|null>(null);
   const[error,setError]=useState('');
 
-  const load=async()=>{try{const r=await fetch('/api/summary?month='+month);const j=await r.json();if(!r.ok)throw new Error(j.error);setData(j);setError('')}catch{setError('Rekap data belum dapat dimuat.')}};
-  useEffect(()=>{void load()},[month]);
+  const load=async()=>{try{const r=await fetch(`/api/summary?month=${month}&span=${span}`);const j=await r.json();if(!r.ok)throw new Error(j.error);setData(j);setError('')}catch{setError('Rekap data belum dapat dimuat.')}};
+  useEffect(()=>{void load()},[month,span]);
   const person=data?.individuals.find(x=>x.id===selected)||data?.individuals[0];
 
   return <>
     <div className="pageHeader"><div><h1>Rekap Data</h1></div></div>
-    <div className="toolbar card"><input className="input" type="month" value={month} onChange={e=>setMonth(e.target.value)}/><div className="tabBar" style={{margin:0}}><button className={mode==='ALL'?'tab active':'tab'} onClick={()=>setMode('ALL')}>Keseluruhan</button><button className={mode==='PERSON'?'tab active':'tab'} onClick={()=>setMode('PERSON')}>1 Individu</button></div></div>
+    <div className="toolbar card"><input className="input" type="month" value={month} onChange={e=>setMonth(e.target.value)}/><select className="select" value={span} onChange={e=>setSpan(Number(e.target.value) as 1|6)}><option value={1}>Satu bulan</option><option value={6}>Enam bulan terakhir</option></select><div className="tabBar" style={{margin:0}}><button className={mode==='ALL'?'tab active':'tab'} onClick={()=>setMode('ALL')}>Keseluruhan</button><button className={mode==='PERSON'?'tab active':'tab'} onClick={()=>setMode('PERSON')}>1 Individu</button></div></div>
     {error&&<div className="notice error section">{error}</div>}
     {mode==='ALL'&&data&&<>
       <div className="metricGrid section">
@@ -33,7 +35,7 @@ export default function RekapPage(){
       </div>
     </>}
     {mode==='PERSON'&&data&&<>
-      <div className="card section"><label style={{display:'grid',gap:6,fontSize:11,fontWeight:800,color:'var(--muted)'}}>Pilih individu<select className="select" value={person?.id||''} onChange={e=>setSelected(e.target.value)}>{data.individuals.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label></div>
+      <div className="card section"><label style={{display:'grid',gap:6,fontSize:13,fontWeight:800,color:'var(--muted)'}}>Cari individu<input className="input" placeholder="Ketik nama…" value={search} onChange={e=>setSearch(e.target.value)}/><select className="select" value={person?.id||''} onChange={e=>setSelected(e.target.value)}>{data.individuals.filter(p=>p.name.toLowerCase().includes(search.toLowerCase())).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label></div>
       {person&&<div className="dashboardGrid section">
         <section className="card"><h2>{person.name}</h2><div className="itemMeta">{person.categories.join(' • ')||'Tanpa kategori'} · {person.class_name||'Tanpa kelas'} · {person.level_name||'Tanpa jenjang'}</div><div className="attendanceSummary section"><div><span>H</span><strong>{person.H}</strong><small>Hadir</small></div><div><span>I</span><strong>{person.I}</strong><small>Izin</small></div><div><span>A</span><strong>{person.A}</strong><small>Alfa</small></div></div></section>
         <section className="card"><div className="metricCard" style={{boxShadow:'none'}}><span>Persentase hadir</span><strong>{person.percentage}%</strong></div><div className="metricCard section" style={{boxShadow:'none'}}><span>Jurnal individu</span><strong>{person.journals}</strong></div></section>

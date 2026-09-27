@@ -1,7 +1,7 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
 
-const slugByAudience:Record<string,string>={CABERAWIT:'caberawit',MUDA_MUDI:'muda-mudi',IBU_IBU:'ibu-ibu',PENGURUS:'pengurus'};
+const slugByAudience:Record<string,string>={KELOMPOK:'kelompok',CABERAWIT:'caberawit',MUDA_MUDI:'muda-mudi',IBU_IBU:'ibu-ibu',PENGURUS:'pengurus'};
 
 export async function GET(req:NextRequest){
   const s=await db();

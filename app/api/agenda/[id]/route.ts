@@ -1,0 +1,5 @@
+import {NextRequest,NextResponse} from 'next/server';
+import {db} from '@/lib/supabase-server';
+type Params={params:Promise<{id:string}>};
+export async function PATCH(req:NextRequest,{params}:Params){const s=await db();const {data:role}=await s.rpc('current_app_role');if(!['ADMIN','DEWAN_GURU','KELOMPOK'].includes(role??''))return NextResponse.json({error:'Akses ditolak.'},{status:403});const {id}=await params;const {data,error}=await s.from('agenda').update(await req.json()).eq('id',id).select().single();return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data)}
+export async function DELETE(_:NextRequest,{params}:Params){const s=await db();const {data:role}=await s.rpc('current_app_role');if(role!=='ADMIN')return NextResponse.json({error:'Hanya owner dapat menghapus agenda.'},{status:403});const {id}=await params;const {error}=await s.from('agenda').delete().eq('id',id);return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json({ok:true})}

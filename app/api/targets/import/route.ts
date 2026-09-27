@@ -1,6 +1,7 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
 import * as XLSX from 'xlsx';
+import {analyzeJson} from '@/lib/gemini';
 
 export const runtime='nodejs';
 
@@ -14,12 +15,19 @@ function findCol(headers:string[],patterns:RegExp[]){
 
 function inferLevel(text:string){
   const s=low(text);
+  if(s.includes('remaja'))return 'Remaja';
+  if(s.includes('produktif'))return 'Generasi Produktif';
   if(s.includes('paud')||s.includes('tk'))return 'PAUD';
   const m=s.match(/(?:sd|kelas|grade)?\s*([1-6])\b/);
   return m?`SD ${m[1]}`:'Umum';
 }
 
-export async function GET(){
+export async function GET(req:NextRequest){
+  if(req.nextUrl.searchParams.get('template')==='1'){
+    const book=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([['Bulan','Jenjang','Kelas','Kode','Target / Materi','Deskripsi','Nilai target','Satuan'],['2026-10','SD 1','', 'T-01','Contoh materi','','100','%'],['2026-11','Remaja','','T-02','Contoh materi','','100','%']]),'Target');
+    return new Response(XLSX.write(book,{type:'buffer',bookType:'xlsx'}),{headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':'attachment; filename="template-target-enam-bulan.xlsx"'}});
+  }
   const s=await db();
   const{data,error}=await s.from('target_versions').select('*').order('created_at',{ascending:false});
   return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data??[]);
@@ -48,6 +56,7 @@ export async function POST(req:NextRequest){
     }
     const headers=rows[headerRow].map(norm);
     const cols={
+      month:findCol(headers,[/^bulan$/,/target bulan/,/month/]),
       level:findCol(headers,[/jenjang/,/grade/,/tingkat/]),
       className:findCol(headers,[/^kelas$/,/nama kelas/]),
       code:findCol(headers,[/kode/,/^code$/]),
@@ -60,6 +69,8 @@ export async function POST(req:NextRequest){
       const firstUseful=headers.findIndex(Boolean);
       cols.title=firstUseful>=0?firstUseful:0;
     }
+    const ai=await analyzeJson<{columns:Record<string,string>}>('Identifikasi kolom target pembelajaran pada spreadsheet. Kembalikan JSON {"columns":{"month":"header asli", "level":"header asli", "className":"header asli", "code":"header asli", "title":"header asli", "description":"header asli", "value":"header asli", "unit":"header asli"}}. Isi hanya header yang benar-benar ada.',{headers,sample:rows.slice(headerRow+1,headerRow+5)});
+    if(ai?.columns)for(const key of Object.keys(cols) as Array<keyof typeof cols>){const index=headers.indexOf(ai.columns[key]);if(index>=0)cols[key]=index}
 
     const s=await db();
     const[{data:levels,error:lErr},{data:classes,error:cErr},{data:latest,error:vErr}]=await Promise.all([
@@ -72,7 +83,7 @@ export async function POST(req:NextRequest){
     const levelMap=new Map((levels??[]).map(x=>[x.name.toLowerCase(),x.id]));
     const classMap=new Map((classes??[]).map(x=>[x.name.toLowerCase(),x.id]));
     const versionNumber=(latest?.[0]?.version??0)+1;
-    const analysis={sheet:wb.SheetNames[0],header_row:headerRow+1,columns:Object.fromEntries(Object.entries(cols).filter(([,v])=>v!==null).map(([k,v])=>[k,headers[v as number]])),rows:rows.length-headerRow-1,method:'automatic_structure_detection'};
+    const analysis={sheet:wb.SheetNames[0],header_row:headerRow+1,columns:Object.fromEntries(Object.entries(cols).filter(([,v])=>v!==null).map(([k,v])=>[k,headers[v as number]])),rows:rows.length-headerRow-1,method:ai?'gemini_assisted_mapping':'automatic_structure_detection'};
 
     const{data:version,error:verError}=await s.from('target_versions').insert({
       title,period_start,period_end,version:versionNumber,source_file_name:file.name,source_structure:{headers},analysis,published_at:new Date().toISOString()
@@ -85,14 +96,18 @@ export async function POST(req:NextRequest){
       const target=norm(row[cols.title!]);
       if(!target)continue;
       const levelName=inferLevel(cols.level!==null?row[cols.level]:cols.className!==null?row[cols.className]:'');
+      if(levelName==='Generasi Produktif'||levelName==='Umum')continue;
       const level_id=levelMap.get(levelName.toLowerCase())||levelMap.get('umum');
       if(!level_id)continue;
       const className=cols.className!==null?norm(row[cols.className]):'';
       const rawValue=cols.value!==null?norm(row[cols.value]):'';
+      const rawMonth=cols.month!==null?norm(row[cols.month]):period_start??'';
+      const targetMonth=/^\d{4}-(0[1-9]|1[0-2])/.test(rawMonth)?rawMonth.slice(0,7)+'-01':null;
       const num=rawValue?Number(String(rawValue).replace(',','.')):NaN;
       payload.push({
         version_id:version.id,level_id,class_id:className?classMap.get(className.toLowerCase())||null:null,
         code:cols.code!==null?norm(row[cols.code])||null:null,
+        target_month:targetMonth,
         title:target,description:cols.description!==null?norm(row[cols.description])||null:null,
         target_value:Number.isFinite(num)?num:null,target_unit:cols.unit!==null?norm(row[cols.unit])||null:null,
         sort_order:payload.length+1,active:true,source_metadata:{sheet:wb.SheetNames[0],row:i+1}
