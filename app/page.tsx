@@ -44,7 +44,6 @@ export default function Home(){
 
   return <div className="homePage">
     <div className="pageHeader heroHeader"><div><div className="eyebrow">Administrasi Airo · {loggedIn?'Bulan ini':viewerSpan===6?'Enam bulan sampai '+viewerMonth:'Bulan '+viewerMonth}</div><h1>{loggedIn?'Ringkasan kegiatan':'Pusat informasi kegiatan'}</h1><p>Anggota, pertemuan, kehadiran, dan jurnal dalam satu tempat.</p></div>
-      {!loggedIn&&<Link className="btn" href="/login">Masuk pengelola <ArrowRight size={17}/></Link>}
     </div>
     {error&&<div className="notice error">{error}</div>}
     {!loggedIn&&<div className="toolbar card viewerFilters"><label>Bulan<input className="input" type="month" value={viewerMonth} onChange={e=>setViewerMonth(e.target.value)}/></label><label>Periode<select className="select" value={viewerSpan} onChange={e=>setViewerSpan(Number(e.target.value) as 1|6)}><option value={1}>Satu bulan</option><option value={6}>Enam bulan</option></select></label></div>}
