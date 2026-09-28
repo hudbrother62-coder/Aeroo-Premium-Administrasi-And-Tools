@@ -6,21 +6,21 @@ import {usePathname} from 'next/navigation';
 import {useEffect,useMemo,useState} from 'react';
 import {
   LayoutDashboard,Database,ClipboardCheck,BookOpen,Target,Users,
-  CalendarDays,ChartNoAxesCombined,FileText,Settings,Moon,Sun,Menu,X,LogOut,LogIn
+  CalendarDays,ChartNoAxesCombined,FileText,Settings,Moon,Sun,Menu,X,LogOut,LogIn,MoreHorizontal
 } from 'lucide-react';
 
 type Role='ADMIN'|'DEWAN_GURU'|'KELOMPOK'|'VIEWER';
 type AppUser={id:string;username:string;display_name:string|null;role:Role;active:boolean};
 
 const nav=[
-  {href:'/',label:'Dashboard',icon:LayoutDashboard,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[]},
-  {href:'/database',label:'Database',icon:Database,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[]},
-  {href:'/presensi',label:'Presensi',icon:ClipboardCheck,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[]},
-  {href:'/jurnal',label:'Jurnal',icon:BookOpen,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[]},
-  {href:'/target',label:'Target & Progres',icon:Target,roles:['ADMIN','DEWAN_GURU','VIEWER'] as Role[]},
-  {href:'/agenda',label:'Agenda',icon:CalendarDays,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[]},
-  {href:'/rekap',label:'Rekap Data',icon:ChartNoAxesCombined,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[]},
-  {href:'/laporan',label:'Laporan Jabirawit',icon:FileText,roles:['ADMIN','DEWAN_GURU','VIEWER'] as Role[]},
+  {href:'/',label:'Dashboard',icon:LayoutDashboard,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
+  {href:'/database',label:'Database',icon:Database,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
+  {href:'/presensi',label:'Presensi',icon:ClipboardCheck,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
+  {href:'/jurnal',label:'Jurnal',icon:BookOpen,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
+  {href:'/target',label:'Target & Progres',icon:Target,roles:['ADMIN','DEWAN_GURU','VIEWER'] as Role[],publicRead:true},
+  {href:'/agenda',label:'Agenda',icon:CalendarDays,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
+  {href:'/rekap',label:'Rekap Data',icon:ChartNoAxesCombined,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
+  {href:'/laporan',label:'Laporan Jabirawit',icon:FileText,roles:['ADMIN','DEWAN_GURU','VIEWER'] as Role[],publicRead:true},
   {href:'/tim-akses',label:'Tim & Akses',icon:Users,roles:['ADMIN'] as Role[]},
   {href:'/pengaturan',label:'Pengaturan',icon:Settings,roles:['ADMIN'] as Role[]},
 ];
@@ -28,8 +28,9 @@ const nav=[
 const roleLabel:Record<Role,string>={ADMIN:'Owner',DEWAN_GURU:'Dewan Guru',KELOMPOK:'Kelompok',VIEWER:'Viewer'};
 
 function Brand({compact=false}:{compact?:boolean}){
-  return <Link href="/" className={compact?'brandLogo compact':'brandLogo'} aria-label="AEROO">
-    <Image src="/aeroo-logo-new.webp" alt="AEROO" width={220} height={222} priority/>
+  return <Link href="/" className={compact?'brandLogo compact':'brandLogo'} aria-label="Airo Administrasi">
+    <Image src="/aeroo-mark.webp" alt="" width={72} height={56} priority/>
+    <span className="brandWordmark"><strong>AIRO</strong><small>ADMINISTRASI</small></span>
   </Link>;
 }
 
@@ -38,6 +39,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
   const isLogin=path==='/login';
   const[dark,setDark]=useState(false);
   const[drawer,setDrawer]=useState(false);
+  const[moreOpen,setMoreOpen]=useState(false);
   const[user,setUser]=useState<AppUser|null>(null);
   const[checking,setChecking]=useState(!isLogin);
 
@@ -62,7 +64,10 @@ export default function AppShell({children}:{children:React.ReactNode}){
   },[isLogin,path]);
 
   useEffect(()=>setDrawer(false),[path]);
-  const visible=useMemo(()=>nav.filter(x=>user?x.roles.includes(user.role):x.href==='/'),[user]);
+  const visible=useMemo(()=>user?nav.filter(x=>x.roles.includes(user.role)):nav.filter(x=>x.href==='/'),[user]);
+  const primaryMobile=['/','/database','/presensi','/agenda'];
+  const mobilePrimary=visible.filter(x=>primaryMobile.includes(x.href));
+  const mobileMore=visible.filter(x=>!primaryMobile.includes(x.href));
   const title=useMemo(()=>nav.find(x=>x.href==='/'?path==='/':path.startsWith(x.href))?.label??'AEROO',[path]);
 
   async function logout(){
@@ -72,8 +77,8 @@ export default function AppShell({children}:{children:React.ReactNode}){
 
   if(isLogin)return <>{children}</>;
 
-  const navMenu=<nav className="navList">
-    {visible.map(item=>{
+  const renderNav=(items=visible,klass='navList')=><nav className={klass}>
+    {items.map(item=>{
       const active=item.href==='/'?path==='/':path.startsWith(item.href);
       const Icon=item.icon;
       return <Link href={item.href} className={active?'navItem active':'navItem'} key={item.href}>
@@ -91,26 +96,30 @@ export default function AppShell({children}:{children:React.ReactNode}){
   </div>;
 
   return <div className="appShell">
-    <aside className="desktopSidebar"><Brand/>{navMenu}{account}</aside>
+    <aside className="desktopSidebar"><Brand/>{renderNav(visible,'navList')}{account}</aside>
 
     <div className={drawer?'mobileOverlay show':'mobileOverlay'} onClick={()=>setDrawer(false)}/>
     <aside className={drawer?'mobileDrawer open':'mobileDrawer'} aria-hidden={!drawer}>
       <div className="drawerHead"><Brand compact/><button className="iconOnly" onClick={()=>setDrawer(false)} aria-label="Tutup menu"><X size={20}/></button></div>
-      <div className="drawerRole"><span>{user?roleLabel[user.role]:'AEROO'}</span><small>{user?.display_name||user?.username||'Administrasi'}</small></div>
-      {navMenu}
+      <div className="drawerRole"><span>{user?roleLabel[user.role]:'Viewer'}</span><small>{user?.display_name||user?.username||'Ringkasan publik'}</small></div>
+      {renderNav(mobileMore,'navList drawerNav')}
       {account}
     </aside>
 
     <main className="contentArea">
       <header className="mobileHeader">
-        <button className="iconOnly headerMenu" onClick={()=>setDrawer(true)} aria-label="Menu"><Menu size={21}/></button>
-        <div className="mobileTitle">
-          <span className="mobileLogoMark"><Image src="/aeroo-mark.webp" alt="" width={150} height={116} priority/></span>
-          <div><small>AEROO</small><strong>{title}</strong></div>
+        <Link href="/" className="mobileBrand"><Image src="/aeroo-mark.webp" alt="" width={48} height={38} priority/><span><b>AIRO</b><small>{title}</small></span></Link>
+        <div className="headerActions">
+          {!user&&<Link href="/login" className="headerLogin"><LogIn size={16}/>Masuk</Link>}
+          <button className="iconOnly headerTheme" onClick={()=>setDark(v=>!v)} aria-label="Tema">{dark?<Sun size={19}/>:<Moon size={19}/>}</button>
         </div>
-        <button className="iconOnly headerTheme" onClick={()=>setDark(v=>!v)} aria-label="Tema">{dark?<Sun size={19}/>:<Moon size={19}/>}</button>
       </header>
       <div className="pageContent">{checking?<div className="card"><div className="skeleton" style={{height:90}}/></div>:children}</div>
+      <nav className="mobileBottomNav" aria-label="Navigasi utama">
+        {renderNav(mobilePrimary,'bottomNavItems')}
+        {user&&mobileMore.length>0&&<button className={moreOpen?'bottomNavMore active':'bottomNavMore'} onClick={()=>{setMoreOpen(v=>!v);setDrawer(false)}} aria-expanded={moreOpen}><span><MoreHorizontal size={20}/></span><small>Lainnya</small></button>}
+      </nav>
+      {user&&moreOpen&&<div className="mobileMorePanel">{renderNav(mobileMore,'moreNavItems')}</div>}
     </main>
   </div>;
 }
