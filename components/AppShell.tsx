@@ -89,10 +89,10 @@ export default function AppShell({children}:{children:React.ReactNode}){
 
   const account=<div className="sideActions">
     <button className="sideButton" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}<span>{dark?'Mode terang':'Mode gelap'}</span></button>
-    <div className="userBox">
+    {user&&<div className="userBox">
       <div className="userIdentity"><strong>{user?.display_name||user?.username||'AEROO'}</strong><small>{user?roleLabel[user.role]:'Memuat…'}</small></div>
-      {user?<button className="iconOnly" onClick={()=>void logout()} aria-label="Keluar"><LogOut size={18}/></button>:<Link className="iconOnly" href="/login" aria-label="Masuk"><LogIn size={18}/></Link>}
-    </div>
+      <button className="iconOnly" onClick={()=>void logout()} aria-label="Keluar"><LogOut size={18}/></button>
+    </div>}
   </div>;
 
   return <div className="appShell">
