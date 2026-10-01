@@ -94,7 +94,7 @@ html[data-theme="dark"] .navItem.active{color:#7ec7c6}
 html[data-role="VIEWER"] .writeOnly{display:none!important}
 @media(min-width:700px){.pageContent{padding:28px 28px 70px}.metricGrid{grid-template-columns:repeat(4,1fr)}.dashboardGrid{grid-template-columns:1.7fr 1fr}.toolbar{grid-template-columns:minmax(220px,1fr) minmax(180px,.4fr) auto}.formGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(min-width:920px){.loginPage{grid-template-columns:1.05fr .95fr}.loginBrandPanel{display:grid}.loginPanel{padding:48px}.loginCard{padding:32px}}
-@media(min-width:980px){.appShell{display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr)}.desktopSidebar{display:flex;flex-direction:column;position:sticky;top:0;height:100vh;background:var(--surface);border-right:1px solid var(--border);padding:18px 14px;overflow:auto}.mobileDrawer,.mobileOverlay{display:none!important}.pageContent{padding:34px 36px 72px}.brandLogo{width:178px}}
+@media(min-width:980px){.appShell{display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr)}.desktopSidebar{display:flex;flex-direction:column;position:sticky;top:0;height:100vh;background:var(--surface);border-right:1px solid var(--border);padding:18px 14px;overflow:auto}.mobileHeader,.mobileDrawer,.mobileOverlay{display:none!important}.pageContent{padding:34px 36px 72px}.brandLogo{width:178px}}
 @media(max-width:560px){h1{font-size:27px}.pageHeader{flex-direction:column}.pageHeader>.btn{width:100%}.calendarCell{min-height:70px;padding:5px}.calendarEvent{display:none}}
 
 .muted{color:var(--muted)}
@@ -433,4 +433,4 @@ h1{font-size:clamp(28px,3vw,40px);letter-spacing:-.035em}h2{font-size:19px}h3{fo
  .moreNavItems{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.moreNavItems .navItem{min-height:43px;padding:0 9px;font-size:11px}.moreNavItems .navIcon{background:var(--surface-2);width:28px;height:28px;flex-basis:28px}
  .mobileDrawer{z-index:45}.mobileOverlay{z-index:44}
 }
-@media(min-width:980px){.mobileHeader{padding:12px 28px;height:70px}.brandLogo{width:100%;margin-bottom:20px}.mobileBottomNav,.mobileMorePanel{display:none!important}}
+@media(min-width:980px){.mobileHeader{display:none!important}.brandLogo{width:100%;margin-bottom:20px}.mobileBottomNav,.mobileMorePanel{display:none!important}}
