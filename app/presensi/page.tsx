@@ -3,14 +3,14 @@
 import Link from 'next/link';
 import {useEffect,useMemo,useState} from 'react';
 import {audienceLabels,readScopesForRole,writeScopesForRole,type Audience,type Role} from '@/lib/access';
+import {jakartaDate} from '@/lib/domain';
 import Recap from '@/components/AttendanceRecap';
 
 type Event={id:string;title:string;event_date:string;audience:string;classes?:{name?:string};activity_types?:{name?:string};attendance_records?:unknown[]};
 type ClassRow={id:string;name:string;audience:string};
 
 export default function Page(){
-  const now=new Date();
-  const[month,setMonth]=useState(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`);
+  const[month,setMonth]=useState(jakartaDate().slice(0,7));
   const[audience,setAudience]=useState('');
   const[classId,setClassId]=useState('');
   const[classes,setClasses]=useState<ClassRow[]>([]);
