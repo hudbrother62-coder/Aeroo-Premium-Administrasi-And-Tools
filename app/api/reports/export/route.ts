@@ -25,6 +25,7 @@ async function dataset(req: NextRequest) {
   let q = s
     .from('attendance_events')
     .select('title,event_date,audience,attendance_records(status)')
+    .neq('state','CANCELLED')
     .gte('event_date', from)
     .lte('event_date', to)
     .order('event_date');

@@ -1,23 +1,9 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
-
-export async function POST(req:NextRequest){
-  const s=await db();
-  const {data:role}=await s.rpc('current_app_role');
-  if(!['ADMIN','DEWAN_GURU','KELOMPOK'].includes(role??''))return NextResponse.json({error:'Akses ditolak.'},{status:403});
-  const body=await req.json();
-  const ids:string[]=Array.isArray(body.member_ids)?body.member_ids:[];
-  const categoryIds:string[]=Array.isArray(body.category_ids)?body.category_ids:[];
-  if(!ids.length||(!categoryIds.length&&!body.class_id)||ids.length>500)return NextResponse.json({error:'Pilih anggota dan kategori atau kelas (maksimal 500).'}, {status:400});
-  const {data:categories,error:cErr}=categoryIds.length?await s.from('categories').select('id,slug').in('id',categoryIds):{data:[],error:null};
-  if(cErr||categories?.length!==categoryIds.length)return NextResponse.json({error:'Kategori tidak valid.'},{status:400});
-  const allowed=role==='ADMIN'?['kelompok','muda-mudi','caberawit','ibu-ibu','pengurus']:role==='DEWAN_GURU'?['caberawit','muda-mudi']:['kelompok','ibu-ibu','pengurus'];
-  if(categories.some(c=>!allowed.includes(c.slug)))return NextResponse.json({error:'Kategori di luar akses.'},{status:403});
-  const {data:existing,error:eErr}=await s.from('member_categories').select('member_id,category_id').in('member_id',ids);
-  if(eErr)return NextResponse.json({error:eErr.message},{status:400});
-  const seen=new Set((existing??[]).map(x=>`${x.member_id}:${x.category_id}`));
-  const insert=ids.flatMap(member_id=>categoryIds.filter(category_id=>!seen.has(`${member_id}:${category_id}`)).map(category_id=>({member_id,category_id})));
-  if(insert.length){const {error}=await s.from('member_categories').insert(insert);if(error)return NextResponse.json({error:error.message},{status:400})}
-  if(body.class_id){const {error}=await s.from('members').update({class_id:body.class_id}).in('id',ids);if(error)return NextResponse.json({error:error.message},{status:400})}
-  return NextResponse.json({added:insert.length,updated:ids.length});
-}
+import {writeScopesForRole} from '@/lib/access';
+import {slugByAudience} from '@/lib/domain';
+export async function POST(req:NextRequest){try{
+ const s=await db();const{data:role}=await s.rpc('current_app_role');if(!writeScopesForRole(role).length)return NextResponse.json({error:'Akses ditolak.'},{status:403});const body=await req.json();const ids=[...new Set<string>(body.member_ids||[])];if(!ids.length||ids.length>500||(!(body.category_ids||[]).length&&!body.class_id))throw Error('Pilih maksimal 500 anggota dan tujuan');const[{data:people,error},{data:cats},{data:klass}]=await Promise.all([s.from('members').select('*,member_memberships(*,categories(slug))').in('id',ids),s.from('categories').select('id,slug'),body.class_id?s.from('classes').select('*').eq('id',body.class_id).single():Promise.resolve({data:null})]);if(error)throw Error(error.message);if(people?.length!==ids.length)throw Error('Sebagian anggota tidak ditemukan atau di luar akses');
+ const rows=people.map(p=>{let memberships=p.member_memberships.filter((m:any)=>m.active&&writeScopesForRole(role).some(a=>slugByAudience[a]===m.categories?.slug));for(const category_id of body.category_ids||[]){if(!memberships.some((m:any)=>m.category_id===category_id))memberships.push({category_id,active:true})}if(klass){const category=cats?.find(c=>c.slug===slugByAudience[klass.audience]);if(!category||!memberships.some((m:any)=>m.category_id===category.id))throw Error('Anggota belum mengikuti kategori kelas tujuan');memberships=memberships.map((m:any)=>m.category_id===category.id?{...m,class_id:klass.id,level_id:klass.level_id}:m)}return {id:p.id,revision:p.revision,person:p,memberships}});
+ const{data,error:save}=await s.rpc('save_members_batch',{p_rows:rows});return save?NextResponse.json({error:save.message},{status:save.message.includes('CONFLICT')?409:400}):NextResponse.json({updated:data,added:0});
+ }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Perubahan gagal.'},{status:400})}}

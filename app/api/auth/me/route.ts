@@ -6,7 +6,7 @@ export async function GET() {
   const { data, error } = await supabase.rpc('get_current_app_user');
 
   if (error || !data?.length) {
-    return NextResponse.json({ error: 'Sesi tidak valid.' }, { status: 401 });
+    return NextResponse.json({id:null,username:'publik',display_name:'Viewer publik',role:'VIEWER',public:true,active:true});
   }
 
   return NextResponse.json(data[0]);

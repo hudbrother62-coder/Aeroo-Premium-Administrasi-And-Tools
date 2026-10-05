@@ -1,95 +1,91 @@
 'use client';
 
+import {jakartaDate} from '@/lib/domain';
+import {writeScopesForRole} from '@/lib/access';
 import {FormEvent,useEffect,useMemo,useState} from 'react';
+import {prepareJournalPayloadProgress} from '../helpers';
 
 type Activity={id:string;name:string;audience:string};
 type ClassRow={id:string;name:string;audience:string};
-type Member={id:string;name:string;meta?:string};
-type TargetRow={id:string;title:string;class_id?:string;levels?:{name?:string}};
+type TargetRow={id:string;title:string;class_id?:string;level_id?:string;target_month?:string;levels?:{name?:string}};
 
-const kinds=[['KELOMPOK','Kelompok'],['IBU_IBU','Ibu-Ibu'],['PENGURUS','Musyawarah Pengurus'],['CABERAWIT_CLASS','Jabirawit Kelas'],['CABERAWIT_INDIVIDUAL','Jabirawit Individu'],['MUDA_MUDI_INDIVIDUAL','Remaja Individu']] as const;
+const kinds=[['KELOMPOK','Kelompok'],['IBU_IBU','Ibu-Ibu'],['PENGURUS','Musyawarah Pengurus'],['CABERAWIT_CLASS','Jabirawit Kelas'],['CABERAWIT_INDIVIDUAL','Jabirawit Individu'],['MUDA_MUDI_CLASS','Remaja Kelas'],['MUDA_MUDI_INDIVIDUAL','Remaja Individu']] as const;
 
 export default function Page(){
-  const today=new Date().toISOString().slice(0,10);
+  const today=jakartaDate();const[role,setRole]=useState('VIEWER');useEffect(()=>{fetch('/api/auth/me').then(r=>r.json()).then(u=>{setRole(u.role);const first=writeScopesForRole(u.role)[0];if(first&&!location.search)setForm(v=>({...v,journal_kind:first==='CABERAWIT'?'CABERAWIT_CLASS':first==='MUDA_MUDI'?'MUDA_MUDI_CLASS':first}))})},[]);
   const[activities,setActivities]=useState<Activity[]>([]);
   const[classes,setClasses]=useState<ClassRow[]>([]);
-  const[members,setMembers]=useState<Member[]>([]);
   const[targets,setTargets]=useState<TargetRow[]>([]);
   const[events,setEvents]=useState<Array<{id:string;title:string;event_date:string;audience:string}>>([]);
-  const[materials,setMaterials]=useState([{topic:'',page:''}]);
+  const[materials,setMaterials]=useState([{topic:'',page:'',presenter:''}]);
+  const[journalId,setJournalId]=useState('');const[originalState,setOriginalState]=useState('DRAFT');const[revision,setRevision]=useState(0);const[state,setState]=useState('DRAFT');const[history,setHistory]=useState<any[]>([]);const[roster,setRoster]=useState<any[]>([]);const[progress,setProgress]=useState<Array<{member_id:string;target_id:string;progress_value:string;progress_note:string;follow_up:string}>>([]);const[governance,setGovernance]=useState({proposal:'',pic:'',deadline:'',execution:''});
   const[saving,setSaving]=useState(false);
   const[error,setError]=useState('');
   const[form,setForm]=useState({
     journal_kind:'KELOMPOK',journal_date:today,title:'',activity_type_id:'',class_id:'',member_id:'',
     started_at:'',ended_at:'',material:'',summary:'',result:'',achievement:'',obstacles:'',improvement_plan:'',decisions:'',follow_up:'',notes:'',
-    target_id:'',progress_value:'',progress_note:'',meeting_type:'Kelompok',event_id:'',absence:'HADIR',absence_reason:''
+    target_id:'',progress_value:'',progress_note:'',meeting_type:'Kelompok',event_id:'',agenda_id:'',absence:'HADIR',absence_reason:''
   });
 
-  useEffect(()=>{Promise.all([fetch('/api/activity-types').then(r=>r.json()),fetch('/api/classes').then(r=>r.json()),fetch('/api/targets').then(r=>r.json()),fetch('/api/attendance').then(r=>r.json())]).then(([a,c,t,e])=>{setActivities(a);setClasses(c);setTargets(t);setEvents(Array.isArray(e)?e:[])})},[]);
-  useEffect(()=>{
-    if(!form.journal_kind.endsWith('_INDIVIDUAL')){setMembers([]);return}
-    const q=new URLSearchParams({audience:form.journal_kind.startsWith('MUDA_MUDI')?'MUDA_MUDI':'CABERAWIT'});if(form.class_id)q.set('class_id',form.class_id);
-    fetch('/api/participants?'+q).then(r=>r.json()).then(setMembers);
-  },[form.journal_kind,form.class_id]);
+  useEffect(()=>{Promise.all([fetch('/api/activity-types').then(r=>r.json()),fetch('/api/classes').then(r=>r.json()),fetch('/api/targets').then(r=>r.json()),fetch('/api/attendance').then(r=>r.json())]).then(([a,c,t,e])=>{setActivities(Array.isArray(a)?a:[]);setClasses(Array.isArray(c)?c:[]);setTargets(Array.isArray(t)?t:[]);setEvents(Array.isArray(e)?e:[])})},[]);
+  async function linkEvent(id:string){if(!id){setRoster([]);setForm(v=>({...v,event_id:''}));return}const r=await fetch('/api/attendance/'+id);const e=await r.json();if(!r.ok)throw new Error(e.error);setRoster(e.attendance_records||[]);setForm(v=>({...v,event_id:id,agenda_id:e.agenda_id||'',class_id:e.class_id||'',journal_date:e.event_date,activity_type_id:e.activity_type_id||'',title:v.title||e.title,journal_kind:e.audience==='CABERAWIT'?'CABERAWIT_CLASS':e.audience==='MUDA_MUDI'?'MUDA_MUDI_CLASS':e.audience}));}
+  useEffect(()=>{const q=new URLSearchParams(window.location.search);const id=q.get('journal_id');if(id){void fetch('/api/journals/'+id).then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error);setJournalId(id);setRevision(j.revision??0);setState(j.state||'DRAFT');setOriginalState(j.state||'DRAFT');setHistory(j.journal_revisions||[]);if(j.event_id)await linkEvent(j.event_id);setForm(v=>({...v,...Object.fromEntries(Object.keys(v).map(k=>[k,j[k]??v[k as keyof typeof v]]))}));setMaterials(j.assessment?.materials?.length?j.assessment.materials.map((m:any)=>({...m,presenter:m.presenter||''})):[{topic:'',page:'',presenter:''}]);setGovernance({proposal:j.assessment?.proposal||'',pic:j.assessment?.pic||'',deadline:j.assessment?.deadline||'',execution:j.assessment?.execution||''});setProgress((j.journal_progress||[]).map((p:any)=>({member_id:p.member_id||p.participant_key,target_id:p.target_id||'',progress_value:p.progress_value===null?'':String(p.progress_value),progress_note:p.progress_note||'',follow_up:p.follow_up||''})))}).catch(e=>setError(e.message));return}const event=q.get('event_id');if(event)void linkEvent(event).catch(e=>setError(e.message));const agenda=q.get('agenda_id');if(agenda)void fetch('/api/agenda/'+agenda).then(async r=>{const g=await r.json();if(!r.ok)throw Error(g.error);if(!g.attendance_enabled){setForm(v=>({...v,agenda_id:agenda,event_id:'',journal_date:jakartaDate(new Date(g.starts_at)),title:g.title,activity_type_id:g.activity_type_id||'',class_id:g.class_id||'',journal_kind:g.audience==='CABERAWIT'?'CABERAWIT_CLASS':g.audience==='MUDA_MUDI'?'MUDA_MUDI_CLASS':g.audience}));return null}return fetch('/api/attendance',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({agenda_id:agenda})})}).then(async r=>{if(!r)return;const e=await r.json();if(!r.ok)throw new Error(e.error);await linkEvent(e.id)}).catch(e=>setError(e.message))},[]);
 
   const cabClasses=useMemo(()=>classes.filter(c=>c.audience===(form.journal_kind.startsWith('MUDA_MUDI')?'MUDA_MUDI':'CABERAWIT')),[classes,form.journal_kind]);
   const currentAudience=form.journal_kind==='IBU_IBU'?'IBU_IBU':form.journal_kind==='PENGURUS'?'PENGURUS':form.journal_kind.startsWith('CABERAWIT')?'CABERAWIT':form.journal_kind.startsWith('MUDA_MUDI')?'MUDA_MUDI':'KELOMPOK';
-  const currentActivities=activities.filter(a=>a.audience===currentAudience||a.audience==='CUSTOM');
-  const targetOptions=targets.filter(t=>!form.class_id||!t.class_id||t.class_id===form.class_id);
+  const currentActivities=activities.filter(a=>a.audience===currentAudience);
+  const targetOptions=targets.filter(t=>(!form.class_id||!t.class_id||t.class_id===form.class_id)&&(!t.target_month||t.target_month.slice(0,7)===form.journal_date.slice(0,7)));
+  const eligible=roster.filter(r=>r.status==='H');
 
   async function save(e:FormEvent){
     e.preventDefault();setSaving(true);setError('');
+    if(journalId&&(state==='ARCHIVED'||originalState==='ARCHIVED'&&state==='DRAFT')){try{const r=await fetch('/api/journals/'+journalId,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({state_only:true,state,revision})});const j=await r.json();if(!r.ok)throw Error(j.error);location.href='/jurnal'}catch(e){setError(e instanceof Error?e.message:'Perubahan status gagal.');setSaving(false)}return}
+    let prepared;try{prepared=prepareJournalPayloadProgress(form.journal_kind,progress,roster)}catch(e){setError(e instanceof Error?e.message:'Penilaian tidak valid.');setSaving(false);return}
     const body={
       journal_kind:form.journal_kind,journal_date:form.journal_date,title:form.title,
       activity_type_id:form.activity_type_id||null,class_id:form.class_id||null,member_id:form.member_id||null,
       started_at:form.started_at||null,ended_at:form.ended_at||null,material:form.material||null,summary:form.summary||null,
       result:form.result||null,achievement:form.achievement||null,obstacles:form.obstacles||null,improvement_plan:form.improvement_plan||null,
       decisions:form.decisions||null,follow_up:form.follow_up||null,notes:form.notes||null,
-      event_id:form.event_id||null,
-      assessment:{materials:materials.filter(x=>x.topic||x.page),meeting_type:form.journal_kind==='PENGURUS'?form.meeting_type:null,absence:form.absence,absence_reason:form.absence_reason},
-      progress:form.journal_kind.endsWith('_INDIVIDUAL')&&form.member_id&&form.absence==='HADIR'&&form.progress_note?{
-        member_id:form.member_id,target_id:form.target_id||null,progress_value:form.progress_value||null,
-        progress_note:form.progress_note,follow_up:form.follow_up||null,assessment:{materials:materials.filter(x=>x.topic||x.page)}
-      }:null
+      event_id:form.event_id||null,agenda_id:form.agenda_id||null,state,revision,
+      assessment:{materials:materials.filter(x=>x.topic||x.page||x.presenter),meeting_type:form.journal_kind==='PENGURUS'?form.meeting_type:null,class_assessment:form.journal_kind.endsWith('_CLASS')?{achievement:form.achievement,obstacles:form.obstacles,improvement_plan:form.improvement_plan,follow_up:form.follow_up}:null,...governance},
+      progress:prepared.map(p=>({...p,assessment:{materials:materials.filter(x=>x.topic||x.page)}}))
+
     };
-    const r=await fetch('/api/journals',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+    try{const r=await fetch(journalId?'/api/journals/'+journalId:'/api/journals',{method:journalId?'PATCH':'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
     const j=await r.json();
-    if(!r.ok){setError(j.error||'Gagal menyimpan jurnal.');setSaving(false);return}
-    window.location.href='/jurnal';
+    if(!r.ok){setError(r.status===409?'Konflik revisi: jurnal telah diubah orang lain. Muat ulang sebelum menyimpan.':j.error||'Gagal menyimpan jurnal.');setSaving(false);return}
+    window.location.href='/jurnal';}catch(e){setError(e instanceof Error?e.message:'Gagal menyimpan jurnal.');setSaving(false)}
   }
 
   const set=(k:string,v:string)=>setForm(x=>({...x,[k]:v}));
 
   return <>
-    <div className="pageHeader"><div><h1>Buat Jurnal</h1></div></div>
+    <div className="pageHeader"><div><h1>{journalId?'Edit Jurnal':'Buat Jurnal'}</h1></div></div>
     <form className="card" onSubmit={save}>
       <div className="formGrid">
-        <label>Jenis jurnal<select className="select" value={form.journal_kind} onChange={e=>set('journal_kind',e.target.value)}>{kinds.map(([v,l])=><option value={v} key={v}>{l}</option>)}</select></label>
+        <label>Status dokumen<select className="select" value={state} onChange={e=>setState(e.target.value)}><option value="DRAFT">Draf</option><option value="COMPLETED">Selesai</option><option value="ARCHIVED">Arsip</option></select></label><label>Pertemuan<select className="select" value={form.event_id} onChange={e=>void linkEvent(e.target.value).catch(e=>setError(e.message))}><option value="">Pilih pertemuan presensi</option>{events.filter(e=>writeScopesForRole(role).includes(e.audience as any)).map(e=><option key={e.id} value={e.id}>{e.event_date} · {e.title}</option>)}</select></label>
+        <label>Jenis jurnal<select className="select" value={form.journal_kind} onChange={e=>set('journal_kind',e.target.value)}>{kinds.filter(([v])=>writeScopesForRole(role).includes((v.startsWith('CABERAWIT')?'CABERAWIT':v.startsWith('MUDA_MUDI')?'MUDA_MUDI':v) as any)).map(([v,l])=><option value={v} key={v}>{l}</option>)}</select></label>
         <label>Tanggal<input className="input" type="date" value={form.journal_date} onChange={e=>set('journal_date',e.target.value)} required/></label>
         <label>Judul<input className="input" value={form.title} onChange={e=>set('title',e.target.value)} required/></label>
-        <label>Jenis kegiatan<select className="select" required value={form.activity_type_id} onChange={e=>set('activity_type_id',e.target.value)}><option value="">Pilih</option>{currentActivities.map(a=><option value={a.id} key={a.id}>{a.name}</option>)}</select></label>
+        <label>Jenis kegiatan<select className="select" value={form.activity_type_id} onChange={e=>set('activity_type_id',e.target.value)}><option value="">Pilih</option>{currentActivities.map(a=><option value={a.id} key={a.id}>{a.name}</option>)}</select></label>
 
         {(form.journal_kind.startsWith('CABERAWIT')||form.journal_kind.startsWith('MUDA_MUDI'))&&<label>Kelas<select className="select" value={form.class_id} onChange={e=>set('class_id',e.target.value)}><option value="">Pilih kelas</option>{cabClasses.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select></label>}
-        {form.journal_kind.endsWith('_INDIVIDUAL')&&<label>Individu<select className="select" required value={form.member_id} onChange={e=>set('member_id',e.target.value)}><option value="">Pilih</option>{members.map(m=><option value={m.id} key={m.id}>{m.name}</option>)}</select></label>}
+
         <label>Mulai<input className="input" type="time" value={form.started_at} onChange={e=>set('started_at',e.target.value)}/></label>
         <label>Selesai<input className="input" type="time" value={form.ended_at} onChange={e=>set('ended_at',e.target.value)}/></label>
 
         {form.journal_kind==='PENGURUS'&&<><label>Jenis musyawarah<select className="select" value={form.meeting_type} onChange={e=>set('meeting_type',e.target.value)}><option>Kelompok</option><option>Lima Unsur</option><option>Pengajar</option></select></label><label>Ambil kehadiran dari presensi<select className="select" value={form.event_id} onChange={e=>set('event_id',e.target.value)}><option value="">Belum ditautkan</option>{events.filter(x=>x.audience==='PENGURUS'&&x.event_date===form.journal_date).map(x=><option value={x.id} key={x.id}>{x.title}</option>)}</select></label><label className="span2">Usulan<textarea className="textarea" value={form.material} onChange={e=>set('material',e.target.value)}/></label></>}
-        <div className="span2"><div className="cardHead"><div><h2>Materi dan halaman terakhir</h2><p>Tambah sebanyak yang diperlukan.</p></div><button type="button" className="btn secondary" onClick={()=>setMaterials(v=>[...v,{topic:'',page:''}])}>+ Materi</button></div>{materials.map((m,i)=><div className="row materialRow" key={i}><input className="input" placeholder="Nama materi" value={m.topic} onChange={e=>setMaterials(v=>v.map((x,k)=>k===i?{...x,topic:e.target.value}:x))}/><input className="input" placeholder="Halaman terakhir" value={m.page} onChange={e=>setMaterials(v=>v.map((x,k)=>k===i?{...x,page:e.target.value}:x))}/>{materials.length>1&&<button type="button" className="smallAction" onClick={()=>setMaterials(v=>v.filter((_,k)=>k!==i))}>Hapus</button>}</div>)}</div>
-        {form.journal_kind==='CABERAWIT_CLASS'&&<><label>Capaian<textarea className="textarea" value={form.achievement} onChange={e=>set('achievement',e.target.value)}/></label><label>Rencana perbaikan<textarea className="textarea" value={form.improvement_plan} onChange={e=>set('improvement_plan',e.target.value)}/></label></>}
+        <div className="span2"><div className="cardHead"><div><h2>Materi dan halaman terakhir</h2><p>Tambah sebanyak yang diperlukan.</p></div><button type="button" className="btn secondary" onClick={()=>setMaterials(v=>[...v,{topic:'',page:'',presenter:''}])}>+ Materi</button></div>{materials.map((m,i)=><div className="row materialRow" key={i}><input className="input" placeholder="Nama materi" value={m.topic} onChange={e=>setMaterials(v=>v.map((x,k)=>k===i?{...x,topic:e.target.value}:x))}/><input className="input" placeholder="Halaman terakhir" value={m.page} onChange={e=>setMaterials(v=>v.map((x,k)=>k===i?{...x,page:e.target.value}:x))}/><input className="input" placeholder="Pemateri" value={m.presenter} onChange={e=>setMaterials(v=>v.map((x,k)=>k===i?{...x,presenter:e.target.value}:x))}/>{materials.length>1&&<button type="button" className="smallAction" onClick={()=>setMaterials(v=>v.filter((_,k)=>k!==i))}>Hapus</button>}</div>)}</div>
+        {form.journal_kind.endsWith('_CLASS')&&<><label>Capaian<textarea className="textarea" value={form.achievement} onChange={e=>set('achievement',e.target.value)}/></label><label>Rencana perbaikan<textarea className="textarea" value={form.improvement_plan} onChange={e=>set('improvement_plan',e.target.value)}/></label></>}
         {form.journal_kind==='PENGURUS'&&<><label className="span2">Notulensi<textarea className="textarea" value={form.summary} onChange={e=>set('summary',e.target.value)}/></label><label>Keputusan<textarea className="textarea" value={form.decisions} onChange={e=>set('decisions',e.target.value)}/></label><label>Pelaksanaan / hasil<textarea className="textarea" value={form.result} onChange={e=>set('result',e.target.value)}/></label></>}
-        {form.journal_kind.endsWith('_INDIVIDUAL')&&<>
-          <label>Status<select className="select" value={form.absence} onChange={e=>set('absence',e.target.value)}><option value="HADIR">Hadir</option><option value="IZIN">Izin</option><option value="ALFA">Tidak masuk</option></select></label>
-          {form.absence!=='HADIR'&&<label>Alasan / keterangan<input className="input" value={form.absence_reason} onChange={e=>set('absence_reason',e.target.value)}/></label>}
-          {form.absence==='HADIR'&&<>
-          <label>Target<select className="select" value={form.target_id} onChange={e=>set('target_id',e.target.value)}><option value="">Tanpa target khusus</option>{targetOptions.map(t=><option value={t.id} key={t.id}>{t.title}</option>)}</select></label>
-          <label>Nilai progres<input className="input" type="number" min="0" max="100" value={form.progress_value} onChange={e=>set('progress_value',e.target.value)}/></label>
-          <label className="span2">Catatan progres<textarea className="textarea" value={form.progress_note} onChange={e=>set('progress_note',e.target.value)} required/></label>
-          </>}
-        </>}
+        {form.journal_kind.endsWith('_INDIVIDUAL')&&<div className="span2"><h2>Penilaian peserta</h2><p>Pilih beberapa peserta dari daftar Hadir. Nilai kosong berarti belum dinilai.</p>{!form.event_id&&<div className="notice">Tautkan pertemuan untuk memuat peserta.</div>}<div className="chips">{eligible.map(r=><button key={r.participant_key||r.member_id} type="button" className="btn ghost" onClick={()=>setProgress(v=>[...v,{member_id:r.participant_key||r.member_id,target_id:'',progress_value:'',progress_note:'',follow_up:''}])}>+ {r.member_name_snapshot}</button>)}</div>{progress.map((p,i)=><div className="card section" key={i}><strong>{roster.find(r=>(r.participant_key||r.member_id)===p.member_id)?.member_name_snapshot||p.member_id}</strong>{!eligible.some(r=>(r.participant_key||r.member_id)===p.member_id)&&<div className="notice error">Peserta tidak Hadir; penilaian ini tidak akan disimpan.</div>}<select className="select" value={p.target_id} onChange={e=>setProgress(v=>v.map((x,k)=>k===i?{...x,target_id:e.target.value}:x))}><option value="">Tanpa target khusus</option>{targetOptions.filter(t=>!t.level_id||t.level_id===roster.find(r=>(r.participant_key||r.member_id)===p.member_id)?.level_id_snapshot).map(t=><option key={t.id} value={t.id}>{t.title}</option>)}</select><input aria-label="Nilai progres" className="input" type="number" min="0" max="100" placeholder="Belum dinilai" value={p.progress_value} onChange={e=>setProgress(v=>v.map((x,k)=>k===i?{...x,progress_value:e.target.value}:x))}/><textarea aria-label="Catatan progres" className="textarea" placeholder="Catatan progres" value={p.progress_note} onChange={e=>setProgress(v=>v.map((x,k)=>k===i?{...x,progress_note:e.target.value}:x))}/><textarea aria-label="Tindak lanjut peserta" className="textarea" placeholder="Tindak lanjut peserta" value={p.follow_up} onChange={e=>setProgress(v=>v.map((x,k)=>k===i?{...x,follow_up:e.target.value}:x))}/><button type="button" onClick={()=>setProgress(v=>v.filter((_,k)=>k!==i))}>Hapus penilaian</button></div>)}</div>}
+        {form.journal_kind==='PENGURUS'&&<><label>Usulan<textarea className="textarea" value={governance.proposal} onChange={e=>setGovernance(v=>({...v,proposal:e.target.value}))}/></label><label>Penanggung jawab<input className="input" value={governance.pic} onChange={e=>setGovernance(v=>({...v,pic:e.target.value}))}/></label><label>Batas waktu<input type="date" className="input" value={governance.deadline} onChange={e=>setGovernance(v=>({...v,deadline:e.target.value}))}/></label><label>Pelaksanaan<textarea className="textarea" value={governance.execution} onChange={e=>setGovernance(v=>({...v,execution:e.target.value}))}/></label></>}
+        {form.journal_kind!=='PENGURUS'&&<label className="span2">Ringkasan<textarea className="textarea" value={form.summary} onChange={e=>set('summary',e.target.value)}/></label>}
         <label>Kendala<textarea className="textarea" value={form.obstacles} onChange={e=>set('obstacles',e.target.value)}/></label>
         <label>Tindak lanjut<textarea className="textarea" value={form.follow_up} onChange={e=>set('follow_up',e.target.value)}/></label>
       </div>
+      {!!history.length&&<details className="section"><summary>Riwayat revisi</summary>{history.map((h:any)=><div key={h.id}>Revisi {h.snapshot?.revision} · {h.created_at} · {h.actor_name||'Petugas'}</div>)}</details>}
       {error&&<div className="notice error section">{error}</div>}
       <div className="formActions"><a className="btn ghost" href="/jurnal">Batal</a><button className="btn" disabled={saving}>{saving?'Menyimpan…':'Simpan'}</button></div>
     </form>

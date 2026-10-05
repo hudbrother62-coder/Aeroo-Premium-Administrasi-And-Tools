@@ -24,7 +24,8 @@ export function readScopesForRole(role:string|null|undefined):Audience[]{
   switch(role){
     case 'DEWAN_GURU': return ['CABERAWIT','MUDA_MUDI'];
     case 'KELOMPOK': return ['KELOMPOK','MUDA_MUDI','IBU_IBU','PENGURUS'];
-    default: return allAudiences;
+    case 'ADMIN': return allAudiences;
+    default: return allAudiences.filter(a=>a!=='PENGURUS');
   }
 }
 

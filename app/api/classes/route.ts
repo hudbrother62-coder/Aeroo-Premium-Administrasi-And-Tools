@@ -1,7 +1,8 @@
+import {publicProjection} from '@/lib/public-read';
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
 
-export async function GET(req:NextRequest){
+export async function GET(req:NextRequest){const projection=await publicProjection(req,'classes');if(projection)return projection;
   const s=await db();
   const audience=req.nextUrl.searchParams.get('audience');
   let q=s.from('classes').select('*,levels(id,name)').eq('active',true).order('sort_order').order('name');

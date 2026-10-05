@@ -1,32 +1,3 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/supabase-server';
-
-export async function PATCH(req:NextRequest,{params}:{params:Promise<{id:string}>}){
-  const {id}=await params;
-  const s=await db();
-  const {data,error}=await s
-    .from('caberawit')
-    .update({...await req.json(),updated_at:new Date().toISOString()})
-    .eq('id',id)
-    .select()
-    .single();
-
-  return error
-    ? NextResponse.json({error:error.message},{status:400})
-    : NextResponse.json(data);
-}
-
-export async function DELETE(_:NextRequest,{params}:{params:Promise<{id:string}>}){
-  const {id}=await params;
-  const s=await db();
-  const {data,error}=await s
-    .from('caberawit')
-    .update({status:'INACTIVE',updated_at:new Date().toISOString()})
-    .eq('id',id)
-    .select()
-    .single();
-
-  return error
-    ? NextResponse.json({error:error.message},{status:400})
-    : NextResponse.json(data);
-}
+import {NextResponse} from 'next/server';
+export async function PATCH(){return NextResponse.json({error:'Gunakan database anggota terpadu /api/members.'},{status:410})}
+export async function DELETE(){return NextResponse.json({error:'Gunakan arsip pada database anggota terpadu.'},{status:410})}

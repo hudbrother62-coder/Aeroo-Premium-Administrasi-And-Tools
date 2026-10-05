@@ -1,8 +1,9 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
-import {canWriteAudience} from '@/lib/access';
+import {publicProjection} from '@/lib/public-read';
 
 export async function GET(req:NextRequest){
+  const publicResult=await publicProjection(req,'attendance');if(publicResult)return publicResult;
   const s=await db();
   const from=req.nextUrl.searchParams.get('from');
   const to=req.nextUrl.searchParams.get('to');
@@ -22,34 +23,5 @@ export async function GET(req:NextRequest){
 }
 
 export async function POST(req:NextRequest){
-  const s=await db();
-  const{records,...event}=await req.json();
-  const{data:role}=await s.rpc('current_app_role');
-
-  if(!canWriteAudience(role,String(event.audience??''))){
-    return NextResponse.json({error:'Jenis presensi ini di luar akses akun.'},{status:403});
-  }
-
-  const{data,error}=await s.from('attendance_events').insert({
-    ...event,
-    class_id:event.class_id||null,
-    level_id:event.level_id||null,
-    activity_type_id:event.activity_type_id||null
-  }).select().single();
-  if(error)return NextResponse.json({error:error.message},{status:400});
-
-  if(records?.length){
-    const ids=records.map((r:{member_id:string})=>r.member_id);
-    const {data:people,error:peopleError}=await s.from('members').select('id,name').in('id',ids);
-    if(peopleError){await s.from('attendance_events').delete().eq('id',data.id);return NextResponse.json({error:peopleError.message},{status:400})}
-    const names=new Map((people??[]).map(m=>[m.id,m.name]));
-    const{error:recordError}=await s.from('attendance_records').insert(
-      records.map((r:Record<string,unknown>)=>({...r,event_id:data.id,member_name_snapshot:names.get(String(r.member_id))??null}))
-    );
-    if(recordError){
-      await s.from('attendance_events').delete().eq('id',data.id);
-      return NextResponse.json({error:recordError.message},{status:400});
-    }
-  }
-  return NextResponse.json(data,{status:201});
+ try{const s=await db();const event=await req.json();if(event.records)return NextResponse.json({error:'Gunakan penyimpanan per peserta.'},{status:400});const {data,error}=await s.rpc('ensure_attendance',{p_event:event});return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data,{status:201});}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Gagal membuka presensi.'},{status:400})}
 }

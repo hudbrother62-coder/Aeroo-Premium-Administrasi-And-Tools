@@ -1,58 +1,25 @@
 import {NextRequest,NextResponse} from 'next/server';
 import * as XLSX from 'xlsx';
 import {db} from '@/lib/supabase-server';
-
+import {publicRows} from '@/lib/public-read';
+import {excelDate,spreadsheetCell,readWorkbook} from '@/lib/spreadsheet';
 export const runtime='nodejs';
-const columns=['Nama','Jenis Kelamin','Tempat Lahir','Tanggal Lahir','Nomor HP','Alamat','Jenjang','Kelas','Bagian Pengurus','Kategori (pisahkan koma)','Catatan'];
-function workbook(rows:unknown[][],name:string){
-  const sheet=XLSX.utils.aoa_to_sheet(rows);
-  const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,sheet,'Anggota');
-  const bytes=XLSX.write(book,{type:'buffer',bookType:'xlsx'});
-  return new Response(bytes,{headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':`attachment; filename="${name}"`}});
-}
+const columns=['ID Anggota','Revision','Nama','Jenis Kelamin','Tempat Lahir','Tanggal Lahir','Nomor HP','Alamat','Jenjang','Kelas','Bagian Pengurus','Kategori (pisahkan koma)','Catatan','Nama Wali','Nomor HP Wali','Keikutsertaan JSON'];
 const norm=(v:unknown)=>String(v??'').trim();
-
-export async function GET(req:NextRequest){
-  if(req.nextUrl.searchParams.get('template')==='1')return workbook([columns,['Contoh Nama','L','Malang','2010-01-01','08123456789','Alamat lengkap','SD 1','Kelas A','Sekretariat','Caberawit, Kelompok','']], 'template-anggota-airo.xlsx');
-  const s=await db();const {data:role}=await s.rpc('current_app_role');
-  if(!role)return NextResponse.json({error:'Login diperlukan.'},{status:401});
-  const {data,error}=await s.from('members').select('*,levels(name),classes(name),member_categories(categories(name))').eq('status','ACTIVE').order('name');
-  if(error)return NextResponse.json({error:error.message},{status:400});
-  const rows=[columns,...(data??[]).map((m:any)=>[m.name,m.gender,m.birth_place,m.birth_date,m.phone,m.address,m.levels?.name,m.classes?.name,m.section,m.member_categories?.map((c:any)=>c.categories?.name).filter(Boolean).join(', '),m.notes])];
-  if(req.nextUrl.searchParams.get('format')==='csv'){
-    const csv='\ufeff'+rows.map(row=>row.map(v=>`"${String(v??'').replace(/"/g,'""')}"`).join(',')).join('\r\n');
-    return new Response(csv,{headers:{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':'attachment; filename="anggota-airo.csv"'}});
-  }
-  return workbook(rows,'anggota-airo.xlsx');
-}
-
-export async function POST(req:NextRequest){
-  const s=await db();const {data:role}=await s.rpc('current_app_role');
-  if(!['ADMIN','DEWAN_GURU','KELOMPOK'].includes(role??''))return NextResponse.json({error:'Akses input ditolak.'},{status:403});
-  const form=await req.formData();const file=form.get('file');
-  if(!(file instanceof File)||file.size>5_000_000)return NextResponse.json({error:'Pilih file XLSX maksimal 5 MB.'},{status:400});
-  try{
-    const book=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:false});
-    const rows=XLSX.utils.sheet_to_json<Record<string,unknown>>(book.Sheets[book.SheetNames[0]],{defval:''});
-    if(rows.length>500)return NextResponse.json({error:'Maksimal 500 anggota per impor.'},{status:400});
-    const [catRes,levRes,classRes]=await Promise.all([s.from('categories').select('id,name,slug'),s.from('levels').select('id,name'),s.from('classes').select('id,name')]);
-    if(catRes.error||levRes.error||classRes.error)throw catRes.error||levRes.error||classRes.error;
-    const categories=catRes.data??[],levels=levRes.data??[],classes=classRes.data??[];
-    const allowed=role==='ADMIN'?['kelompok','muda-mudi','caberawit','ibu-ibu','pengurus']:role==='DEWAN_GURU'?['caberawit','muda-mudi']:['kelompok','ibu-ibu','pengurus'];
-    let inserted=0;const errors:string[]=[];
-    for(let i=0;i<rows.length;i++){
-      const row=rows[i],name=norm(row['Nama']);if(!name){errors.push(`Baris ${i+2}: nama kosong.`);continue}
-      const categoryNames=norm(row['Kategori (pisahkan koma)']).split(',').map(x=>x.trim().toLowerCase()).filter(Boolean);
-      const selected=categoryNames.map(v=>categories.find(c=>c.name.toLowerCase()===v||c.slug===v));
-      if(!selected.length||selected.some(x=>!x||!allowed.includes(x.slug))){errors.push(`Baris ${i+2}: kategori tidak valid atau di luar akses.`);continue}
-      const level=levels.find(x=>x.name.toLowerCase()===norm(row['Jenjang']).toLowerCase());
-      const classRow=classes.find(x=>x.name.toLowerCase()===norm(row['Kelas']).toLowerCase());
-      const {data,error}=await s.from('members').insert({name,gender:norm(row['Jenis Kelamin'])||null,birth_place:norm(row['Tempat Lahir'])||null,birth_date:norm(row['Tanggal Lahir'])||null,phone:norm(row['Nomor HP'])||null,address:norm(row['Alamat'])||null,level_id:level?.id??null,class_id:classRow?.id??null,section:norm(row['Bagian Pengurus'])||null,notes:norm(row['Catatan'])||null,status:'ACTIVE'}).select('id').single();
-      if(error){errors.push(`Baris ${i+2}: ${error.message}`);continue}
-      const {error:categoryError}=await s.from('member_categories').insert(selected.map(c=>({member_id:data.id,category_id:c!.id})));
-      if(categoryError){await s.from('members').delete().eq('id',data.id);errors.push(`Baris ${i+2}: ${categoryError.message}`);continue}
-      inserted++;
-    }
-    return NextResponse.json({inserted,errors});
-  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'File tidak dapat dibaca.'},{status:400})}
-}
+function workbook(rows:unknown[][],name:string){const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet(rows),'Anggota');return new Response(XLSX.write(book,{type:'buffer',bookType:'xlsx'}),{headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':`attachment; filename="${name}"`}})}
+export async function GET(req:NextRequest){try{
+ if(req.nextUrl.searchParams.get('template')==='1')return workbook([columns,['','','Contoh Nama','L','Malang','2010-01-01','08123456789','Alamat lengkap','SD 1','','','Caberawit, Kelompok','','','','']], 'template-anggota-airo.xlsx');
+ const s=await db();const{data:role}=await s.rpc('current_app_role');const viewer=!role||role==='VIEWER';const result=viewer?{data:await publicRows('members'),error:null}:await s.from('members').select('*,member_memberships(*,categories(name,slug),classes(name),levels(name))').eq('status','ACTIVE').order('name');if(result.error)throw Error(result.error.message);
+ const rows:unknown[][]=viewer?[['ID Anggota','Nama','Kategori','Jenjang','Kelas'],...(result.data||[]).map((p:any)=>[p.id,p.name,p.member_categories.map((m:any)=>m.categories?.name).join(', '),p.member_memberships.map((m:any)=>m.levels?.name).filter(Boolean).join(', '),p.member_memberships.map((m:any)=>m.classes?.name).filter(Boolean).join(', ')])]:[columns,...(result.data||[]).map((p:any)=>{const mm=p.member_memberships.filter((m:any)=>m.active);const learning=mm.find((m:any)=>['caberawit','muda-mudi'].includes(m.categories?.slug));return [p.id,p.revision,p.name,p.gender,p.birth_place,p.birth_date,p.phone,p.address,learning?.levels?.name,learning?.classes?.name,mm.find((m:any)=>m.categories?.slug==='pengurus')?.section,mm.map((m:any)=>m.categories?.name).join(', '),p.notes,p.guardian_name,p.guardian_phone,JSON.stringify(mm.map(({categories,classes,levels,created_at,member_id,...m}:any)=>m))]})];
+ if(req.nextUrl.searchParams.get('format')==='csv')return new Response('\ufeff'+rows.map(r=>r.map(v=>'"'+spreadsheetCell(v).replace(/"/g,'""')+'"').join(',')).join('\r\n'),{headers:{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':'attachment; filename="anggota-airo.csv"'}});return workbook(rows,'anggota-airo.xlsx');
+ }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Export gagal'},{status:400})}}
+export async function POST(req:NextRequest){try{
+ const s=await db();const{data:role}=await s.rpc('current_app_role');if(!['ADMIN','DEWAN_GURU','KELOMPOK'].includes(role||''))return NextResponse.json({error:'Akses input ditolak.'},{status:403});const form=await req.formData();const file=form.get('file');if(!(file instanceof File))throw Error('Pilih workbook');const book=await readWorkbook(file);const rows=XLSX.utils.sheet_to_json<Record<string,unknown>>(book.Sheets[book.SheetNames[0]],{defval:''});if(!rows.length||rows.length>500)throw Error('Isi 1–500 anggota per impor');
+ const [catRes,levelRes,classRes,existingRes]=await Promise.all([s.from('categories').select('id,name,slug'),s.from('levels').select('id,name'),s.from('classes').select('id,name,level_id,audience'),s.from('members').select('id,name,birth_date,phone,address,gender,member_categories(category_id)')]);if(catRes.error||levelRes.error||classRes.error||existingRes.error)throw Error('Referensi impor tidak dapat dimuat');const cats=catRes.data||[],levels=levelRes.data||[],classes=classRes.data||[];const payload:any[]=[];const errors:string[]=[];const seen=new Set<string>();
+ for(let i=0;i<rows.length;i++){try{const row=rows[i],name=norm(row.Nama);if(!name)throw Error('Nama kosong');const birth_date=excelDate(row['Tanggal Lahir']);const categoryNames=norm(row['Kategori (pisahkan koma)']).split(',').map(v=>v.trim().toLowerCase()).filter(Boolean);const selected=categoryNames.map(n=>cats.find(c=>c.name.toLowerCase()===n||c.slug===n));const className=norm(row.Kelas),levelName=norm(row.Jenjang);const klass=className?classes.filter(k=>k.name.toLowerCase()===className.toLowerCase()):[];if(!norm(row['Keikutsertaan JSON'])&&className&&klass.length!==1)throw Error('Kelas tidak ditemukan atau namanya ambigu');const level=levelName?levels.find(l=>l.name.toLowerCase()===levelName.toLowerCase()):null;if(!norm(row['Keikutsertaan JSON'])&&levelName&&!level)throw Error('Jenjang tidak ditemukan');let memberships:any[];
+ if(norm(row['Keikutsertaan JSON'])){memberships=JSON.parse(norm(row['Keikutsertaan JSON']));if(!Array.isArray(memberships))throw Error('JSON keikutsertaan harus berupa daftar')}
+ else{if(className&&!selected.some(c=>c&&klass[0]?.audience===(c.slug==='caberawit'?'CABERAWIT':c.slug==='muda-mudi'?'MUDA_MUDI':'')))throw Error('Kelas tidak sesuai kategori yang dipilih');if(!selected.length||selected.some(c=>!c))throw Error('Kategori tidak valid');memberships=selected.map(c=>({category_id:c!.id,active:true,...(['caberawit','muda-mudi'].includes(c!.slug)?{class_id:klass[0]?.audience===(c!.slug==='caberawit'?'CABERAWIT':'MUDA_MUDI')?klass[0]?.id:null,level_id:klass[0]?.audience===(c!.slug==='caberawit'?'CABERAWIT':'MUDA_MUDI')?klass[0]?.level_id||level?.id:level?.id}:c!.slug==='pengurus'?{section:norm(row['Bagian Pengurus'])}:{})}))}
+ const id=norm(row['ID Anggota'])||null;const person={name,gender:norm(row['Jenis Kelamin']),birth_place:norm(row['Tempat Lahir']),birth_date,phone:norm(row['Nomor HP']),address:norm(row.Alamat),notes:norm(row.Catatan),guardian_name:norm(row['Nama Wali']),guardian_phone:norm(row['Nomor HP Wali'])};const fingerprint=JSON.stringify([name.toLowerCase(),birth_date,person.phone,person.address,person.gender,memberships.map(m=>m.category_id).sort()]);if(seen.has(id||fingerprint))throw Error('Baris duplikat di workbook');seen.add(id||fingerprint);if(!id&&existingRes.data?.some(p=>JSON.stringify([p.name.toLowerCase(),p.birth_date,p.phone||'',p.address||'',p.gender||'',p.member_categories.map(c=>c.category_id).sort()])===fingerprint))throw Error('Biodata identik sudah ada. Gunakan ID Anggota untuk memperbarui; nama tidak digabung otomatis.');if(id&&(!Number.isInteger(Number(row.Revision))||norm(row.Revision)===''))throw Error('Revision wajib untuk memperbarui ID Anggota');payload.push({id,revision:id?Number(row.Revision):0,person,memberships});
+ }catch(e){errors.push(`Baris ${i+2}: ${e instanceof Error?e.message:'Data tidak valid'}`)}}
+ if(errors.length)return NextResponse.json({error:'Impor dibatalkan; perbaiki semua baris terlebih dahulu.',errors},{status:400});const{data,error}=await s.rpc('save_members_batch',{p_rows:payload});return error?NextResponse.json({error:error.message},{status:error.message.includes('CONFLICT')?409:400}):NextResponse.json({inserted:payload.filter(p=>!p.id).length,updated:payload.filter(p=>p.id).length,processed:data,errors:[]});
+ }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Workbook tidak dapat dibaca.'},{status:400})}}

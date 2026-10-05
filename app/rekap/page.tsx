@@ -1,12 +1,13 @@
 'use client';
 
+import {jakartaDate} from '@/lib/domain';
 import {useEffect,useState} from 'react';
 
-type Summary={month:string;counts:{total:number;caberawit:number;muda_mudi:number;pengurus:number;ibu_ibu:number};attendance:{H:number;I:number;A:number;meetings:number};journals:number;individuals:Array<{id:string;name:string;categories:string[];class_name:string;level_name:string;H:number;I:number;A:number;percentage:number;journals:number}>};
+type Summary={month:string;counts:{total:number;caberawit:number;muda_mudi:number;pengurus:number;ibu_ibu:number};attendance:{H:number;I:number;A:number;meetings:number};journals:number;individuals:Array<{id:string;name:string;categories:string[];class_name:string;level_name:string;H:number;I:number;A:number;percentage:number|null;journals:number}>};
 
 export default function RekapPage(){
   const now=new Date();
-  const[month,setMonth]=useState(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`);
+  const[month,setMonth]=useState(jakartaDate().slice(0,7));const[role,setRole]=useState('VIEWER');useEffect(()=>{fetch('/api/auth/me').then(r=>r.json()).then(u=>setRole(u.role))},[]);
   const[mode,setMode]=useState<'ALL'|'PERSON'>('ALL');
   const[span,setSpan]=useState<1|6>(1);
   const[search,setSearch]=useState('');
@@ -27,10 +28,10 @@ export default function RekapPage(){
         <div className="metricCard"><span>Total database</span><strong>{data.counts.total}</strong></div>
         <div className="metricCard"><span>Caberawit</span><strong>{data.counts.caberawit}</strong></div>
         <div className="metricCard"><span>Muda-Mudi</span><strong>{data.counts.muda_mudi}</strong></div>
-        <div className="metricCard"><span>Pengurus</span><strong>{data.counts.pengurus}</strong></div>
+        {['ADMIN','KELOMPOK'].includes(role)&&<div className="metricCard"><span>Pengurus</span><strong>{data.counts.pengurus}</strong></div>}<div className="metricCard"><span>Ibu-Ibu</span><strong>{data.counts.ibu_ibu}</strong></div>
       </div>
       <div className="dashboardGrid section">
-        <section className="card"><h2>Presensi Bulan Ini</h2><div className="attendanceSummary"><div><span>H</span><strong>{data.attendance.H}</strong><small>Hadir</small></div><div><span>I</span><strong>{data.attendance.I}</strong><small>Izin</small></div><div><span>A</span><strong>{data.attendance.A}</strong><small>Alfa</small></div></div></section>
+        <section className="card"><h2>Presensi Periode Ini</h2><div className="attendanceSummary"><div><span>H</span><strong>{data.attendance.H}</strong><small>Hadir</small></div><div><span>I</span><strong>{data.attendance.I}</strong><small>Izin</small></div><div><span>A</span><strong>{data.attendance.A}</strong><small>Alfa</small></div></div></section>
         <section className="card"><h2>Aktivitas</h2><div className="metricCard" style={{boxShadow:'none'}}><span>Jurnal tersimpan</span><strong>{data.journals}</strong></div></section>
       </div>
     </>}
@@ -38,7 +39,7 @@ export default function RekapPage(){
       <div className="card section"><label style={{display:'grid',gap:6,fontSize:13,fontWeight:800,color:'var(--muted)'}}>Cari individu<input className="input" placeholder="Ketik nama…" value={search} onChange={e=>setSearch(e.target.value)}/><select className="select" value={person?.id||''} onChange={e=>setSelected(e.target.value)}>{data.individuals.filter(p=>p.name.toLowerCase().includes(search.toLowerCase())).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label></div>
       {person&&<div className="dashboardGrid section">
         <section className="card"><h2>{person.name}</h2><div className="itemMeta">{person.categories.join(' • ')||'Tanpa kategori'} · {person.class_name||'Tanpa kelas'} · {person.level_name||'Tanpa jenjang'}</div><div className="attendanceSummary section"><div><span>H</span><strong>{person.H}</strong><small>Hadir</small></div><div><span>I</span><strong>{person.I}</strong><small>Izin</small></div><div><span>A</span><strong>{person.A}</strong><small>Alfa</small></div></div></section>
-        <section className="card"><div className="metricCard" style={{boxShadow:'none'}}><span>Persentase hadir</span><strong>{person.percentage}%</strong></div><div className="metricCard section" style={{boxShadow:'none'}}><span>Jurnal individu</span><strong>{person.journals}</strong></div></section>
+        <section className="card"><div className="metricCard" style={{boxShadow:'none'}}><span>Persentase hadir</span><strong>{person.percentage===null?'Belum diisi':person.percentage+'%'}</strong></div><div className="metricCard section" style={{boxShadow:'none'}}><span>Jurnal individu</span><strong>{person.journals}</strong></div></section>
       </div>}
     </>}
   </>;

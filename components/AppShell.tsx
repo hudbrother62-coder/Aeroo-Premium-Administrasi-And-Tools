@@ -56,15 +56,15 @@ export default function AppShell({children}:{children:React.ReactNode}){
     if(isLogin){setChecking(false);return}
     setChecking(true);
     fetch('/api/auth/me',{cache:'no-store'}).then(async r=>{
-      if(!r.ok){if(path!=='/')window.location.href='/login';setUser(null);document.documentElement.dataset.role='PUBLIC';return null}
+      if(!r.ok){setUser(null);document.documentElement.dataset.role='PUBLIC';return null}
       return r.json();
     }).then(v=>{
-      if(v){setUser(v);document.documentElement.dataset.role=v.role}
+      if(v){setUser(v.public?null:v);document.documentElement.dataset.role=v.role}
     }).finally(()=>setChecking(false));
   },[isLogin,path]);
 
   useEffect(()=>setDrawer(false),[path]);
-  const visible=useMemo(()=>user?nav.filter(x=>x.roles.includes(user.role)):nav.filter(x=>x.href==='/'),[user]);
+  const visible=useMemo(()=>user?nav.filter(x=>x.roles.includes(user.role)):nav.filter(x=>x.publicRead),[user]);
   const primaryMobile=['/','/database','/presensi','/agenda'];
   const mobilePrimary=visible.filter(x=>primaryMobile.includes(x.href));
   const mobileMore=visible.filter(x=>!primaryMobile.includes(x.href));
@@ -87,7 +87,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
     })}
   </nav>;
 
-  const account=<div className="sideActions">
+  const account=<div className="sideActions">{!user&&<Link className="sideButton" href="/login"><LogIn size={18}/>Masuk</Link>}
     <button className="sideButton" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}<span>{dark?'Mode terang':'Mode gelap'}</span></button>
     {user&&<div className="userBox">
       <div className="userIdentity"><strong>{user?.display_name||user?.username||'AEROO'}</strong><small>{user?roleLabel[user.role]:'Memuat…'}</small></div>
@@ -117,9 +117,9 @@ export default function AppShell({children}:{children:React.ReactNode}){
       <div className="pageContent">{checking?<div className="card"><div className="skeleton" style={{height:90}}/></div>:children}</div>
       <nav className="mobileBottomNav" aria-label="Navigasi utama">
         {renderNav(mobilePrimary,'bottomNavItems')}
-        {user&&mobileMore.length>0&&<button className={moreOpen?'bottomNavMore active':'bottomNavMore'} onClick={()=>{setMoreOpen(v=>!v);setDrawer(false)}} aria-expanded={moreOpen}><span><MoreHorizontal size={20}/></span><small>Lainnya</small></button>}
+        {mobileMore.length>0&&<button className={moreOpen?'bottomNavMore active':'bottomNavMore'} onClick={()=>{setMoreOpen(v=>!v);setDrawer(false)}} aria-expanded={moreOpen}><span><MoreHorizontal size={20}/></span><small>Lainnya</small></button>}
       </nav>
-      {user&&moreOpen&&<div className="mobileMorePanel">{renderNav(mobileMore,'moreNavItems')}</div>}
+      {moreOpen&&<div className="mobileMorePanel">{renderNav(mobileMore,'moreNavItems')}</div>}
     </main>
   </div>;
 }

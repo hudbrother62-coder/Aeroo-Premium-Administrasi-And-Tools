@@ -1,19 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/supabase-server';
-
-export async function GET(req:NextRequest){
-  const s=await db();
-  const level=req.nextUrl.searchParams.get('level');
-  let q=s.from('caberawit').select('*,levels(id,name)').order('name');
-  if(level) q=q.eq('level_id',level);
-  const {data,error}=await q;
-  if(error) return NextResponse.json({error:error.message},{status:400});
-  return NextResponse.json(data);
-}
-
-export async function POST(req:NextRequest){
-  const s=await db();
-  const {data,error}=await s.from('caberawit').insert(await req.json()).select().single();
-  if(error) return NextResponse.json({error:error.message},{status:400});
-  return NextResponse.json(data,{status:201});
-}
+import {NextRequest,NextResponse} from 'next/server';
+import {GET as membersGET} from '../members/route';
+export async function GET(req:NextRequest){req.nextUrl.searchParams.set('segment','CABERAWIT');return membersGET(req)}
+export async function POST(){return NextResponse.json({error:'Gunakan database anggota terpadu /api/members.'},{status:410})}

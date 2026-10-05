@@ -67,7 +67,7 @@ export default function Page(){
     <div className="list section">
       {loading?<div className="card"><div className="skeleton" style={{height:62}}/></div>:events.map(e=><div className="item row between" key={e.id}>
         <div><div className="itemTitle">{e.title}</div><div className="itemMeta">{new Date(e.event_date+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})} · {audienceLabels[e.audience as Audience]||e.audience}{e.classes?.name?' · '+e.classes.name:''}</div></div>
-        <span className="badge">{e.attendance_records?.length||0} peserta</span>
+        <span className="badge">{e.attendance_records?.length||0} peserta</span>{writable.includes(e.audience as Audience)&&<Link className="btn ghost" href={`/presensi/buat?event_id=${e.id}`}>Buka daftar</Link>}
       </div>)}
       {!loading&&!events.length&&<div className="emptyState">Belum ada presensi pada periode ini.</div>}
     </div>

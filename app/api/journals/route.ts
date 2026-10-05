@@ -1,14 +1,16 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
+import {publicProjection} from '@/lib/public-read';
 
 export async function GET(req:NextRequest){
+  const publicResult=await publicProjection(req,'journals');if(publicResult)return publicResult;
   const s=await db();
   const kind=req.nextUrl.searchParams.get('kind');
   const classId=req.nextUrl.searchParams.get('class_id');
   const memberId=req.nextUrl.searchParams.get('member_id');
 
   let q=s.from('journals')
-    .select('*,activity_types(id,name,audience),attendance_events(id,title,event_date),classes(id,name),members(id,name),journal_progress(id,member_id,target_id,progress_value,progress_note,follow_up,learning_targets(title))')
+    .select('*,activity_types(id,name,audience),attendance_events(id,title,event_date),classes(id,name),members(id,name),journal_progress(id,member_id,target_id,progress_value,progress_note,assessment,follow_up,learning_targets(title))')
     .order('journal_date',{ascending:false});
   if(kind)q=q.eq('journal_kind',kind);
   if(classId)q=q.eq('class_id',classId);
@@ -19,42 +21,5 @@ export async function GET(req:NextRequest){
 }
 
 export async function POST(req:NextRequest){
-  const s=await db();
-  const body=await req.json();
-  const progress=body.progress;
-  delete body.progress;
-  const {data:role}=await s.rpc('current_app_role');
-  const allowed=role==='ADMIN'||role==='DEWAN_GURU'&&['CABERAWIT_CLASS','CABERAWIT_INDIVIDUAL','MUDA_MUDI_INDIVIDUAL'].includes(body.journal_kind)||role==='KELOMPOK'&&['KELOMPOK','IBU_IBU','PENGURUS'].includes(body.journal_kind);
-  if(!allowed)return NextResponse.json({error:'Jenis jurnal di luar akses akun.'},{status:403});
-  if(progress&&(!Number.isFinite(Number(progress.progress_value))||Number(progress.progress_value)<0||Number(progress.progress_value)>100)&&progress.progress_value!=='')return NextResponse.json({error:'Progres harus antara 0 sampai 100.'},{status:400});
-
-  const{data,error}=await s.from('journals').insert({
-    ...body,
-    activity_type_id:body.activity_type_id||null,
-    event_id:body.event_id||null,
-    class_id:body.class_id||null,
-    member_id:body.member_id||null,
-    started_at:body.started_at||null,
-    ended_at:body.ended_at||null
-  }).select().single();
-  if(error)return NextResponse.json({error:error.message},{status:400});
-
-  if(progress?.member_id&&progress?.progress_note){
-    const {data:person}=await s.from('members').select('name').eq('id',progress.member_id).single();
-    const{error:pError}=await s.from('journal_progress').insert({
-      journal_id:data.id,
-      member_id:progress.member_id,
-      member_name_snapshot:person?.name??null,
-      target_id:progress.target_id||null,
-      progress_value:progress.progress_value===null||progress.progress_value===''?null:Number(progress.progress_value),
-      progress_note:progress.progress_note,
-      assessment:progress.assessment??{},
-      follow_up:progress.follow_up||null
-    });
-    if(pError){
-      await s.from('journals').delete().eq('id',data.id);
-      return NextResponse.json({error:pError.message},{status:400});
-    }
-  }
-  return NextResponse.json(data,{status:201});
+ try{const s=await db();const {progress,revision,...body}=await req.json();if(!Array.isArray(progress)||progress.length>500)return NextResponse.json({error:'Daftar penilaian tidak valid.'},{status:400});const {data,error}=await s.rpc('save_journal',{p_id:null,p_revision:0,p_body:body,p_progress:progress});return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data,{status:201});}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Gagal menyimpan jurnal.'},{status:400})}
 }

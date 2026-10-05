@@ -14,6 +14,7 @@ export async function GET(req:NextRequest){
   let q=s
     .from('attendance_events')
     .select('id,title,event_date,audience,level_id,attendance_records(id,status,member_id,caberawit_id)')
+    .neq('state','CANCELLED')
     .gte('event_date',from)
     .lte('event_date',to)
     .order('event_date');

@@ -1,19 +1,13 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
-import JSZip from 'jszip';
+import {appendReportDetails,replaceReportXml,escapeXml as esc,validateOfficeTemplate,defaultPresentation} from '@/lib/report-template';
+import {reportMemberships,reportTargets,snapshotPlacements} from '@/lib/report-scope';
+import {latestProgressRows,validDate,summarizeProgress} from '@/lib/domain';
 import {AlignmentType,Document,HeadingLevel,Packer,Paragraph,Table,TableCell,TableRow,TextRun} from 'docx';
 import {analyzeJson} from '@/lib/gemini';
 
 export const runtime='nodejs';
 
-function esc(s:unknown){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function replaceAllXml(xml:string,values:Record<string,string>){
-  let out=xml;
-  for(const[k,v]of Object.entries(values)){
-    out=out.split(`{{${k}}}`).join(esc(v));
-  }
-  return out;
-}
 function response(body:Uint8Array,contentType:string,fileName:string){
   return new Response(body as unknown as BodyInit,{headers:{'Content-Type':contentType,'Content-Disposition':`attachment; filename="${fileName}"`,'Cache-Control':'no-store'}});
 }
@@ -25,39 +19,42 @@ export async function POST(req:NextRequest){
     const from=String(b.period_start??'');
     const to=String(b.period_end??'');
     const format=String(b.format??'docx');
-    if(!memberId||!from||!to)return NextResponse.json({error:'Individu dan periode wajib dipilih.'},{status:400});
+    if(!memberId||!validDate(from)||!validDate(to)||from>to||!['docx','pptx'].includes(format))return NextResponse.json({error:'Individu dan periode wajib dipilih.'},{status:400});
 
     const s=await db();
-    const member=await s.from('members').select('id,name,classes(name),levels(name),member_categories(categories(slug,name))').eq('id',memberId).single();
+    const {data:role}=await s.rpc('current_app_role');if(!['ADMIN','DEWAN_GURU'].includes(role??''))return NextResponse.json({error:'Cetak laporan memerlukan akses pengelola.'},{status:403});
+    const member=await s.from('members').select('id,name,class_id,level_id,classes!members_class_id_fkey(name),levels(name),member_categories(categories(slug,name)),member_memberships(*,categories(slug),classes(name),levels(name))').eq('id',memberId).single();
     if(member.error)throw member.error;
-    const isCaberawit=(member.data as any).member_categories?.some((c:any)=>c.categories?.slug==='caberawit');
-    if(!isCaberawit)return NextResponse.json({error:'Laporan hanya tersedia untuk data Caberawit.'},{status:400});
-
     const[att,progress]=await Promise.all([
-      s.from('attendance_records').select('status,attendance_events!inner(event_date,audience)').eq('member_id',memberId).eq('attendance_events.audience','CABERAWIT').gte('attendance_events.event_date',from).lte('attendance_events.event_date',to),
-      s.from('journal_progress').select('progress_value,progress_note,follow_up,learning_targets(title),journals!inner(journal_date)').eq('member_id',memberId).gte('journals.journal_date',from).lte('journals.journal_date',to).order('created_at',{ascending:false})
+      s.from('attendance_records').select('event_id,participant_key,status,class_id_snapshot,level_id_snapshot,class_name_snapshot,level_name_snapshot,attendance_events!inner(event_date,audience,state)').eq('member_id',memberId).eq('attendance_events.audience','CABERAWIT').neq('attendance_events.state','CANCELLED').gte('attendance_events.event_date',from).lte('attendance_events.event_date',to),
+      s.from('journal_progress').select('participant_key,target_id,created_at,progress_value,progress_note,follow_up,learning_targets(title),journals!inner(journal_date,state,journal_kind,event_id)').eq('participant_key',memberId).eq('journals.state','COMPLETED').eq('journals.journal_kind','CABERAWIT_INDIVIDUAL').gte('journals.journal_date',from).lte('journals.journal_date',to).order('created_at',{ascending:false})
     ]);
     if(att.error||progress.error)throw att.error||progress.error;
 
-    const records=att.data??[];
+    const records=att.data??[];const placements=[...reportMemberships((member.data as any).member_memberships??[],from,to),...snapshotPlacements(records)];if(!placements.length)return NextResponse.json({error:'Tidak ada keikutsertaan Caberawit dalam periode ini.'},{status:400});
     const H=records.filter(x=>x.status==='H').length,I=records.filter(x=>x.status==='I').length,A=records.filter(x=>x.status==='A').length;
     const total=H+I+A;
-    const pct=total?Math.round(H/total*1000)/10:0;
-    const pr=(progress.data??[]) as any[];
-    const values=pr.map(x=>Number(x.progress_value)).filter(Number.isFinite);
-    const avg=values.length?Math.round(values.reduce((a,c)=>a+c,0)/values.length*10)/10:0;
+    const pct=total?Math.round(H/total*1000)/10:null;
+    const pr=latestProgressRows(((progress.data??[]) as any[]).filter(p=>{const j=Array.isArray(p.journals)?p.journals[0]:p.journals;return records.some(r=>r.event_id===j?.event_id&&r.participant_key===p.participant_key&&r.status==='H')}));
+    const targets=await s.from('learning_targets').select('id,title,class_id,level_id,target_month,active,version_id').eq('active',true);if(targets.error)throw targets.error;
+    const versionId=String(b.version_id??'');if(!versionId)return NextResponse.json({error:'Pilih versi target untuk laporan.'},{status:400});
+    const assigned=reportTargets(targets.data??[],placements,from,to,versionId);
+    const summary=summarizeProgress(assigned.map(t=>t.id),pr);
+    const latest=new Map<string,any>();for(const row of pr){if(row.target_id&&!latest.has(row.target_id))latest.set(row.target_id,row)}
+    const details=assigned.map(t=>({...latest.get(t.id),learning_targets:{title:t.title}}));
     let notes=pr.slice(0,5).map(x=>`${x.learning_targets?.title?x.learning_targets.title+': ':''}${x.progress_note}`).join(' | ')||'Belum ada catatan progres.';
     if(b.ai_note){
       const result=await analyzeJson<{note:string}>('Tulis satu paragraf catatan perkembangan yang faktual berdasarkan data. Jangan mengarang pencapaian, tanggal, atau diagnosis. Kembalikan JSON {"note":"..."}. Instruksi tambahan pengguna: '+String(b.ai_instruction??'').slice(0,500),{name:member.data.name,attendance:{H,I,A},progress:pr.slice(0,20).map(x=>({target:x.learning_targets?.title,value:x.progress_value,note:x.progress_note}))});
       if(result?.note)notes=String(result.note).slice(0,2000);
-      else return NextResponse.json({error:'Analisis AI belum tersedia. Periksa kunci Gemini atau coba tanpa catatan AI.'},{status:503});
+      else return NextResponse.json({error:'Catatan otomatis belum tersedia. Coba tanpa catatan otomatis.'},{status:503});
     }
     const m:any=member.data;
     const vals:Record<string,string>={
-      NAMA:m.name,PERIODE:`${from} s.d. ${to}`,KELAS:m.classes?.name||'-',JENJANG:m.levels?.name||'-',
-      HADIR:String(H),IZIN:String(I),ALFA:String(A),KEHADIRAN:`${pct}%`,PROGRES:values.length?`${avg}%`:'Belum ada nilai',CATATAN:notes
+      NAMA:m.name,PERIODE:`${from} s.d. ${to}`,KELAS:Array.from(new Set(placements.map(p=>p.class_name).filter(Boolean))).join(', ')||'-',JENJANG:Array.from(new Set(placements.map(p=>p.level_name).filter(Boolean))).join(', ')||'-',
+      HADIR:String(H),IZIN:String(I),ALFA:String(A),KEHADIRAN:pct===null?'Belum dicatat':`${pct}%`,PROGRES:summary.percentage!==null?`${summary.percentage}% (${summary.assessed}/${summary.assigned} target)`:'Belum ada nilai',CATATAN:notes
     };
 
+    if(b.preview)return NextResponse.json({title:'Laporan Perkembangan Caberawit',values:vals,details:details.map(x=>({target:x.learning_targets.title,value:x.progress_value??null,note:x.progress_note||'Belum dinilai'}))});
     if(b.template_id){
       const t=await s.from('report_templates').select('*').eq('id',b.template_id).eq('active',true).single();
       if(t.error)throw t.error;
@@ -65,12 +62,12 @@ export async function POST(req:NextRequest){
       if(template.kind!==format)return NextResponse.json({error:'Jenis template tidak sesuai format laporan.'},{status:400});
       if(!template.file_base64)return NextResponse.json({error:'Isi template tidak tersedia.'},{status:400});
 
-      const zip=await JSZip.loadAsync(Buffer.from(template.file_base64,'base64'));
+      const zip=await validateOfficeTemplate(Buffer.from(template.file_base64,'base64'),format);
       const targets=Object.keys(zip.files).filter(p=>format==='pptx'?/^ppt\/slides\/slide\d+\.xml$/.test(p):/^word\/(document|header\d+|footer\d+)\.xml$/.test(p));
       let replaced=0;
       for(const path of targets){
         const original=await zip.file(path)!.async('string');
-        let xml=replaceAllXml(original,vals);
+        let xml=replaceReportXml(original,vals);
         if(xml!==original)replaced++;
         const mapping=(template.field_map?.mappings??[]) as Array<{path:string;existing:string;field:string}>;
         for(const m of mapping.filter(m=>m.path===path&&Object.hasOwn(vals,m.field))){
@@ -82,13 +79,14 @@ export async function POST(req:NextRequest){
         zip.file(path,xml);
       }
       if(!replaced)return NextResponse.json({error:'Template tidak memiliki placeholder atau posisi data yang dapat diisi. Tambahkan {{NAMA}}, {{KELAS}}, {{PROGRES}}, lalu unggah ulang.'},{status:400});
+      await appendReportDetails(zip,format,[{title:'Perkembangan Target',lines:details.map(x=>`${x.learning_targets.title}: ${x.progress_value??'Belum dinilai'} — ${x.progress_note||'-'}`)}]);
       const out=await zip.generateAsync({type:'uint8array'});
       return response(out,format==='pptx'?'application/vnd.openxmlformats-officedocument.presentationml.presentation':'application/vnd.openxmlformats-officedocument.wordprocessingml.document',`laporan-${m.name.replace(/[^a-z0-9]+/gi,'-').toLowerCase()}.${format}`);
     }
 
-    if(format==='pptx')return NextResponse.json({error:'PowerPoint memerlukan template PPTX.'},{status:400});
+    if(format==='pptx'){const slides=[{title:`Laporan ${m.name}`,lines:Object.entries(vals).filter(([k])=>k!=='CATATAN').map(([k,v])=>`${k}: ${v}`)},{title:'Catatan',lines:[notes]}];for(let i=0;i<details.length;i+=10)slides.push({title:'Perkembangan Target',lines:details.slice(i,i+10).map(x=>`${x.learning_targets.title}: ${x.progress_value??'Belum dinilai'} — ${x.progress_note||'-'}`)});return response(await defaultPresentation(slides),'application/vnd.openxmlformats-officedocument.presentationml.presentation',`laporan-${memberId}.pptx`);}
 
-    const progressRows=pr.length?pr.slice(0,12).map(x=>new TableRow({children:[
+    const progressRows=details.length?details.map(x=>new TableRow({children:[
       new TableCell({children:[new Paragraph(x.learning_targets?.title||'Progres')]}),
       new TableCell({children:[new Paragraph(x.progress_value==null?'-':String(x.progress_value))]}),
       new TableCell({children:[new Paragraph(x.progress_note||'-')]})
@@ -101,8 +99,8 @@ export async function POST(req:NextRequest){
       new Paragraph({text:''}),
       new Table({rows:[
         new TableRow({children:[new TableCell({children:[new Paragraph('Nama')]}),new TableCell({children:[new Paragraph(m.name)]})]}),
-        new TableRow({children:[new TableCell({children:[new Paragraph('Kelas / Jenjang')]}),new TableCell({children:[new Paragraph(`${m.classes?.name||'-'} / ${m.levels?.name||'-'}`)]})]}),
-        new TableRow({children:[new TableCell({children:[new Paragraph('Kehadiran')]}),new TableCell({children:[new Paragraph(`H ${H} · I ${I} · A ${A} · ${pct}% hadir`)]})]})
+        new TableRow({children:[new TableCell({children:[new Paragraph('Kelas / Jenjang')]}),new TableCell({children:[new Paragraph(`${vals.KELAS} / ${vals.JENJANG}`)]})]}),
+        new TableRow({children:[new TableCell({children:[new Paragraph('Kehadiran')]}),new TableCell({children:[new Paragraph(`H ${H} · I ${I} · A ${A} · ${pct===null?'Belum dicatat':pct+'% hadir'}`)]})]})
       ]}),
       new Paragraph({text:'Perkembangan Target',heading:HeadingLevel.HEADING_2}),
       new Table({rows:[

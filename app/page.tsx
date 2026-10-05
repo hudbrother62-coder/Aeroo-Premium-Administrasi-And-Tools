@@ -21,7 +21,7 @@ export default function Home(){
     async function load(){
       try{
         const auth=await fetch('/api/auth/me',{cache:'no-store'});
-        const signed=auth.ok;setLoggedIn(signed);
+        const user=auth.ok?await auth.json():null;const signed=Boolean(user&&!user.public&&user.role!=='VIEWER');setLoggedIn(signed);
         const r=await fetch(signed?'/api/dashboard':`/api/public/recap?month=${viewerMonth}&span=${viewerSpan}`,{cache:'no-store'});
         if(!r.ok)throw new Error();
         setData(await r.json());
@@ -67,6 +67,6 @@ export default function Home(){
       <div className="levelGrid">{(current?[current]:data?.levels??[]).map(x=><div className="levelCard" key={x.id}><strong>{x.name}</strong><span>{x.count} anggota</span><b>{x.total?Math.round(x.present/x.total*100)+'%':'—'} hadir</b></div>)}</div>
     </section>}
     {!loggedIn&&viewerSpan===6&&<section className="card section"><div className="cardHead"><div><h2>Enam bulan terakhir</h2><p>Jumlah pertemuan, hadir, dan jurnal per bulan.</p></div></div><div className="tableWrap"><table className="table"><thead><tr><th>Bulan</th><th>Pertemuan</th><th>Hadir</th><th>Jurnal</th></tr></thead><tbody>{data?.monthly?.map(x=><tr key={x.month}><td>{x.month}</td><td>{x.meetings}</td><td>{x.present}</td><td>{x.journals}</td></tr>)}</tbody></table></div></section>}
-    {!loggedIn&&<section className="card section viewerNote"><div><h2>Melihat tanpa akun</h2><p>Ringkasan publik hanya menampilkan jumlah, tanpa identitas atau kontak anggota. Kunjungan dan perangkat dicatat. Anda dapat menambahkan nama kunjungan.</p></div><div className="viewerIdentify"><input className="input" value={visitorName} onChange={e=>setVisitorName(e.target.value)} maxLength={80} placeholder="Nama Anda (opsional)" aria-label="Nama pengunjung"/><button className="btn secondary" onClick={()=>void identify()} disabled={!visitorName.trim()}>Catat nama</button></div>{visitMessage&&<div className="notice">{visitMessage}</div>}</section>}
+    {!loggedIn&&<section className="card section viewerNote"><div><h2>Melihat tanpa akun</h2><p>Menu publik menampilkan nama dan kegiatan yang diizinkan. Kontak, alamat, biodata pribadi, serta data Pengurus dibatasi. Kunjungan dan perangkat dicatat. Anda dapat menambahkan nama kunjungan.</p></div><div className="viewerIdentify"><input className="input" value={visitorName} onChange={e=>setVisitorName(e.target.value)} maxLength={80} placeholder="Nama Anda (opsional)" aria-label="Nama pengunjung"/><button className="btn secondary" onClick={()=>void identify()} disabled={!visitorName.trim()}>Catat nama</button></div>{visitMessage&&<div className="notice">{visitMessage}</div>}</section>}
   </div>;
 }

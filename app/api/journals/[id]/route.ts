@@ -1,27 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/supabase-server';
-
-export async function PATCH(req:NextRequest,{params}:{params:Promise<{id:string}>}){
-  const {id}=await params;
-  const s=await db();
-  const {data,error}=await s
-    .from('journals')
-    .update({...await req.json(),updated_at:new Date().toISOString()})
-    .eq('id',id)
-    .select()
-    .single();
-
-  return error
-    ? NextResponse.json({error:error.message},{status:400})
-    : NextResponse.json(data);
+import {NextRequest,NextResponse} from 'next/server';
+import {db} from '@/lib/supabase-server';
+import {publicRows} from '@/lib/public-read';
+export async function GET(_:NextRequest,{params}:{params:Promise<{id:string}>}){
+ try{const {id}=await params;const s=await db();const {data:role}=await s.rpc('current_app_role');if(!role||role==='VIEWER'){const row=(await publicRows('journals')).find(r=>r.id===id);return row?NextResponse.json(row):NextResponse.json({error:'Jurnal tidak ditemukan.'},{status:404})}const {data,error}=await s.from('journals').select('*,journal_progress(*,learning_targets(title)),journal_revisions(*)').eq('id',id).single();return error?NextResponse.json({error:error.message},{status:404}):NextResponse.json(data);}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Gagal memuat jurnal.'},{status:400})}
 }
-
-export async function DELETE(_:NextRequest,{params}:{params:Promise<{id:string}>}){
-  const {id}=await params;
-  const s=await db();
-  const {error}=await s.from('journals').delete().eq('id',id);
-
-  return error
-    ? NextResponse.json({error:error.message},{status:400})
-    : NextResponse.json({ok:true});
+export async function PATCH(req:NextRequest,{params}:{params:Promise<{id:string}>}){
+ try{const {id}=await params;const input=await req.json();if(input.state_only){const s=await db();const{data,error}=await s.rpc('set_journal_state',{p_id:id,p_revision:input.revision,p_state:input.state});return error?NextResponse.json({error:error.message},{status:error.message.includes('CONFLICT')?409:400}):NextResponse.json(data)}const {progress,revision,...body}=input;if(!Number.isInteger(revision)||revision<0||!Array.isArray(progress)||progress.length>500)return NextResponse.json({error:'Revisi jurnal tidak valid.'},{status:400});const s=await db();const {data,error}=await s.rpc('save_journal',{p_id:id,p_revision:revision,p_body:body,p_progress:progress});return error?NextResponse.json({error:error.message},{status:error.message.includes('CONFLICT')?409:400}):NextResponse.json(data,{status:data?.conflict?409:200});}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Gagal menyimpan jurnal.'},{status:400})}
 }

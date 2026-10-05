@@ -1,3 +1,6 @@
+import {effectiveMembership} from '@/lib/domain';
+import {saveMember} from '@/lib/member-save';
+import {publicProjection} from '@/lib/public-read';
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
 import {writeScopesForRole} from '@/lib/access';
@@ -5,6 +8,7 @@ import {writeScopesForRole} from '@/lib/access';
 const segmentSlug:Record<string,string>={KELOMPOK:'kelompok',CABERAWIT:'caberawit',MUDA_MUDI:'muda-mudi',PENGURUS:'pengurus',IBU_IBU:'ibu-ibu'};
 
 export async function GET(req:NextRequest){
+  const publicResponse=await publicProjection(req,'members');if(publicResponse)return publicResponse;
   const s=await db();
   const q=req.nextUrl.searchParams.get('q')??'';
   const segment=req.nextUrl.searchParams.get('segment')??'ALL';
@@ -13,61 +17,22 @@ export async function GET(req:NextRequest){
   const archived=req.nextUrl.searchParams.get('archived')==='1';
 
   let query=s.from('members')
-    .select('*,levels(id,name),classes(id,name,audience),member_categories(category_id,categories(id,name,slug))')
+    .select('*,levels(id,name),classes!members_class_id_fkey(id,name,audience),member_categories(category_id,categories(id,name,slug)),member_memberships(*,categories(id,name,slug),classes(id,name),levels(id,name))')
     .eq('status',archived?'INACTIVE':'ACTIVE').order('name');
   if(q)query=query.ilike('name',`%${q}%`);
-  if(classId)query=query.eq('class_id',classId);
-  if(levelId)query=query.eq('level_id',levelId);
+
+
 
   const{data,error}=await query;
   if(error)return NextResponse.json({error:error.message},{status:400});
 
   let rows=data??[];
   const slug=segmentSlug[segment];
-  if(slug)rows=rows.filter((x:any)=>x.member_categories?.some((c:any)=>c.categories?.slug===slug));
 
-  return NextResponse.json(rows);
+
+  const office=req.nextUrl.searchParams.get('office');
+  if(slug||classId||levelId||office)rows=rows.filter((p:any)=>p.member_memberships?.some((m:any)=>effectiveMembership(m)&&(!slug||m.categories?.slug===slug)&&(!classId||m.class_id===classId)&&(!levelId||m.level_id===levelId)&&(!office||[m.office,m.section].some(v=>v?.toLowerCase().includes(office.toLowerCase())))));
+  return NextResponse.json(rows.map((p:any)=>({...p,member_memberships:p.member_memberships?.map((m:any)=>({...m,effective:effectiveMembership(m)}))})));
 }
 
-export async function POST(req:NextRequest){
-  const s=await db();
-  const body=await req.json();
-  const categories:string[]=Array.isArray(body.category_ids)?body.category_ids:[];
-  delete body.category_ids;
-
-  const{data:role}=await s.rpc('current_app_role');
-  const writeScopes=writeScopesForRole(role);
-  if(!writeScopes.length)return NextResponse.json({error:'Akses hanya-baca.'},{status:403});
-  if(!categories.length)return NextResponse.json({error:'Pilih minimal satu kategori.'},{status:400});
-
-  const{data:selectedCategories,error:catCheckError}=await s.from('categories').select('id,slug').in('id',categories);
-  if(catCheckError)return NextResponse.json({error:catCheckError.message},{status:400});
-  if((selectedCategories??[]).length!==categories.length){
-    return NextResponse.json({error:'Kategori tidak valid.'},{status:400});
-  }
-
-  const allowedSlugs=new Set(
-    role==='ADMIN'?['kelompok','muda-mudi','caberawit','ibu-ibu','pengurus']:
-    role==='DEWAN_GURU'?['caberawit','muda-mudi']:
-    role==='KELOMPOK'?['kelompok','ibu-ibu','pengurus']:[]
-  );
-  if((selectedCategories??[]).some(c=>!allowedSlugs.has(c.slug))){
-    return NextResponse.json({error:'Kategori di luar akses akun ini.'},{status:403});
-  }
-
-  const{data,error}=await s.from('members').insert({
-    ...body,
-    level_id:body.level_id||null,
-    class_id:body.class_id||null,
-    status:'ACTIVE'
-  }).select().single();
-  if(error)return NextResponse.json({error:error.message},{status:400});
-
-  const{error:catError}=await s.from('member_categories').insert(categories.map(category_id=>({member_id:data.id,category_id})));
-  if(catError){
-    await s.from('members').delete().eq('id',data.id);
-    return NextResponse.json({error:catError.message},{status:400});
-  }
-
-  return NextResponse.json(data,{status:201});
-}
+export async function POST(req:NextRequest){return saveMember(await req.json(),null)}

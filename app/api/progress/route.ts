@@ -1,3 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';import { db } from '@/lib/supabase-server';
-export async function GET(req:NextRequest){const s=await db();const child=req.nextUrl.searchParams.get('caberawit_id');let q=s.from('caberawit_progress').select('*,learning_targets(id,title,level_id),caberawit(id,name)').order('updated_at',{ascending:false});if(child)q=q.eq('caberawit_id',child);const{data,error}=await q;return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data??[])}
-export async function POST(req:NextRequest){const s=await db();const b=await req.json();const{data,error}=await s.from('caberawit_progress').upsert({caberawit_id:b.caberawit_id,target_id:b.target_id,progress:Number(b.progress??0),notes:b.notes??null,updated_at:new Date().toISOString()},{onConflict:'caberawit_id,target_id'}).select().single();return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data)}
+import {NextRequest,NextResponse} from 'next/server';
+import {readRows} from '@/lib/public-read';
+export async function GET(req:NextRequest){const rows=await readRows('progress');const id=req.nextUrl.searchParams.get('member_id');return NextResponse.json(id?rows.filter(r=>r.member_id===id):rows)}
+export async function POST(){return NextResponse.json({error:'Catat progres melalui jurnal pertemuan.'},{status:410})}

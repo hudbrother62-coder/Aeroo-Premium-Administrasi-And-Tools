@@ -1,3 +1,4 @@
+import {publicProjection} from '@/lib/public-read';
 import { NextRequest, NextResponse } from 'next/server';import { db } from '@/lib/supabase-server';
-export async function GET(){const s=await db();const{data,error}=await s.from('activity_types').select('*').eq('active',true).order('name');return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data??[])}
+export async function GET(req:NextRequest){const projection=await publicProjection(req,'activity-types');if(projection)return projection;const s=await db();const{data,error}=await s.from('activity_types').select('*').eq('active',true).order('name');return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data??[])}
 export async function POST(req:NextRequest){const s=await db();const b=await req.json();const{data,error}=await s.from('activity_types').insert({name:String(b.name??'').trim(),audience:b.audience??'CUSTOM',active:true}).select().single();return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data,{status:201})}

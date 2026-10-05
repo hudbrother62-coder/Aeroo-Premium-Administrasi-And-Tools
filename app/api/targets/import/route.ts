@@ -1,3 +1,6 @@
+import {readWorkbook,excelDate} from '@/lib/spreadsheet';
+import {validDate} from '@/lib/domain';
+import {publicProjection} from '@/lib/public-read';
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
 import * as XLSX from 'xlsx';
@@ -28,6 +31,7 @@ export async function GET(req:NextRequest){
     XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([['Bulan','Jenjang','Kelas','Kode','Target / Materi','Deskripsi','Nilai target','Satuan'],['2026-10','SD 1','', 'T-01','Contoh materi','','100','%'],['2026-11','Remaja','','T-02','Contoh materi','','100','%']]),'Target');
     return new Response(XLSX.write(book,{type:'buffer',bookType:'xlsx'}),{headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':'attachment; filename="template-target-enam-bulan.xlsx"'}});
   }
+  const projection=await publicProjection(req,'versions');if(projection)return projection;
   const s=await db();
   const{data,error}=await s.from('target_versions').select('*').order('created_at',{ascending:false});
   return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data??[]);
@@ -42,9 +46,11 @@ export async function POST(req:NextRequest){
     const period_start=norm(form.get('period_start'))||null;
     const period_end=norm(form.get('period_end'))||null;
 
-    const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});
+    const authDb=await db();const {data:role}=await authDb.rpc('current_app_role');if(!['ADMIN','DEWAN_GURU'].includes(role||''))return NextResponse.json({error:'Akses input ditolak.'},{status:403});
+    if(period_start&&!validDate(period_start)||period_end&&!validDate(period_end)||period_start&&period_end&&period_end<period_start)throw Error('Periode tidak valid.');
+    const wb=await readWorkbook(file);
     const sheet=wb.Sheets[wb.SheetNames[0]];
-    const rows=(XLSX.utils.sheet_to_json(sheet,{header:1,defval:''}) as unknown[][]).map(r=>r.map(norm));
+    const rawRows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''}) as unknown[][];const rows=rawRows.map(r=>r.map(norm));if(rows.length>3020)throw Error('Maksimal 3000 baris target.');
     if(!rows.length)return NextResponse.json({error:'Excel kosong.'},{status:400});
 
     let headerRow=0,best=-1;
@@ -75,7 +81,7 @@ export async function POST(req:NextRequest){
     const s=await db();
     const[{data:levels,error:lErr},{data:classes,error:cErr},{data:latest,error:vErr}]=await Promise.all([
       s.from('levels').select('id,name'),
-      s.from('classes').select('id,name,audience'),
+      s.from('classes').select('id,name,audience,level_id'),
       s.from('target_versions').select('version').order('version',{ascending:false}).limit(1)
     ]);
     if(lErr||cErr||vErr)throw lErr||cErr||vErr;
@@ -85,27 +91,22 @@ export async function POST(req:NextRequest){
     const versionNumber=(latest?.[0]?.version??0)+1;
     const analysis={sheet:wb.SheetNames[0],header_row:headerRow+1,columns:Object.fromEntries(Object.entries(cols).filter(([,v])=>v!==null).map(([k,v])=>[k,headers[v as number]])),rows:rows.length-headerRow-1,method:ai?'gemini_assisted_mapping':'automatic_structure_detection'};
 
-    const{data:version,error:verError}=await s.from('target_versions').insert({
-      title,period_start,period_end,version:versionNumber,source_file_name:file.name,source_structure:{headers},analysis,published_at:new Date().toISOString()
-    }).select().single();
-    if(verError)throw verError;
-
     const payload:any[]=[];
     for(let i=headerRow+1;i<rows.length;i++){
       const row=rows[i];
       const target=norm(row[cols.title!]);
       if(!target)continue;
-      const levelName=inferLevel(cols.level!==null?row[cols.level]:cols.className!==null?row[cols.className]:'');
-      if(levelName==='Generasi Produktif'||levelName==='Umum')continue;
-      const level_id=levelMap.get(levelName.toLowerCase())||levelMap.get('umum');
-      if(!level_id)continue;
+      const rawLevel=cols.level!==null?row[cols.level]:'';const levelName=levelMap.has(rawLevel.toLowerCase())?rawLevel:inferLevel(rawLevel);
+      const level_id=levelMap.get(levelName.toLowerCase());if(!level_id||!rawLevel)throw Error(`Baris ${i+1}: jenjang tidak ditemukan.`);
       const className=cols.className!==null?norm(row[cols.className]):'';
       const rawValue=cols.value!==null?norm(row[cols.value]):'';
       const rawMonth=cols.month!==null?norm(row[cols.month]):period_start??'';
-      const targetMonth=/^\d{4}-(0[1-9]|1[0-2])/.test(rawMonth)?rawMonth.slice(0,7)+'-01':null;
+      const monthValue=cols.month!==null?rawRows[i][cols.month]:rawMonth;const targetMonth=/^\d{4}-(0[1-9]|1[0-2])$/.test(rawMonth)?rawMonth+'-01':excelDate(monthValue)?.slice(0,7)+'-01';if(!targetMonth||!validDate(targetMonth))throw Error(`Baris ${i+1}: bulan wajib diisi.`);
+      if(className&&!(classes||[]).some(k=>k.name.toLowerCase()===className.toLowerCase()&&k.level_id===level_id&&['CABERAWIT','MUDA_MUDI'].includes(k.audience)))throw Error(`Baris ${i+1}: kelas tidak sesuai jenjang.`);if(className&&(classes||[]).filter(k=>k.name.toLowerCase()===className.toLowerCase()).length!==1)throw Error(`Baris ${i+1}: nama kelas ambigu.`);
+      if(rawValue&&!Number.isFinite(Number(rawValue.replace(',','.'))))throw Error(`Baris ${i+1}: nilai target tidak valid.`);
       const num=rawValue?Number(String(rawValue).replace(',','.')):NaN;
       payload.push({
-        version_id:version.id,level_id,class_id:className?classMap.get(className.toLowerCase())||null:null,
+        level_id,class_id:className?classMap.get(className.toLowerCase())||null:null,
         code:cols.code!==null?norm(row[cols.code])||null:null,
         target_month:targetMonth,
         title:target,description:cols.description!==null?norm(row[cols.description])||null:null,
@@ -113,17 +114,7 @@ export async function POST(req:NextRequest){
         sort_order:payload.length+1,active:true,source_metadata:{sheet:wb.SheetNames[0],row:i+1}
       });
     }
-    if(!payload.length){
-      await s.from('target_versions').delete().eq('id',version.id);
-      return NextResponse.json({error:'Tidak menemukan baris target yang dapat dibaca.'},{status:400});
-    }
-    const{error:insertError}=await s.from('learning_targets').insert(payload);
-    if(insertError){
-      await s.from('target_versions').delete().eq('id',version.id);
-      throw insertError;
-    }
-    return NextResponse.json({version_id:version.id,inserted:payload.length,analysis});
-  }catch(e){
-    return NextResponse.json({error:e instanceof Error?e.message:'Gagal menganalisis Excel.'},{status:400});
-  }
+    if(!payload.length)throw Error('Tidak menemukan target yang dapat dibaca.');
+    const{data,error:saveError}=await s.rpc('import_target_version',{p_meta:{title,period_start,period_end,source_file_name:file.name,source_structure:{headers},analysis},p_targets:payload});if(saveError)throw Error(saveError.message);return NextResponse.json(data);
+  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Gagal menganalisis Excel.'},{status:400})}
 }

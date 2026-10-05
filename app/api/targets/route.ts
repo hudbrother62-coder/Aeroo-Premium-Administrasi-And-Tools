@@ -1,7 +1,8 @@
+import {publicProjection} from '@/lib/public-read';
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
 
-export async function GET(req:NextRequest){
+export async function GET(req:NextRequest){const projection=await publicProjection(req,'targets');if(projection)return projection;
   const s=await db();
   const level=req.nextUrl.searchParams.get('level_id');
   const classId=req.nextUrl.searchParams.get('class_id');
@@ -12,7 +13,7 @@ export async function GET(req:NextRequest){
     .eq('active',true).order('sort_order').order('title');
   if(level)q=q.eq('level_id',level);
   if(classId)q=q.eq('class_id',classId);
-  if(versionId)q=q.eq('version_id',versionId);
+  if(versionId)q=versionId==='__unversioned__'?q.is('version_id',null):q.eq('version_id',versionId);
 
   const{data,error}=await q;
   return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data??[]);
@@ -21,7 +22,7 @@ export async function GET(req:NextRequest){
 export async function POST(req:NextRequest){
   const s=await db();
   const b=await req.json();
-  const{data,error}=await s.from('learning_targets').insert({
+  const{data,error}=await s.rpc('save_learning_target',{p_target:{
     level_id:b.level_id,
     class_id:b.class_id||null,
     version_id:b.version_id||null,
@@ -33,6 +34,6 @@ export async function POST(req:NextRequest){
     target_month:b.target_month||null,
     sort_order:Number(b.sort_order??0),
     active:true
-  }).select().single();
+  }});
   return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data,{status:201});
 }

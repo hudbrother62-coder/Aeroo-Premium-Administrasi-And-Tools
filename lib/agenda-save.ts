@@ -1,0 +1,9 @@
+import {NextRequest,NextResponse} from 'next/server';
+import {db} from './supabase-server';
+import {jakartaDate,recurrenceDates} from './domain';
+export async function saveAgenda(req:NextRequest,id:string|null){try{
+ const b=await req.json();const s=await db();let audience=b.audience;if(!audience&&b.activity_type_id){const{data:a}=await s.from('activity_types').select('audience').eq('id',b.activity_type_id).single();audience=a?.audience}if(!audience)throw Error('Pilih kategori agenda.');
+ const fields=['title','starts_at','ends_at','activity_type_id','location','presenter','notes','class_id','level_id','participant_ids','person_in_charge','attendance_enabled','status','recurrence'];const item:any={audience};for(const k of fields)if(k in b)item[k]=b[k];
+ let items=[item];if(!id&&b.recurrence&&b.recurrence!=='once'){const start=new Date(b.starts_at);if(!Number.isFinite(start.getTime()))throw Error('Tanggal tidak valid.');const dates=recurrenceDates(jakartaDate(start),b.recurrence,b.repeat_until||'');const duration=b.ends_at?Date.parse(b.ends_at)-start.getTime():null;const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Jakarta',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(start);items=dates.map(date=>{const instant=new Date(date+'T'+time+'+07:00');return {...item,starts_at:instant.toISOString(),ends_at:duration===null?null:new Date(instant.getTime()+duration).toISOString()}})}
+ const{data,error}=await s.rpc('save_agenda',{p_id:id,p_revision:b.revision??0,p_items:items,p_scope:b.scope||'this'});return error?NextResponse.json({error:error.message},{status:error.message.includes('CONFLICT')?409:400}):NextResponse.json(data,{status:id?200:201});
+ }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Agenda tidak dapat disimpan.'},{status:400})}}
