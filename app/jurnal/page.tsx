@@ -5,8 +5,8 @@ import {readScopesForRole,writeScopesForRole} from '@/lib/access';
 import {useEffect,useState} from 'react';
 
 type Journal={id:string;journal_date:string;journal_kind:string;title:string;state?:string;revision?:number;material?:string;summary?:string;decisions?:string;assessment?:{materials?:Array<{topic:string;page:string}>;meeting_type?:string;absence?:string};classes?:{name?:string};members?:{name?:string}};
-const tabs=[['','Semua'],['KELOMPOK','Kelompok'],['IBU_IBU','Ibu-Ibu'],['PENGURUS','Musyawarah'],['CABERAWIT_CLASS','Jabirawit Kelas'],['CABERAWIT_INDIVIDUAL','Jabirawit Individu'],['MUDA_MUDI_CLASS','Remaja Kelas'],['MUDA_MUDI_INDIVIDUAL','Remaja Individu']] as const;
-const labels:Record<string,string>={KELOMPOK:'Kelompok',IBU_IBU:'Ibu-Ibu',PENGURUS:'Musyawarah',CABERAWIT_CLASS:'Jabirawit Kelas',CABERAWIT_INDIVIDUAL:'Jabirawit Individu',MUDA_MUDI_CLASS:'Remaja Kelas',MUDA_MUDI_INDIVIDUAL:'Remaja Individu'};
+const tabs=[['','Semua'],['KELOMPOK','Kelompok'],['IBU_IBU','Ibu-Ibu'],['PENGURUS','Musyawarah'],['CABERAWIT_CLASS','Caberawit Kelas'],['CABERAWIT_INDIVIDUAL','Caberawit Individu'],['MUDA_MUDI_CLASS','Muda-Mudi Kelas'],['MUDA_MUDI_INDIVIDUAL','Muda-Mudi Individu']] as const;
+const labels:Record<string,string>={KELOMPOK:'Kelompok',IBU_IBU:'Ibu-Ibu',PENGURUS:'Musyawarah',CABERAWIT_CLASS:'Caberawit Kelas',CABERAWIT_INDIVIDUAL:'Caberawit Individu',MUDA_MUDI_CLASS:'Muda-Mudi Kelas',MUDA_MUDI_INDIVIDUAL:'Muda-Mudi Individu'};
 
 export default function Page(){
   const[kind,setKind]=useState('');const[role,setRole]=useState('VIEWER');useEffect(()=>{fetch('/api/auth/me').then(r=>r.json()).then(u=>setRole(u.role))},[]);
