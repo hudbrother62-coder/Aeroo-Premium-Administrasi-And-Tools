@@ -4,7 +4,7 @@ export type Audience='KELOMPOK'|'MUDA_MUDI'|'CABERAWIT'|'IBU_IBU'|'PENGURUS';
 export const audienceLabels:Record<Audience,string>={
   KELOMPOK:'Kelompok',
   MUDA_MUDI:'Muda-Mudi',
-  CABERAWIT:'Jabirawit',
+  CABERAWIT:'Caberawit',
   IBU_IBU:'Ibu-Ibu',
   PENGURUS:'Pengurus',
 };
