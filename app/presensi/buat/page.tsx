@@ -2,6 +2,7 @@
 
 import {FormEvent,useEffect,useMemo,useRef,useState} from 'react';
 import {audienceLabels,writeScopesForRole,type Audience,type Role} from '@/lib/access';
+import {jakartaDate} from '@/lib/domain';
 
 type Activity={id:string;name:string;audience:string};
 type Level={id:string;name:string};
@@ -21,7 +22,7 @@ export default function Page(){
   const[saving,setSaving]=useState(false);
   const[eventId,setEventId]=useState('');const[recovery,setRecovery]=useState<Array<{key:string;pending:any}>>([]);const[notes,setNotes]=useState<Record<string,string>>({});const[sync,setSync]=useState<Record<string,string>>({});const[conflicts,setConflicts]=useState<Record<string,AttendanceRow>>({});const[search,setSearch]=useState('');const[audit,setAudit]=useState<Record<string,any[]>>({});const[undo,setUndo]=useState<Record<string,AttendanceValue>|null>(null);const queue=useRef<AttendanceSaveQueue|null>(null);const statusRef=useRef(status);const notesRef=useRef(notes);statusRef.current=status;notesRef.current=notes;
   const[error,setError]=useState('');
-  const today=new Date().toISOString().slice(0,10);
+  const today=jakartaDate();
   const[form,setForm]=useState({title:'',event_date:today,event_time:'',audience:'KELOMPOK' as Audience,activity_type_id:'',level_id:'',class_id:'',notes:''});
 
   const allowed=useMemo(()=>writeScopesForRole(role),[role]);
