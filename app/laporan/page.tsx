@@ -1,15 +1,15 @@
 'use client';
 
 import {reportMemberships} from '@/lib/report-scope';
+import {jakartaDate} from '@/lib/domain';
 import {FormEvent,useEffect,useMemo,useState} from 'react';
 
 type Member={id:string;name:string;member_memberships?:any[];class_id?:string;classes?:{name?:string};levels?:{name?:string}};
 type Template={id:string;name:string;kind:'pptx'|'docx';file_name?:string;field_map?:{method?:string;mappings?:unknown[]}};
 
 export default function ReportPage(){
-  const now=new Date();
-  const first=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
-  const today=now.toISOString().slice(0,10);
+  const today=jakartaDate();
+  const first=today.slice(0,7)+'-01';
   const[members,setMembers]=useState<Member[]>([]);const[classes,setClasses]=useState<Array<{id:string;name:string}>>([]);
   const[versions,setVersions]=useState<Array<{id:string;title:string;version:number}>>([]);const[versionId,setVersionId]=useState('');
   const[templates,setTemplates]=useState<Template[]>([]);
@@ -62,7 +62,7 @@ export default function ReportPage(){
 
   async function editTemplate(id:string,changes:{name?:string;active?:boolean}){setError('');try{const r=await fetch('/api/report-templates',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id,...changes})});const j=await r.json();if(!r.ok)throw new Error(j.error);if(templateId===id&&changes.active===false)setTemplateId('');await load()}catch(e){setError(e instanceof Error?e.message:'Gagal mengubah template.')}}
   return <>
-    <div className="pageHeader"><div><div className="eyebrow">Dokumen yang dapat diedit</div><h1>Laporan Jabirawit</h1><p>Data presensi dan progres disusun ke template Word atau PowerPoint.</p></div></div>
+    <div className="pageHeader"><div><div className="eyebrow">Dokumen yang dapat diedit</div><h1>Laporan Caberawit</h1><p>Data presensi dan progres disusun ke template Word atau PowerPoint.</p></div></div>
     <div className="dashboardGrid">
       <section className="card">
         <h2>Buat Laporan</h2>
