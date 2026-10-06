@@ -794,3 +794,12 @@ html[data-theme="dark"] .quickAddButton{background:#f1f3f6!important;color:#1113
 .weekEvent b{font-size:10px;line-height:1.3}
 @media(max-width:900px){.agendaWeekGrid{grid-template-columns:1fr}.agendaWeekDay{min-height:auto}.agendaWeekItems{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.agendaWeekItems{grid-template-columns:1fr}.agendaViewTabs{overflow:auto;flex-wrap:nowrap}.agendaViewTabs .tab{white-space:nowrap}}
+
+
+/* AIRO system health */
+.healthGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.healthCard{border:1px solid var(--border);border-radius:11px;background:var(--surface);padding:12px}
+.healthCard p{margin:7px 0 0;font-size:11px;line-height:1.45;color:var(--muted)}
+.successBadge{color:var(--success)}
+.warningBadge{color:var(--warning)}
+@media(max-width:800px){.healthGrid{grid-template-columns:1fr}}
