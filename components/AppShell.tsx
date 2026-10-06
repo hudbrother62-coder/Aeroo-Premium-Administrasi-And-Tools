@@ -6,7 +6,7 @@ import {usePathname} from 'next/navigation';
 import {useEffect,useMemo,useState} from 'react';
 import {
   LayoutDashboard,Database,ClipboardCheck,BookOpen,Target,
-  CalendarDays,ChartNoAxesCombined,FileText,Settings,Moon,Sun,Menu,X,LogOut,LogIn,MoreHorizontal,NotebookPen,Network,Archive,Upload,PanelLeftClose,PanelLeftOpen
+  CalendarDays,ChartNoAxesCombined,FileText,Settings,Moon,Sun,Menu,X,LogOut,LogIn,MoreHorizontal,NotebookPen,Network,Archive,Upload,PanelLeftClose,PanelLeftOpen,Plus,UserPlus
 } from 'lucide-react';
 
 type Role='ADMIN'|'DEWAN_GURU'|'KELOMPOK'|'VIEWER';
@@ -44,6 +44,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
   const[dark,setDark]=useState<boolean|null>(null);const[collapsed,setCollapsed]=useState(false);
   const[drawer,setDrawer]=useState(false);
   const[moreOpen,setMoreOpen]=useState(false);
+  const[quickOpen,setQuickOpen]=useState(false);
   const[user,setUser]=useState<AppUser|null>(null);
   const[checking,setChecking]=useState(!isLogin);
 
@@ -69,12 +70,27 @@ export default function AppShell({children}:{children:React.ReactNode}){
     }).catch(()=>{setUser(null);document.documentElement.dataset.role='PUBLIC'}).finally(()=>setChecking(false));
   },[isLogin,path]);
 
-  useEffect(()=>{setDrawer(false);setMoreOpen(false)},[path]);
+  useEffect(()=>{setDrawer(false);setMoreOpen(false);setQuickOpen(false)},[path]);
   const visible=useMemo(()=>user?nav.filter(x=>x.roles.includes(user.role)):nav.filter(x=>x.publicRead),[user]);
   const primaryMobile=['/','/agenda','/presensi','/jurnal'];
   const mobilePrimary=primaryMobile.flatMap(href=>visible.filter(x=>x.href===href));
   const mobileMore=visible.filter(x=>!primaryMobile.includes(x.href));
-  const title=useMemo(()=>nav.find(x=>x.href==='/'?path==='/':path.startsWith(x.href))?.label??'AEROO',[path]);
+  const title=useMemo(()=>nav.find(x=>x.href==='/'?path==='/':path.startsWith(x.href))?.label??'AIRO',[path]);
+  const canWriteFormal=!!user&&user.role!=='VIEWER';
+  const quickItems=useMemo(()=>{
+    const items:{href:string;label:string;icon:any}[]=[];
+    if(canWriteFormal){
+      items.push({href:'/database/tambah',label:'Anggota',icon:UserPlus});
+      items.push({href:'/agenda?create=1',label:'Agenda',icon:CalendarDays});
+      items.push({href:'/presensi/buat',label:'Presensi',icon:ClipboardCheck});
+      items.push({href:'/jurnal/buat',label:'Jurnal',icon:BookOpen});
+      items.push({href:'/jurnal/buat?kind=PENGKAJIAN',label:'Pengkajian',icon:NotebookPen});
+      if(user?.role==='ADMIN'||user?.role==='DEWAN_GURU')items.push({href:'/target',label:'Target',icon:Target});
+      if(user?.role==='ADMIN'||user?.role==='KELOMPOK')items.push({href:'/struktur?create=1',label:'Jabatan',icon:Network});
+    }
+    if(user)items.push({href:'/catatan?create=1',label:'Catatan',icon:NotebookPen});
+    return items;
+  },[canWriteFormal,user]);
 
   async function logout(){
     await fetch('/api/auth/logout',{method:'POST'});
@@ -88,7 +104,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
     return <nav className={klass}>{klass==='navList'?sections.map(([label,paths])=>{const group=paths.flatMap(href=>items.filter(i=>i.href===href));return group.length?<div className="navGroup" key={label}><small className="navGroupLabel">{label}</small>{group.map(link)}</div>:null}):items.map(link)}</nav>
   };
 
-  const account=<div className="sideActions">{!user&&<Link className="sideButton" href="/login"><LogIn size={18}/>Masuk</Link>}
+  const account=<div className="sideActions">{user&&quickItems.length>0&&<div className="desktopQuickAdd"><button className="sideButton quickAddButton" onClick={()=>setQuickOpen(v=>!v)} aria-expanded={quickOpen}><Plus size={18}/><span>Tambah Data</span></button>{quickOpen&&<div className="quickAddPanel">{quickItems.map(item=>{const Icon=item.icon;return <Link key={item.href} href={item.href} className="quickAddItem"><Icon size={17}/><span>{item.label}</span></Link>})}</div>}</div>}{!user&&<Link className="sideButton" href="/login"><LogIn size={18}/>Masuk</Link>}
     <button className="sideButton" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}<span>{dark?'Mode terang':'Mode gelap'}</span></button>
     {user&&<div className="userBox">
       <div className="userIdentity"><strong>{user?.display_name||user?.username||'AEROO'}</strong><small>{user?roleLabel[user.role]:'Memuat…'}</small></div>
@@ -116,6 +132,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
         </div>
       </header>
       <div className="pageContent">{checking?<div className="card"><div className="skeleton" style={{height:90}}/></div>:children}</div>
+      {user&&quickItems.length>0&&<><button className="mobileQuickFab" onClick={()=>{setQuickOpen(v=>!v);setMoreOpen(false)}} aria-label="Tambah data" aria-expanded={quickOpen}><Plus size={22}/></button>{quickOpen&&<div className="mobileQuickPanel"><div className="quickAddGrid">{quickItems.map(item=>{const Icon=item.icon;return <Link key={item.href} href={item.href} className="quickAddItem"><Icon size={18}/><span>{item.label}</span></Link>})}</div></div>}</>}
       <nav className="mobileBottomNav" aria-label="Navigasi utama">
         {renderNav(mobilePrimary,'bottomNavItems')}
         {mobileMore.length>0&&<button className={moreOpen?'bottomNavMore active':'bottomNavMore'} onClick={()=>{setMoreOpen(v=>!v);setDrawer(false)}} aria-expanded={moreOpen}><span><MoreHorizontal size={20}/></span><small>Lainnya</small></button>}
