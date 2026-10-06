@@ -1,0 +1,10 @@
+'use client';
+import {useEffect,useState} from 'react';
+
+type Row={id:number;action:string;resource_type:string;resource_id?:string;created_at:string;app_users?:{display_name?:string;username?:string}};
+export default function AuditPage(){
+  const[rows,setRows]=useState<Row[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[resource,setResource]=useState(''),[action,setAction]=useState('');
+  async function load(){setLoading(true);setError('');const p=new URLSearchParams();if(resource)p.set('resource',resource);if(action)p.set('action',action);const r=await fetch('/api/audit?'+p,{cache:'no-store'});const j=await r.json();if(!r.ok)setError(j.error||'Audit tidak dapat dimuat.');else setRows(j);setLoading(false)}
+  useEffect(()=>{void load()},[resource,action]);
+  return <><div className="pageHeader"><h1>Audit</h1></div><div className="toolbar card"><select className="select" value={resource} onChange={e=>setResource(e.target.value)}><option value="">Semua data</option>{['members','member_memberships','agenda','attendance_records','journals','learning_targets','personal_notes','organizational_positions','meeting_decisions','report_snapshots','app_users'].map(x=><option key={x} value={x}>{x}</option>)}</select><select className="select" value={action} onChange={e=>setAction(e.target.value)}><option value="">Semua aksi</option><option value="insert">Tambah</option><option value="update">Ubah</option><option value="delete">Hapus</option></select></div>{error&&<div className="notice error section">{error}</div>}<div className="tableWrap section"><table className="table"><thead><tr><th>Waktu</th><th>Akun</th><th>Aksi</th><th>Data</th><th>ID</th></tr></thead><tbody>{loading?<tr><td colSpan={5}>Memuat…</td></tr>:rows.map(r=><tr key={r.id}><td>{new Date(r.created_at).toLocaleString('id-ID')}</td><td>{r.app_users?.display_name||r.app_users?.username||'Sistem'}</td><td><span className="badge">{r.action}</span></td><td>{r.resource_type}</td><td className="itemMeta">{r.resource_id||'-'}</td></tr>)}{!loading&&!rows.length&&<tr><td colSpan={5}>Belum ada aktivitas.</td></tr>}</tbody></table></div></>
+}

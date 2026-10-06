@@ -15,4 +15,12 @@ export function recurrenceDates(start:string,frequency:string,until:string){
 
 export function latestProgressRows<T extends {created_at?:string;journal_date?:string;journals?:{journal_date?:string}|{journal_date?:string}[]}>(rows:T[]):T[]{const date=(r:T)=>r.journal_date||(Array.isArray(r.journals)?r.journals[0]?.journal_date:r.journals?.journal_date)||'';return [...rows].sort((a,b)=>date(b).localeCompare(date(a))||(b.created_at||'').localeCompare(a.created_at||''))}
 
-export function effectiveMembership(m:any,date=jakartaDate()){return (!m.valid_from||m.valid_from<=date)&&(!m.valid_to||m.valid_to>=date)&&(!m.ended_on||m.ended_on>date)&&(m.active!==false||!!m.ended_on)}
+export function effectiveMembership(m:any,date=jakartaDate()){return (!m.valid_from||m.valid_from<=date)&&(!m.valid_to||m.valid_to>=date)&&(!m.ended_on||m.ended_on>date)&&(m.active!==false||!!m.ended_on||!!m.valid_to)}
+
+export const programSlugs=['caberawit','muda-mudi','ibu-ibu'];
+export function projectMember<T extends {member_memberships?:any[]}>(person:T,date=jakartaDate()){
+ const memberships=(person.member_memberships||[]).map(m=>({...m,effective:effectiveMembership(m,date)}));
+ const programs=memberships.filter(m=>m.effective&&programSlugs.includes(m.categories?.slug));
+ const learning=programs.filter(m=>['caberawit','muda-mudi'].includes(m.categories?.slug)).sort((a,b)=>(b.valid_from||'').localeCompare(a.valid_from||'')||(a.id||'').localeCompare(b.id||''))[0];
+ return {...person,member_memberships:memberships,member_categories:[...new Map(programs.map(m=>[m.category_id,{category_id:m.category_id,categories:m.categories}])).values()],class_id:learning?.class_id??null,level_id:learning?.level_id??null,classes:learning?.classes??null,levels:learning?.levels??null};
+}

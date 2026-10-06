@@ -1,7 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import { FormEvent, useEffect, useState } from 'react';
+import {FormEvent,useEffect,useState} from 'react';
+import {ArrowRight,CheckCircle2,Link2,NotebookTabs} from 'lucide-react';
 
 export default function LoginPage(){
   const[username,setUsername]=useState('');
@@ -9,7 +10,15 @@ export default function LoginPage(){
   const[loading,setLoading]=useState(false);
   const[error,setError]=useState('');
 
-  useEffect(()=>{fetch('/api/auth/me').then(r=>{if(r.ok)window.location.href='/'})},[]);
+  useEffect(()=>{
+    let mounted=true;
+    fetch('/api/auth/me').then(async r=>{
+      if(!r.ok)return;
+      const me=await r.json();
+      if(mounted&&me.id&&me.active&&!me.public)window.location.href='/';
+    }).catch(()=>{});
+    return()=>{mounted=false};
+  },[]);
 
   async function submit(e:FormEvent){
     e.preventDefault();setLoading(true);setError('');
@@ -24,15 +33,26 @@ export default function LoginPage(){
 
   return <main className="loginPage">
     <section className="loginBrandPanel">
-      <Image src="/aeroo-logo-new.webp" alt="AEROO" width={440} height={444} priority/>
+      <div className="loginOrb loginOrbOne"/>
+      <div className="loginOrb loginOrbTwo"/>
+      <div className="loginBrandContent">
+        <div className="loginLogo"><Image src="/simpul-logo.webp" alt="" width={92} height={92} priority/><span><strong>Simpul</strong><small>Kelompok Pengorgan</small></span></div>
+        <h2>Terhubung.<br/>Tertata. Selesai.</h2>
+        <div className="loginFeatureRow">
+          <span><Link2 size={16}/>Terhubung</span>
+          <span><NotebookTabs size={16}/>Administrasi</span>
+          <span><CheckCircle2 size={16}/>Tertata</span>
+        </div>
+      </div>
     </section>
     <section className="loginPanel">
       <form className="loginCard" onSubmit={submit}>
-        <h1>Masuk</h1>
-        <label>Username<input className="input" value={username} autoComplete="username" onChange={e=>setUsername(e.target.value)}/></label>
+        <div className="loginCardBrand"><Image src="/simpul-logo.webp" alt="" width={54} height={54}/><div><strong>Simpul</strong><span>Masuk ke workspace</span></div></div>
+        <div><h1>Masuk</h1><p>Gunakan akun yang sudah diberikan.</p></div>
+        <label>Username<input className="input" value={username} autoComplete="username" onChange={e=>setUsername(e.target.value)} autoFocus/></label>
         <label>Password<input className="input" type="password" value={password} autoComplete="current-password" onChange={e=>setPassword(e.target.value)}/></label>
         {error&&<div className="notice error">{error}</div>}
-        <button className="btn" disabled={loading}>{loading?'Memeriksa…':'Masuk'}</button>
+        <button className="btn loginSubmit" disabled={loading}>{loading?'Memeriksa…':<>Masuk <ArrowRight size={17}/></>}</button>
       </form>
     </section>
   </main>;

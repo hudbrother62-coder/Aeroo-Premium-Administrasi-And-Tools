@@ -15,14 +15,14 @@ export default function Page(){
   const[classId,setClassId]=useState('');
   const[classes,setClasses]=useState<ClassRow[]>([]);
   const[events,setEvents]=useState<Event[]>([]);
-  const[role,setRole]=useState<Role|null>(null);
+  const[role,setRole]=useState<Role|null>(null);const[scopedRead,setScopedRead]=useState<Audience[]|null>(null),[scopedWrite,setScopedWrite]=useState<Audience[]|null>(null);
   const[loading,setLoading]=useState(true);
   const[error,setError]=useState('');
   const[view,setView]=useState<'input'|'recap'>('input');
   useEffect(()=>{if(new URLSearchParams(window.location.search).get('view')==='rekap')setView('recap')},[]);
 
-  const readable=useMemo(()=>readScopesForRole(role),[role]);
-  const writable=useMemo(()=>writeScopesForRole(role),[role]);
+  const readable=useMemo(()=>scopedRead??readScopesForRole(role),[role,scopedRead]);
+  const writable=useMemo(()=>scopedWrite??writeScopesForRole(role),[role,scopedWrite]);
 
   const load=async()=>{
     setLoading(true);setError('');
@@ -35,7 +35,7 @@ export default function Page(){
     try{
       const[r,c,u]=await Promise.all([fetch('/api/attendance?'+q),fetch('/api/classes'),fetch('/api/auth/me')]);
       if(!r.ok||!c.ok||!u.ok)throw new Error();
-      setEvents(await r.json());setClasses(await c.json());setRole((await u.json()).role??null);
+      setEvents(await r.json());setClasses(await c.json());const me=await u.json();setRole(me.role??null);setScopedRead(Array.isArray(me.read_scopes)?me.read_scopes:null);setScopedWrite(Array.isArray(me.write_scopes)?me.write_scopes:null);
     }catch{setError('Presensi belum dapat dimuat.')}
     finally{setLoading(false)}
   };
@@ -49,15 +49,15 @@ export default function Page(){
 
   return <>
     <div className="pageHeader">
-      <div><h1>Presensi</h1><p>Isi daftar hadir dan telusuri hasil pertemuan.</p></div>
+      <h1>Presensi</h1>
       {view==='input'&&writable.length>0&&<Link href="/presensi/buat" className="btn">+ Presensi</Link>}
     </div>
-    <div className="tabBar"><button className={view==='input'?'tab active':'tab'} onClick={()=>setView('input')}>Daftar presensi</button><button className={view==='recap'?'tab active':'tab'} onClick={()=>setView('recap')}>Rekap & individu</button></div>
+    <div className="tabBar"><button className={view==='input'?'tab active':'tab'} onClick={()=>setView('input')}>Presensi</button><button className={view==='recap'?'tab active':'tab'} onClick={()=>setView('recap')}>Rekap</button></div>
     {view==='recap'?<Recap embedded/>:<>
     <div className="toolbar card">
       <input className="input" type="month" value={month} onChange={e=>setMonth(e.target.value)}/>
       <select className="select" value={audience} onChange={e=>{setAudience(e.target.value);setClassId('')}}>
-        <option value="">Semua akses</option>{readable.map(v=><option key={v} value={v}>{audienceLabels[v]}</option>)}
+        <option value="">Semua lingkup</option>{readable.map(v=><option key={v} value={v}>{audienceLabels[v]}</option>)}
       </select>
       {(audience==='CABERAWIT'||audience==='MUDA_MUDI')&&<select className="select" value={classId} onChange={e=>setClassId(e.target.value)}>
         <option value="">Semua kelas</option>{classOptions.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}

@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    const name = `aeroo-presensi-${d.from}-${d.to}`;
+    const name = `simpul-presensi-${d.from}-${d.to}`;
 
     if (format === 'xlsx') {
       const wb = XLSX.utils.book_new();
@@ -109,7 +109,7 @@ export async function GET(req: NextRequest) {
           {
             children: [
               new Paragraph({
-                children: [new TextRun({ text: 'AEROO PREMIUM ADMINISTRASI', bold: true })],
+                children: [new TextRun({ text: 'SIMPUL', bold: true })],
               }),
               new Paragraph(`Laporan Rekap Presensi ${d.from} — ${d.to}`),
               table,
@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
 
     const pdf = new jsPDF();
     pdf.setFontSize(15);
-    pdf.text('AEROO PREMIUM ADMINISTRASI', 14, 18);
+    pdf.text('SIMPUL', 14, 18);
     pdf.setFontSize(11);
     pdf.text(`Laporan Rekap Presensi ${d.from} - ${d.to}`, 14, 26);
 
