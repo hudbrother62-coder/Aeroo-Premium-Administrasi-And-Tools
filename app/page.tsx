@@ -43,30 +43,34 @@ export default function Home(){
   const total=(attendance?.present??0)+(attendance?.excused??0)+(attendance?.absent??0);
 
   return <div className="homePage">
-    <div className="pageHeader heroHeader"><div><h1>Dashboard</h1></div>
-    </div>
+    <div className="pageHeader"><h1>Beranda</h1></div>
     {error&&<div className="notice error">{error}</div>}
-    {!loggedIn&&<div className="toolbar card viewerFilters"><label>Bulan<input className="input" type="month" value={viewerMonth} onChange={e=>setViewerMonth(e.target.value)}/></label><label>Periode<select className="select" value={viewerSpan} onChange={e=>setViewerSpan(Number(e.target.value) as 1|6)}><option value={1}>Satu bulan</option><option value={6}>Enam bulan</option></select></label></div>}
-    {loggedIn&&<><div className="taskLinks"><Link className="btn" href="/agenda">Buat agenda</Link><Link className="btn secondary" href="/presensi/buat">Mulai presensi</Link><Link className="btn secondary" href="/jurnal/buat?kind=PENGKAJIAN">Jurnal pengkajian</Link><Link className="btn secondary" href="/catatan">Catatan</Link></div><div className="dashboardGrid section"><section className="card"><h2>Hari ini</h2>{data?.todayEvents?.length?data.todayEvents.map(e=><Link key={e.id} className="categoryRow" href={'/presensi/buat?event_id='+e.id}>{e.title}<ArrowRight size={16}/></Link>):<p>Belum ada kegiatan.</p>}</section><section className="card"><h2>Belum selesai</h2>{data?.unfinishedAttendance?.map(e=><Link key={e.id} className="categoryRow" href={'/presensi/buat?event_id='+e.id}>Presensi · {e.title}<ArrowRight size={16}/></Link>)}{data?.draftJournals?.map(j=><Link key={j.id} className="categoryRow" href={'/jurnal/buat?journal_id='+j.id}>Jurnal · {j.title}<ArrowRight size={16}/></Link>)}{!data?.unfinishedAttendance?.length&&!data?.draftJournals?.length&&<p>Tidak ada pekerjaan tertunda.</p>}</section></div></>}<div className="metricGrid section">
-      <Link href="/database" className="metricCard"><Database size={20}/><span>Anggota aktif</span><strong>{data?.members??'—'}</strong></Link>
-      <div className="metricCard"><CalendarDays size={20}/><span>Pertemuan periode ini</span><strong>{attendance?.meetings??'—'}</strong></div>
-      <div className="metricCard"><ClipboardCheck size={20}/><span>Kehadiran</span><strong>{total?`${Math.round((attendance?.present??0)/total*100)}%`:'—'}</strong></div>
-      <div className="metricCard"><FileText size={20}/><span>Jurnal periode ini</span><strong>{data?.journals??'—'}</strong></div>
-    </div>
-    <div className="dashboardGrid section">
-      <section className="card"><div className="cardHead"><div><h2>Anggota per bagian</h2></div></div>
-        <div className="categoryRows">{data?.categories?.map(x=><div className="categoryRow" key={x.name}><span>{x.name}</span><strong>{x.count}</strong></div>)}</div>
-        {!data&&<div className="skeleton" style={{height:160}}/>}
+    {!loggedIn&&<div className="toolbar card viewerFilters"><label>Bulan<input className="input" type="month" value={viewerMonth} onChange={e=>setViewerMonth(e.target.value)}/></label><label>Periode<select className="select" value={viewerSpan} onChange={e=>setViewerSpan(Number(e.target.value) as 1|6)}><option value={1}>1 bulan</option><option value={6}>6 bulan</option></select></label></div>}
+    {loggedIn&&<div className="taskLinks"><Link className="btn" href="/agenda">+ Agenda</Link><Link className="btn secondary" href="/presensi/buat">Presensi</Link><Link className="btn secondary" href="/jurnal/buat?kind=PENGKAJIAN">Pengkajian</Link><Link className="btn ghost" href="/catatan">Catatan</Link></div>}
+
+    {loggedIn&&<div className="dashboardGrid section">
+      <section className="card"><div className="cardHead"><h2>Hari Ini</h2><Link className="textLink" href="/agenda">Agenda <ArrowRight size={14}/></Link></div>
+        {data?.todayEvents?.length?data.todayEvents.map(e=><Link key={e.id} className="categoryRow" href={'/presensi/buat?event_id='+e.id}><span>{e.title}</span><ArrowRight size={15}/></Link>):<div className="emptyState">Belum ada kegiatan.</div>}
       </section>
-      <section className="card"><div className="cardHead"><div><h2>Presensi periode ini</h2></div></div>
-        <div className="attendanceSummary"><div><span>H</span><strong>{attendance?.present??0}</strong><small>Hadir</small></div><div><span>I</span><strong>{attendance?.excused??0}</strong><small>Izin</small></div><div><span>A</span><strong>{attendance?.absent??0}</strong><small>Alfa</small></div></div>
-        {loggedIn&&<Link className="textLink" href="/presensi?view=rekap">Lihat rekap lengkap <ArrowRight size={15}/></Link>}
+      <section className="card"><h2>Perlu Tindakan</h2>
+        {data?.unfinishedAttendance?.map(e=><Link key={e.id} className="categoryRow" href={'/presensi/buat?event_id='+e.id}><span>Presensi · {e.title}</span><ArrowRight size={15}/></Link>)}
+        {data?.draftJournals?.map(j=><Link key={j.id} className="categoryRow" href={'/jurnal/buat?journal_id='+j.id}><span>Jurnal · {j.title}</span><ArrowRight size={15}/></Link>)}
+        {!data?.unfinishedAttendance?.length&&!data?.draftJournals?.length&&<div className="emptyState">Semua beres.</div>}
       </section>
+    </div>}
+
+    <div className="metricGrid section">
+      <Link href="/database" className="metricCard"><Database size={18}/><span>Anggota</span><strong>{data?.members??'—'}</strong></Link>
+      <Link href="/agenda" className="metricCard"><CalendarDays size={18}/><span>Kegiatan</span><strong>{attendance?.meetings??'—'}</strong></Link>
+      <Link href="/presensi?view=rekap" className="metricCard"><ClipboardCheck size={18}/><span>Kehadiran</span><strong>{total?Math.round((attendance?.present??0)/total*100)+'%':'—'}</strong></Link>
+      <Link href="/jurnal" className="metricCard"><FileText size={18}/><span>Jurnal</span><strong>{data?.journals??'—'}</strong></Link>
     </div>
-    {loggedIn&&<section className="card section"><div className="cardHead"><div><h2>Per jenjang</h2></div><select className="select compactSelect" value={level} onChange={e=>setLevel(e.target.value)}><option value="">Semua jenjang</option>{data?.levels?.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
+
+    {loggedIn&&<section className="section"><div className="cardHead"><h2>Jenjang</h2><select className="select compactSelect" value={level} onChange={e=>setLevel(e.target.value)}><option value="">Semua</option>{data?.levels?.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
       <div className="levelGrid">{(current?[current]:data?.levels??[]).map(x=><div className="levelCard" key={x.id}><strong>{x.name}</strong><span>{x.count} anggota</span><b>{x.total?Math.round(x.present/x.total*100)+'%':'—'} hadir</b></div>)}</div>
     </section>}
-    {!loggedIn&&viewerSpan===6&&<section className="card section"><div className="cardHead"><div><h2>Enam bulan terakhir</h2><p>Jumlah pertemuan, hadir, dan jurnal per bulan.</p></div></div><div className="tableWrap"><table className="table"><thead><tr><th>Bulan</th><th>Pertemuan</th><th>Hadir</th><th>Jurnal</th></tr></thead><tbody>{data?.monthly?.map(x=><tr key={x.month}><td>{x.month}</td><td>{x.meetings}</td><td>{x.present}</td><td>{x.journals}</td></tr>)}</tbody></table></div></section>}
-    {!loggedIn&&<section className="card section viewerNote"><div><h2>Melihat tanpa akun</h2><p>Menu publik menampilkan nama dan kegiatan yang diizinkan. Kontak, alamat, biodata pribadi, serta data Pengurus dibatasi. Kunjungan dan perangkat dicatat. Anda dapat menambahkan nama kunjungan.</p></div><div className="viewerIdentify"><input className="input" value={visitorName} onChange={e=>setVisitorName(e.target.value)} maxLength={80} placeholder="Nama Anda (opsional)" aria-label="Nama pengunjung"/><button className="btn secondary" onClick={()=>void identify()} disabled={!visitorName.trim()}>Catat nama</button></div>{visitMessage&&<div className="notice">{visitMessage}</div>}</section>}
+
+    {!loggedIn&&viewerSpan===6&&<section className="card section"><div className="cardHead"><h2>6 Bulan</h2></div><div className="tableWrap"><table className="table"><thead><tr><th>Bulan</th><th>Kegiatan</th><th>Hadir</th><th>Jurnal</th></tr></thead><tbody>{data?.monthly?.map(x=><tr key={x.month}><td>{x.month}</td><td>{x.meetings}</td><td>{x.present}</td><td>{x.journals}</td></tr>)}</tbody></table></div></section>}
+    {!loggedIn&&<section className="card section viewerNote"><div className="cardHead"><h2>Viewer</h2></div><div className="viewerIdentify"><input className="input" value={visitorName} onChange={e=>setVisitorName(e.target.value)} maxLength={80} placeholder="Nama (opsional)" aria-label="Nama pengunjung"/><button className="btn secondary" onClick={()=>void identify()} disabled={!visitorName.trim()}>Simpan</button></div>{visitMessage&&<div className="notice">{visitMessage}</div>}</section>}
   </div>;
 }
