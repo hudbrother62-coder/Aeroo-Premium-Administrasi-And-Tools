@@ -20,7 +20,7 @@ export default function ImportCenter(){
 
   return <><div className="pageHeader"><h1>Import Center</h1></div>
     <div className="structureGrid">
-      <section className="card"><h2>Anggota</h2><div className="taskLinks section"><a className="btn ghost" href="/api/members/spreadsheet?template=1">Template</a><button className="btn" onClick={()=>open('ANGGOTA')}>Import</button></div></section>
+      <section className="card"><h2>Database</h2><div className="taskLinks section"><a className="btn ghost" href="/api/members/spreadsheet?template=1">Template</a><button className="btn" onClick={()=>open('ANGGOTA')}>Import</button></div></section>
       <section className="card"><h2>Target & Progres</h2><div className="taskLinks section"><a className="btn ghost" href="/api/targets/import?template=1">Template</a><button className="btn" onClick={()=>open('TARGET')}>Import</button></div></section>
     </div>
     <section className="section"><div className="cardHead"><h2>Riwayat Import</h2><button className="smallAction" onClick={()=>void load()}>Muat ulang</button></div>{error&&!kind&&<div className="notice error">{error}</div>}<div className="tableWrap"><table className="table"><thead><tr><th>Waktu</th><th>Data</th><th>File</th><th>Status</th><th>Hasil</th></tr></thead><tbody>{loading?<tr><td colSpan={5}>Memuat…</td></tr>:jobs.map(j=><tr key={j.id}><td>{new Date(j.created_at).toLocaleString('id-ID')}</td><td>{j.resource_type}</td><td>{j.file_name||'-'}</td><td><span className="badge">{label[j.status]||j.status}</span></td><td>{j.inserted_rows} tambah · {j.updated_rows} ubah · {j.error_rows} error</td></tr>)}{!loading&&!jobs.length&&<tr><td colSpan={5}>Belum ada riwayat import.</td></tr>}</tbody></table></div></section>
