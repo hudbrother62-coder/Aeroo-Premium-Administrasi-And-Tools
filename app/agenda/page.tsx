@@ -61,7 +61,7 @@ export default function AgendaPage(){
     const j=await r.json();setBusy(false);if(!r.ok){setError(j.error||'Gagal menyimpan agenda.');return}
     setShow(false);setSelected(form.date);setMonth(new Date(Number(form.date.slice(0,4)),Number(form.date.slice(5,7))-1,1));setMessage('Agenda tersimpan.');await loadAgenda();
   }
-  async function remove(e:Agenda){if(!confirm(`Batalkan agenda “${e.title}”? Absensi dan jurnal tetap tersimpan.`))return;const r=await fetch('/api/agenda/'+e.id,{method:'DELETE'});if(!r.ok){setError((await r.json()).error||'Gagal menghapus agenda.');return}setMessage('Agenda dibatalkan; tidak dihitung sebagai Alfa.');await load()}
+  async function remove(e:Agenda){if(!confirm(`Batalkan agenda “${e.title}”? Absensi dan jurnal tetap tersimpan.`))return;const r=await fetch('/api/agenda/'+e.id,{method:'DELETE'});if(!r.ok){setError((await r.json()).error||'Gagal menghapus agenda.');return}setMessage('Agenda dibatalkan; tidak dihitung sebagai Alfa.');await loadAgenda()}
   async function downloadTemplate(){
     const XLSX=await import('xlsx');
     const rows=[{Tanggal:jakartaDate(),'Jam mulai':'19:30','Jam selesai':'21:00',Kegiatan:'Contoh kegiatan',Jenis:'',PIC:'',Pemateri:'',Tempat:'',Catatan:''}];
