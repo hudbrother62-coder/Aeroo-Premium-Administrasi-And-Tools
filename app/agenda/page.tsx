@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import {writeScopesForRole,audienceLabels} from '@/lib/access';
+import {writeScopesForRole,audienceLabels,type Audience} from '@/lib/access';
 import {jakartaDate,slugByAudience} from '@/lib/domain';
 import {FormEvent,useEffect,useMemo,useState} from 'react';
 import * as XLSX from 'xlsx';
@@ -17,7 +17,7 @@ const time=(iso:string)=>new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta
 export default function AgendaPage(){
   const[today]=useState(()=>new Date(jakartaDate()+'T12:00:00'));
   const[month,setMonth]=useState(new Date(today.getFullYear(),today.getMonth(),1));
-  const[selected,setSelected]=useState(jakartaDate());const[dayOpen,setDayOpen]=useState(false),[role,setRole]=useState('VIEWER'),[scopedWrite,setScopedWrite]=useState<string[]|null>(null),[classes,setClasses]=useState<any[]>([]),[levels,setLevels]=useState<any[]>([]),[people,setPeople]=useState<any[]>([]),[scope,setScope]=useState('this'),[revision,setRevision]=useState(0);
+  const[selected,setSelected]=useState(jakartaDate());const[dayOpen,setDayOpen]=useState(false),[role,setRole]=useState('VIEWER'),[scopedWrite,setScopedWrite]=useState<Audience[]|null>(null),[classes,setClasses]=useState<any[]>([]),[levels,setLevels]=useState<any[]>([]),[people,setPeople]=useState<any[]>([]),[scope,setScope]=useState('this'),[revision,setRevision]=useState(0);
   const[data,setData]=useState<Agenda[]>([]),[activities,setActivities]=useState<Activity[]>([]);
   const[show,setShow]=useState(false),[busy,setBusy]=useState(false),[editId,setEditId]=useState(''),[canWrite,setCanWrite]=useState(false),[isOwner,setIsOwner]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
   const defaults={audience:'KELOMPOK',class_id:'',level_id:'',participant_ids:[] as string[],person_in_charge:'',attendance_enabled:true,status:'SCHEDULED',recurrence:'once',repeat_until:''};
