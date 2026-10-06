@@ -1,7 +1,7 @@
 'use client';
 
 import {useEffect,useState} from 'react';
-import {FileText,Image as ImageIcon,Upload,X} from 'lucide-react';
+import {Download,FileText,Image as ImageIcon,Upload,X} from 'lucide-react';
 
 type Item={
   id:string;
@@ -69,7 +69,7 @@ export default function JournalAttachments({journalId,readOnly=false}:{journalId
           {item.url?<a href={item.url} target="_blank" rel="noreferrer"><strong>{item.file_name}</strong></a>:<strong>{item.file_name}</strong>}
           <span>{new Date(item.created_at).toLocaleString('id-ID')}</span>
         </div>
-        {!readOnly&&<button className="iconOnly" type="button" title="Hapus dokumentasi" disabled={busy} onClick={()=>void remove(item.id)}><X size={15}/></button>}
+        <div className="evidenceActions"><a className="iconOnly" href={'/api/journals/'+journalId+'/attachments?download='+encodeURIComponent(item.id)} title="Unduh dokumentasi" aria-label={'Unduh '+item.file_name}><Download size={15}/></a>{!readOnly&&<button className="iconOnly" type="button" title="Hapus dokumentasi" disabled={busy} onClick={()=>void remove(item.id)}><X size={15}/></button>}</div>
       </article>)}
       {!items.length&&<div className="emptyState">Belum ada file dokumentasi.</div>}
     </div>}
