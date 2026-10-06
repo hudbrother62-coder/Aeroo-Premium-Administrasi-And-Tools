@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import {useEffect,useState} from 'react';
 import {ArrowRight,CalendarDays,ClipboardCheck,Database,FileText} from 'lucide-react';
 
@@ -43,7 +44,10 @@ export default function Home(){
   const total=(attendance?.present??0)+(attendance?.excused??0)+(attendance?.absent??0);
 
   return <div className="homePage">
-    <div className="pageHeader"><h1>Beranda</h1></div>
+    <div className="homeIntro">
+      <div><span className="eyebrow">SIMPUL</span><h1>Beranda</h1><p>Agenda, presensi, jurnal, dan tindak lanjut dalam satu ruang.</p></div>
+      <div className="homeIntroLogo" aria-hidden="true"><Image src="/simpul-logo.webp" alt="" width={82} height={82} priority/></div>
+    </div>
     {error&&<div className="notice error">{error}</div>}
     {!loggedIn&&<div className="toolbar card viewerFilters"><label>Bulan<input className="input" type="month" value={viewerMonth} onChange={e=>setViewerMonth(e.target.value)}/></label><label>Periode<select className="select" value={viewerSpan} onChange={e=>setViewerSpan(Number(e.target.value) as 1|6)}><option value={1}>1 bulan</option><option value={6}>6 bulan</option></select></label></div>}
     {loggedIn&&<div className="taskLinks"><Link className="btn" href="/agenda?create=1">+ Agenda</Link><Link className="btn secondary" href="/presensi/buat">Presensi</Link><Link className="btn secondary" href="/jurnal/buat">Jurnal</Link><Link className="btn ghost" href="/catatan?create=1">Catatan</Link></div>}
