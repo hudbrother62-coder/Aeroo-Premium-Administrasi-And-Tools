@@ -780,3 +780,17 @@ html[data-theme="dark"] .quickAddButton{background:#f1f3f6!important;color:#1113
 .permissionGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
 .permissionGrid label{display:grid;gap:5px;font-size:11px;font-weight:700;color:var(--muted)}
 @media(max-width:620px){.scopeRow{grid-template-columns:1fr auto auto;gap:9px}.permissionGrid{grid-template-columns:1fr}}
+
+
+/* AIRO agenda multi-view */
+.agendaViewTabs{margin-top:2px}
+.agendaWeekGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:7px}
+.agendaWeekDay{min-height:150px;padding:10px;border:1px solid var(--border);border-radius:11px;background:var(--surface-2);cursor:pointer}
+.agendaWeekDay.selected{border-color:var(--primary);background:var(--primary-soft)}
+.agendaWeekDay>strong{font-size:11px}
+.agendaWeekItems{display:grid;gap:6px;margin-top:9px}
+.weekEvent{display:grid;gap:2px;text-align:left;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);padding:7px;cursor:pointer}
+.weekEvent span{font-size:9px;color:var(--muted)}
+.weekEvent b{font-size:10px;line-height:1.3}
+@media(max-width:900px){.agendaWeekGrid{grid-template-columns:1fr}.agendaWeekDay{min-height:auto}.agendaWeekItems{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.agendaWeekItems{grid-template-columns:1fr}.agendaViewTabs{overflow:auto;flex-wrap:nowrap}.agendaViewTabs .tab{white-space:nowrap}}
