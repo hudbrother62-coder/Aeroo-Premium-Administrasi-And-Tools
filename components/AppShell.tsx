@@ -5,7 +5,7 @@ import Image from 'next/image';
 import {usePathname} from 'next/navigation';
 import {useEffect,useMemo,useState} from 'react';
 import {
-  LayoutDashboard,Database,ClipboardCheck,BookOpen,Target,Users,
+  LayoutDashboard,Database,ClipboardCheck,BookOpen,Target,
   CalendarDays,ChartNoAxesCombined,FileText,Settings,Moon,Sun,Menu,X,LogOut,LogIn,MoreHorizontal,NotebookPen,Network,Archive,Upload,PanelLeftClose,PanelLeftOpen
 } from 'lucide-react';
 
@@ -25,17 +25,16 @@ const nav=[
   {href:'/catatan',label:'Catatan',icon:NotebookPen,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[]},
   {href:'/arsip',label:'Arsip',icon:Archive,roles:['ADMIN','DEWAN_GURU','KELOMPOK'] as Role[]},
   {href:'/impor',label:'Import Center',icon:Upload,roles:['ADMIN','DEWAN_GURU','KELOMPOK'] as Role[]},
-  {href:'/tim-akses',label:'Tim & Akses',icon:Users,roles:['ADMIN'] as Role[]},
   {href:'/pengaturan',label:'Pengaturan',icon:Settings,roles:['ADMIN'] as Role[]},
 ];
 
-const sections=[['BERANDA',['/']],['OPERASIONAL',['/agenda','/presensi','/jurnal']],['PEMBINAAN',['/target']],['DATA',['/database','/struktur']],['PRIBADI',['/catatan']],['ANALISIS',['/rekap','/laporan']],['SISTEM',['/arsip','/impor','/tim-akses','/pengaturan']]] as const;
-const roleLabel:Record<Role,string>={ADMIN:'Owner',DEWAN_GURU:'Dewan Guru',KELOMPOK:'Kelompok',VIEWER:'Viewer'};
+const sections=[['BERANDA',['/']],['OPERASIONAL',['/agenda','/presensi','/jurnal']],['PEMBINAAN',['/target']],['DATA',['/database','/struktur']],['PRIBADI',['/catatan']],['ANALISIS',['/rekap','/laporan']],['SISTEM',['/arsip','/impor','/pengaturan']]] as const;
+const roleLabel:Record<Role,string>={ADMIN:'Admin',DEWAN_GURU:'Dewan Guru',KELOMPOK:'Operator',VIEWER:'Viewer'};
 
 function Brand({compact=false}:{compact?:boolean}){
   return <Link href="/" className={compact?'brandLogo compact':'brandLogo'} aria-label="Airo Administrasi">
-    <Image src="/aeroo-mark.webp" alt="" width={72} height={56} priority/>
-    <span className="brandWordmark"><strong>AIRO</strong><small>ADMINISTRASI</small></span>
+    <Image src="/aeroo-mark.webp" alt="AIRO" width={72} height={56} priority/>
+    <span className="brandWordmark"><strong>AIRO</strong><small>KELOMPOK PENGORGAN</small></span>
   </Link>;
 }
 
@@ -51,11 +50,13 @@ export default function AppShell({children}:{children:React.ReactNode}){
   useEffect(()=>{
     const saved=localStorage.getItem('aeroo-theme');
     setDark(saved?saved==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches);
+    setCollapsed(localStorage.getItem('airo-sidebar-collapsed')==='1');
   },[]);
   useEffect(()=>{
     if(dark===null)return;document.documentElement.dataset.theme=dark?'dark':'light';
     localStorage.setItem('aeroo-theme',dark?'dark':'light');
   },[dark]);
+  useEffect(()=>{localStorage.setItem('airo-sidebar-collapsed',collapsed?'1':'0')},[collapsed]);
 
   useEffect(()=>{
     if(isLogin){setChecking(false);return}
