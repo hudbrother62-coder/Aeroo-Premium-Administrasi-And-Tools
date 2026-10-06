@@ -37,9 +37,9 @@ const navPermission:Record<string,string>={'/database':'person.read','/agenda':'
 const roleLabel:Record<Role,string>={ADMIN:'Admin',DEWAN_GURU:'Dewan Guru',KELOMPOK:'Operator',VIEWER:'Viewer'};
 
 function Brand({compact=false}:{compact?:boolean}){
-  return <Link href="/" className={compact?'brandLogo compact':'brandLogo'} aria-label="Airo Administrasi">
-    <Image src="/aeroo-mark.webp" alt="AIRO" width={72} height={56} priority/>
-    <span className="brandWordmark"><strong>AIRO</strong><small>KELOMPOK PENGORGAN</small></span>
+  return <Link href="/" className={compact?'brandLogo compact':'brandLogo'} aria-label="Simpul Administrasi">
+    <Image src="/simpul-logo.webp" alt="Simpul" width={72} height={72} priority/>
+    <span className="brandWordmark"><strong>Simpul</strong><small>KELOMPOK PENGORGAN</small></span>
   </Link>;
 }
 
@@ -80,7 +80,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
   const primaryMobile=['/','/agenda','/presensi','/jurnal'];
   const mobilePrimary=primaryMobile.flatMap(href=>visible.filter(x=>x.href===href));
   const mobileMore=visible.filter(x=>!primaryMobile.includes(x.href));
-  const title=useMemo(()=>nav.find(x=>x.href==='/'?path==='/':path.startsWith(x.href))?.label??'AIRO',[path]);
+  const title=useMemo(()=>nav.find(x=>x.href==='/'?path==='/':path.startsWith(x.href))?.label??'Simpul',[path]);
   const canWriteFormal=!!user&&user.role!=='VIEWER';
   const quickItems=useMemo(()=>{
     const items:{href:string;label:string;icon:any}[]=[];
@@ -115,7 +115,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
   const account=<div className="sideActions">{user&&quickItems.length>0&&<div className="desktopQuickAdd"><button className="sideButton quickAddButton" onClick={()=>setQuickOpen(v=>!v)} aria-expanded={quickOpen}><Plus size={18}/><span>Tambah Data</span></button>{quickOpen&&<div className="quickAddPanel">{quickItems.map(item=>{const Icon=item.icon;return <Link key={item.href} href={item.href} className="quickAddItem"><Icon size={17}/><span>{item.label}</span></Link>})}</div>}</div>}{!user&&<Link className="sideButton" href="/login"><LogIn size={18}/>Masuk</Link>}
     <button className="sideButton" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}<span>{dark?'Mode terang':'Mode gelap'}</span></button>
     {user&&<div className="userBox">
-      <div className="userIdentity"><strong>{user?.display_name||user?.username||'AEROO'}</strong><small>{user?roleLabel[user.role]:'Memuat…'}</small></div>
+      <div className="userIdentity"><strong>{user?.display_name||user?.username||'Simpul'}</strong><small>{user?roleLabel[user.role]:'Memuat…'}</small></div>
       <button className="iconOnly" onClick={()=>void logout()} aria-label="Keluar"><LogOut size={18}/></button>
     </div>}
   </div>;
@@ -134,7 +134,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
     <main className="contentArea">
       <div className="globalToolsDock"><GlobalTools enabled={!!user}/></div>
       <header className="mobileHeader">
-        <Link href="/" className="mobileBrand"><Image src="/aeroo-mark.webp" alt="" width={48} height={38} priority/><span><b>AIRO</b><small>{title}</small></span></Link>
+        <Link href="/" className="mobileBrand"><Image src="/simpul-logo.webp" alt="" width={48} height={48} priority/><span><b>Simpul</b><small>{title}</small></span></Link>
         <div className="headerActions">
           {!user&&<Link href="/login" className="headerLogin"><LogIn size={16}/>Masuk</Link>}
           <button className="iconOnly headerTheme" onClick={()=>setDark(v=>!v)} aria-label="Tema">{dark?<Sun size={19}/>:<Moon size={19}/>}</button>
