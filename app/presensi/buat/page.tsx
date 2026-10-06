@@ -15,7 +15,7 @@ export default function Page(){
   const[activities,setActivities]=useState<Activity[]>([]);
   const[levels,setLevels]=useState<Level[]>([]);
   const[classes,setClasses]=useState<ClassRow[]>([]);
-  const[role,setRole]=useState<Role|null>(null);
+  const[role,setRole]=useState<Role|null>(null);const[scopedWrite,setScopedWrite]=useState<Audience[]|null>(null);
   const[ready,setReady]=useState(false);
   const[people,setPeople]=useState<Participant[]>([]);
   const[status,setStatus]=useState<Record<string,Status>>({});
@@ -25,7 +25,7 @@ export default function Page(){
   const today=jakartaDate();
   const[form,setForm]=useState({title:'',event_date:today,event_time:'',audience:'KELOMPOK' as Audience,activity_type_id:'',level_id:'',class_id:'',notes:''});
 
-  const allowed=useMemo(()=>writeScopesForRole(role),[role]);
+  const allowed=useMemo(()=>scopedWrite??writeScopesForRole(role),[role,scopedWrite]);
 
   useEffect(()=>{
     Promise.all([
@@ -38,8 +38,8 @@ export default function Page(){
       setLevels(Array.isArray(l)?l:[]);
       setClasses(Array.isArray(c)?c:[]);
       const nextRole=(u.role??'VIEWER') as Role;
-      setRole(nextRole);
-      const scopes=writeScopesForRole(nextRole);
+      setRole(nextRole);setScopedWrite(Array.isArray(u.write_scopes)?u.write_scopes:null);
+      const scopes=Array.isArray(u.write_scopes)?u.write_scopes:writeScopesForRole(nextRole);
       if(scopes.length)setForm(v=>({...v,audience:scopes[0]}));
       setReady(true);
     }).catch(()=>{setError('Akses presensi belum dapat dimuat.');setReady(true)});
