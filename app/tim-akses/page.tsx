@@ -16,11 +16,13 @@ const roleInfo:Record<Role,{label:string;desc:string}>={
 const audiences=[['KELOMPOK','Semua Anggota'],['CABERAWIT','Caberawit'],['MUDA_MUDI','Muda-Mudi'],['IBU_IBU','Ibu-Ibu'],['PENGURUS','Pengurus']] as const;
 const permissionLabels:Record<string,string>={
   'person.read':'Lihat anggota','person.write':'Kelola anggota',
+  'agenda.read':'Lihat agenda','agenda.write':'Kelola agenda',
   'attendance.read':'Lihat presensi','attendance.write':'Kelola presensi',
   'journal.read':'Lihat jurnal','journal.write':'Kelola jurnal',
   'target.read':'Lihat target','target.write':'Kelola target',
+  'position.read':'Lihat pengurus','position.write':'Kelola pengurus','decision.write':'Kelola keputusan',
   'report.read':'Lihat laporan','report.publish':'Publikasi laporan',
-  'archive.manage':'Kelola arsip','user.manage':'Kelola akun','settings.manage':'Pengaturan sistem'
+  'import.manage':'Kelola import','archive.manage':'Kelola arsip','user.manage':'Kelola akun','settings.manage':'Pengaturan sistem'
 };
 function defaults(role:Role):Scope[]{
   const read=role==='ADMIN'?audiences.map(x=>x[0]):role==='DEWAN_GURU'?['CABERAWIT','MUDA_MUDI']:role==='KELOMPOK'?['KELOMPOK','MUDA_MUDI','IBU_IBU','PENGURUS']:role==='VIEWER'?['KELOMPOK','CABERAWIT','MUDA_MUDI','IBU_IBU']:[];
