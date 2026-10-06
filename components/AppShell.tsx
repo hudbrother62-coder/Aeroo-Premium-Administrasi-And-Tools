@@ -13,7 +13,7 @@ type Role='ADMIN'|'DEWAN_GURU'|'KELOMPOK'|'VIEWER';
 type AppUser={id:string;username:string;display_name:string|null;role:Role;active:boolean};
 
 const nav=[
-  {href:'/',label:'Dashboard',icon:LayoutDashboard,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
+  {href:'/',label:'Beranda',icon:LayoutDashboard,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
   {href:'/database',label:'Anggota',icon:Database,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
   {href:'/presensi',label:'Presensi',icon:ClipboardCheck,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
   {href:'/jurnal',label:'Jurnal',icon:BookOpen,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
@@ -71,7 +71,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
   useEffect(()=>{setDrawer(false);setMoreOpen(false)},[path]);
   const visible=useMemo(()=>user?nav.filter(x=>x.roles.includes(user.role)):nav.filter(x=>x.publicRead),[user]);
   const primaryMobile=['/','/agenda','/presensi','/jurnal'];
-  const mobilePrimary=visible.filter(x=>primaryMobile.includes(x.href));
+  const mobilePrimary=primaryMobile.flatMap(href=>visible.filter(x=>x.href===href));
   const mobileMore=visible.filter(x=>!primaryMobile.includes(x.href));
   const title=useMemo(()=>nav.find(x=>x.href==='/'?path==='/':path.startsWith(x.href))?.label??'AEROO',[path]);
 
