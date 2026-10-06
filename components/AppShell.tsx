@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 type Role='ADMIN'|'DEWAN_GURU'|'KELOMPOK'|'VIEWER';
-type AppUser={id:string;username:string;display_name:string|null;role:Role;active:boolean};
+type AppUser={id:string;username:string;display_name:string|null;role:Role;active:boolean;read_scopes?:string[];write_scopes?:string[];permissions?:Record<string,boolean>};
 
 const nav=[
   {href:'/',label:'Beranda',icon:LayoutDashboard,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
@@ -33,6 +33,7 @@ const nav=[
 ];
 
 const sections=[['BERANDA',['/']],['OPERASIONAL',['/agenda','/presensi','/jurnal']],['PEMBINAAN',['/target']],['DATA',['/database','/struktur']],['PRIBADI',['/catatan']],['ANALISIS',['/rekap','/kelengkapan','/laporan']],['SISTEM',['/arsip','/impor','/tim-akses','/audit','/pengaturan']]] as const;
+const navPermission:Record<string,string>={'/database':'person.read','/agenda':'agenda.read','/presensi':'attendance.read','/jurnal':'journal.read','/target':'target.read','/struktur':'position.read','/rekap':'report.read','/laporan':'report.read','/arsip':'archive.manage','/impor':'import.manage','/tim-akses':'user.manage','/pengaturan':'settings.manage'};
 const roleLabel:Record<Role,string>={ADMIN:'Admin',DEWAN_GURU:'Dewan Guru',KELOMPOK:'Operator',VIEWER:'Viewer'};
 
 function Brand({compact=false}:{compact?:boolean}){
@@ -75,7 +76,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
   },[isLogin,path]);
 
   useEffect(()=>{setDrawer(false);setMoreOpen(false);setQuickOpen(false)},[path]);
-  const visible=useMemo(()=>user?nav.filter(x=>x.roles.includes(user.role)):nav.filter(x=>x.publicRead),[user]);
+  const visible=useMemo(()=>user?nav.filter(x=>x.roles.includes(user.role)&&(navPermission[x.href]?user.permissions?.[navPermission[x.href]]!==false:true)):nav.filter(x=>x.publicRead),[user]);
   const primaryMobile=['/','/agenda','/presensi','/jurnal'];
   const mobilePrimary=primaryMobile.flatMap(href=>visible.filter(x=>x.href===href));
   const mobileMore=visible.filter(x=>!primaryMobile.includes(x.href));
@@ -84,17 +85,16 @@ export default function AppShell({children}:{children:React.ReactNode}){
   const quickItems=useMemo(()=>{
     const items:{href:string;label:string;icon:any}[]=[];
     if(canWriteFormal){
-      items.push({href:'/database/tambah',label:'Anggota',icon:UserPlus});
+      if(user?.permissions?.['person.write']!==false)items.push({href:'/database/tambah',label:'Anggota',icon:UserPlus});
       if(user?.role==='ADMIN'||user?.role==='DEWAN_GURU'){
         items.push({href:'/database?create=level',label:'Jenjang',icon:Target});
         items.push({href:'/database?create=class',label:'Kelas',icon:Database});
       }
-      items.push({href:'/agenda?create=1',label:'Agenda',icon:CalendarDays});
-      items.push({href:'/presensi/buat',label:'Presensi',icon:ClipboardCheck});
-      items.push({href:'/jurnal/buat',label:'Jurnal',icon:BookOpen});
-      items.push({href:'/jurnal/buat?kind=PENGKAJIAN',label:'Pengkajian',icon:NotebookPen});
-      if(user?.role==='ADMIN'||user?.role==='DEWAN_GURU')items.push({href:'/target?create=1',label:'Target',icon:Target});
-      if(user?.role==='ADMIN'||user?.role==='KELOMPOK')items.push({href:'/struktur?create=1',label:'Jabatan',icon:Network});
+      if(user?.permissions?.['agenda.write']!==false)items.push({href:'/agenda?create=1',label:'Agenda',icon:CalendarDays});
+      if(user?.permissions?.['attendance.write']!==false)items.push({href:'/presensi/buat',label:'Presensi',icon:ClipboardCheck});
+      if(user?.permissions?.['journal.write']!==false){items.push({href:'/jurnal/buat',label:'Jurnal',icon:BookOpen});items.push({href:'/jurnal/buat?kind=PENGKAJIAN',label:'Pengkajian',icon:NotebookPen});}
+      if((user?.role==='ADMIN'||user?.role==='DEWAN_GURU')&&user?.permissions?.['target.write']!==false)items.push({href:'/target?create=1',label:'Target',icon:Target});
+      if((user?.role==='ADMIN'||user?.role==='KELOMPOK')&&user?.permissions?.['position.write']!==false)items.push({href:'/struktur?create=1',label:'Jabatan',icon:Network});
     }
     if(user)items.push({href:'/catatan?create=1',label:'Catatan',icon:NotebookPen});
     return items;
