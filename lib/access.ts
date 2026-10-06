@@ -2,7 +2,7 @@ export type Role='ADMIN'|'DEWAN_GURU'|'KELOMPOK'|'VIEWER';
 export type Audience='KELOMPOK'|'MUDA_MUDI'|'CABERAWIT'|'IBU_IBU'|'PENGURUS';
 
 export const audienceLabels:Record<Audience,string>={
-  KELOMPOK:'Kelompok',
+  KELOMPOK:'Semua Anggota',
   MUDA_MUDI:'Muda-Mudi',
   CABERAWIT:'Caberawit',
   IBU_IBU:'Ibu-Ibu',
