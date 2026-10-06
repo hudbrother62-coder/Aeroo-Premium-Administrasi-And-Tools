@@ -22,7 +22,6 @@ export async function GET(req:NextRequest){
     const open=events.filter(e=>e.state!=='CANCELLED'&&e.event_date<=today&&e.attendance_records?.some((r:any)=>r.status===null));
     const incompleteMembers=people.filter(p=>{
       const active=(p.member_memberships||[]).filter((m:any)=>effectiveMembership(m));
-      if(!active.length)return true;
       return active.some((m:any)=>['caberawit','muda-mudi'].includes(m.categories?.slug)&&(!m.level_id||!m.class_id));
     });
     const draft=journals.filter(j=>j.state==='DRAFT');

@@ -8,7 +8,7 @@ do $$ declare uid uuid;token text:=encode(gen_random_bytes(32),'hex');lid uuid;b
 end $$;
 do $$ declare lid uuid;begin select level_id into lid from public.classes where name='__QA_CAB';insert into public.classes(name,audience,level_id) values('__QA_CAB_NEW','CABERAWIT',lid);end $$;
 set local role anon;
-do $$ declare cat uuid;oldclass uuid;newclass uuid;lev uuid;p jsonb;pid uuid;mm jsonb;e jsonb;future_e jsonb;j jsonb;g jsonb;body jsonb;begin
+do $$ declare cat uuid;oldclass uuid;newclass uuid;lev uuid;p jsonb;pid uuid;mm jsonb;e jsonb;future_e jsonb;j jsonb;g jsonb;body jsonb;blocked boolean;begin
  select id into cat from public.categories where slug='caberawit';select id,level_id into oldclass,lev from public.classes where name='__QA_CAB';select id into newclass from public.classes where name='__QA_CAB_NEW';
  p:=public.save_member(null,0,'{"name":"__QA Lifecycle"}',jsonb_build_array(jsonb_build_object('category_id',cat,'class_id',oldclass,'level_id',lev,'valid_from',current_date-1)));pid:=(p->>'id')::uuid;
  e:=public.ensure_attendance(jsonb_build_object('title','__QA history','event_date',current_date,'audience','CABERAWIT','class_id',oldclass,'level_id',lev));
@@ -25,9 +25,9 @@ do $$ declare cat uuid;oldclass uuid;newclass uuid;lev uuid;p jsonb;pid uuid;mm 
  if not exists(select 1 from public.attendance_records where event_id=(future_e->>'id')::uuid and participant_key=pid) then raise exception 'Future roster missing transitioned person';end if;
  perform public.archive_member(pid,true);
  perform public.save_agenda((g->0->>'id')::uuid,0,'[{"status":"CANCELLED"}]','this');
- perform public.permanently_delete_member(pid);
- if not exists(select 1 from public.attendance_records where event_id=(e->>'id')::uuid and member_id is null and participant_key=pid and member_name_snapshot='__QA Lifecycle') then raise exception 'Permanent deletion lost roster snapshot';end if;
- if not exists(select 1 from public.journal_progress where journal_id=(j->>'id')::uuid and member_id is null and participant_key=pid and progress_value=80) then raise exception 'Permanent deletion lost assessment identity';end if;
+ blocked:=false;begin perform public.permanently_delete_member(pid);exception when others then blocked:=true;end;if not blocked then raise exception 'Permanent deletion bypassed operational history guard';end if;
+ if not exists(select 1 from public.attendance_records where event_id=(e->>'id')::uuid and member_id=pid and participant_key=pid and member_name_snapshot='__QA Lifecycle') then raise exception 'Archive lost roster snapshot';end if;
+ if not exists(select 1 from public.journal_progress where journal_id=(j->>'id')::uuid and member_id=pid and participant_key=pid and progress_value=80) then raise exception 'Archive lost assessment identity';end if;
  perform public.set_journal_state((j->>'id')::uuid,0,'ARCHIVED');
  perform public.set_journal_state((j->>'id')::uuid,1,'DRAFT');
  if (select count(*) from public.journal_progress where journal_id=(j->>'id')::uuid)<>1 then raise exception 'Archive/restore deleted assessment';end if;
@@ -35,5 +35,5 @@ do $$ declare cat uuid;oldclass uuid;newclass uuid;lev uuid;p jsonb;pid uuid;mm 
  select to_jsonb(row_j) into body from public.journals row_j where id=(j->>'id')::uuid;
  perform public.save_journal((j->>'id')::uuid,2,body||'{"state":"COMPLETED"}',jsonb_build_array(jsonb_build_object('member_id',pid,'progress_value',80,'progress_note','historical edit retained')));
 end $$;
-select 'PASS: effective dates, historical cancellation, permanent deletion, journal archive and restore' as result;
+select 'PASS: effective dates, historical cancellation, permanent deletion blocked, journal archive and restore' as result;
 rollback;

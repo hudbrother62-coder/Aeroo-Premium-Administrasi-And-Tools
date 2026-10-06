@@ -1,4 +1,5 @@
 import 'server-only';
+import {effectiveMembership,latestProgressRows} from './domain';
 
 type Gap={
   id:string;
@@ -9,13 +10,6 @@ type Gap={
   missing:number;
   href:string;
 };
-
-function effective(m:any,today:string){
-  return !!m.active &&
-    (!m.valid_from||m.valid_from<=today) &&
-    (!m.valid_to||m.valid_to>=today) &&
-    (!m.ended_on||m.ended_on>today);
-}
 
 export async function targetGaps(s:any,today:string):Promise<Gap[]>{
   const month=today.slice(0,7)+'-01';
@@ -43,7 +37,7 @@ export async function targetGaps(s:any,today:string):Promise<Gap[]>{
   const [{data:targets,error:targetError},{data:members,error:memberError}]=await Promise.all([
     targetQuery,
     s.from('members')
-      .select('id,name,member_memberships(id,active,valid_from,valid_to,ended_on,level_id,class_id)')
+      .select('id,name,member_memberships(id,active,valid_from,valid_to,ended_on,level_id,class_id,categories(slug))')
       .eq('status','ACTIVE')
   ]);
   if(targetError||memberError)throw Error((targetError||memberError)?.message||'Target tidak dapat dianalisis.');
@@ -52,16 +46,22 @@ export async function targetGaps(s:any,today:string):Promise<Gap[]>{
   const ids=targets.map((t:any)=>t.id);
   const {data:progress,error:progressError}=await s
     .from('journal_progress')
-    .select('target_id,participant_key,member_id,journals!inner(state)')
+    .select('target_id,participant_key,member_id,progress_value,created_at,journals!inner(state,journal_date,event_id,attendance_events(state,attendance_records(participant_key,status)))')
     .in('target_id',ids)
     .eq('journals.state','COMPLETED');
   if(progressError)throw Error(progressError.message);
 
   const assessedByTarget=new Map<string,Set<string>>();
-  for(const p of progress||[]){
+  const seen=new Set<string>();
+  for(const p of latestProgressRows<any>(progress||[])){
+    const j=Array.isArray(p.journals)?p.journals[0]:p.journals;
+    const e=Array.isArray(j?.attendance_events)?j.attendance_events[0]:j?.attendance_events;
+    if(j?.state!=='COMPLETED'||(j.event_id&&(e?.state==='CANCELLED'||!e?.attendance_records?.some((r:any)=>r.participant_key===(p.participant_key||p.member_id)&&r.status==='H'))))continue;
     const key=p.target_id;
     const person=p.participant_key||p.member_id;
     if(!key||!person)continue;
+    const identity=key+':'+person;if(seen.has(identity))continue;seen.add(identity);
+    if(p.progress_value===null||p.progress_value===undefined||!Number.isFinite(Number(p.progress_value)))continue;
     if(!assessedByTarget.has(key))assessedByTarget.set(key,new Set());
     assessedByTarget.get(key)!.add(person);
   }
@@ -70,7 +70,7 @@ export async function targetGaps(s:any,today:string):Promise<Gap[]>{
   for(const t of targets){
     const eligible=(members||[]).filter((m:any)=>
       (m.member_memberships||[]).some((mm:any)=>
-        effective(mm,today) &&
+        effectiveMembership(mm,today) && ['caberawit','muda-mudi'].includes(mm.categories?.slug) &&
         (!t.level_id||mm.level_id===t.level_id) &&
         (!t.class_id||mm.class_id===t.class_id)
       )

@@ -2,9 +2,7 @@ import {NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
 import {targetGaps} from '@/lib/target-gaps';
 
-function jakartaDate(){
-  return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-}
+import {jakartaDate,effectiveMembership} from '@/lib/domain';
 
 export async function GET(){
   const s=await db();
@@ -25,9 +23,8 @@ export async function GET(){
 
   const memberIssues:any[]=[];
   for(const m of members.data||[]){
-    const active=(m as any).member_memberships?.filter((x:any)=>x.active&&(!x.valid_from||x.valid_from<=today)&&(!x.valid_to||x.valid_to>=today)&&(!x.ended_on||x.ended_on>today))||[];
-    if(!active.length)memberIssues.push({id:m.id,title:m.name,detail:'Belum memiliki keikutsertaan aktif',href:'/database/tambah?id='+m.id});
-    else for(const x of active){
+    const active=(m as any).member_memberships?.filter((x:any)=>effectiveMembership(x,today))||[];
+    for(const x of active){
       const slug=(x.categories as any)?.slug;
       if(['caberawit','muda-mudi'].includes(slug)&&(!x.level_id||!x.class_id)){
         memberIssues.push({id:m.id+':'+x.id,title:m.name,detail:(x.categories as any)?.name+' belum lengkap jenjang/kelas',href:'/database/tambah?id='+m.id});

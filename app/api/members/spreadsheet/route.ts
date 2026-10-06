@@ -4,6 +4,8 @@ import {db} from '@/lib/supabase-server';
 import {publicRows} from '@/lib/public-read';
 import {excelDate,spreadsheetCell,readWorkbook} from '@/lib/spreadsheet';
 
+import {effectiveMembership} from '@/lib/domain';
+
 export const runtime='nodejs';
 
 const columns=[
@@ -53,14 +55,14 @@ export async function GET(req:NextRequest){
             p.id,
             p.name,
             (p.member_categories||[]).map((m:any)=>m.categories?.name).filter(Boolean).join(', '),
-            (p.member_memberships||[]).map((m:any)=>m.levels?.name).filter(Boolean).join(', '),
-            (p.member_memberships||[]).map((m:any)=>m.classes?.name).filter(Boolean).join(', ')
+            (p.member_memberships||[]).filter((m:any)=>effectiveMembership(m)).map((m:any)=>m.levels?.name).filter(Boolean).join(', '),
+            (p.member_memberships||[]).filter((m:any)=>effectiveMembership(m)).map((m:any)=>m.classes?.name).filter(Boolean).join(', ')
           ])
         ]
       : [
           columns,
           ...(result.data||[]).map((p:any)=>{
-            const mm=(p.member_memberships||[]).filter((m:any)=>m.active);
+            const mm=(p.member_memberships||[]).filter((m:any)=>effectiveMembership(m));
             const programMemberships=mm.filter((m:any)=>['caberawit','muda-mudi','ibu-ibu'].includes(m.categories?.slug));
             const learning=programMemberships.find((m:any)=>['caberawit','muda-mudi'].includes(m.categories?.slug));
             return [
@@ -216,7 +218,7 @@ export async function POST(req:NextRequest){
         if(!id){
           const duplicate=(existingRes.data||[]).some((p:any)=>{
             const activeCategories=(p.member_memberships||[])
-              .filter((m:any)=>m.active)
+              .filter((m:any)=>effectiveMembership(m))
               .map((m:any)=>m.category_id)
               .sort();
             return JSON.stringify([

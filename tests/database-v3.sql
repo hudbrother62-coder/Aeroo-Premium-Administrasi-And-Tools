@@ -23,9 +23,9 @@ do $$ declare n jsonb;j jsonb;blocked boolean;begin
 end $$;
 do $$ declare person jsonb;position jsonb;e jsonb;j jsonb;decision jsonb;blocked boolean;snapshot uuid;begin
  perform set_config('request.headers',jsonb_build_object('x-aeroo-session',current_setting('aeroo.qa_v3'))::text,true);
- person:=public.save_member(null,0,'{"name":"__QA v3 position"}',jsonb_build_array(jsonb_build_object('category_id',(select id from public.categories where slug='kelompok'),'valid_from','2026-10-01')));
+ person:=public.save_member(null,0,'{"name":"__QA v3 position"}','[]'::jsonb);
  position:=public.save_organizational_position(null,0,jsonb_build_object('member_id',person->>'id','title','Sekretaris','valid_from','2026-10-01'));
- if position->>'legacy_membership_id' is null then raise exception 'Position attendance adapter missing';end if;
+ if exists(select 1 from public.member_memberships where member_id=(person->>'id')::uuid) then raise exception 'Position created a synthetic program membership';end if;
  e:=public.ensure_attendance('{"title":"__QA v3 Pengurus","event_date":"2026-10-06","audience":"PENGURUS"}');
  if not exists(select 1 from public.attendance_records where event_id=(e->>'id')::uuid and member_id=(person->>'id')::uuid) then raise exception 'Position not in Pengurus roster';end if;
  j:=public.save_journal(null,0,'{"title":"__QA v3 Musyawarah","journal_date":"2026-10-06","journal_kind":"PENGURUS"}','[]');
@@ -47,7 +47,7 @@ do $$ declare j jsonb;e jsonb;g jsonb;decision jsonb;blocked boolean;begin
 end $$;
 do $$ declare person jsonb;p jsonb;blocked boolean;begin
  perform set_config('request.headers',jsonb_build_object('x-aeroo-session',current_setting('aeroo.qa_v3'))::text,true);
- person:=public.save_member(null,0,'{"name":"__QA term preservation"}',jsonb_build_array(jsonb_build_object('category_id',(select id from public.categories where slug='kelompok'),'valid_from','2026-10-01')));
+ person:=public.save_member(null,0,'{"name":"__QA term preservation"}','[]'::jsonb);
  p:=public.save_organizational_position(null,0,jsonb_build_object('member_id',person->>'id','title','Sekretaris','valid_from','2026-10-01'));
  blocked:=false;begin perform public.save_organizational_position((p->>'id')::uuid,0,jsonb_build_object('member_id',person->>'id','title','Sekretaris','valid_from','2026-10-02'));exception when others then blocked:=true;end;if not blocked then raise exception 'Historical term start rewritten';end if;
  p:=public.save_organizational_position((p->>'id')::uuid,0,jsonb_build_object('member_id',person->>'id','title','Sekretaris','valid_from','2026-10-01','valid_to','2026-10-02'));

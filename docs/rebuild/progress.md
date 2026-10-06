@@ -30,3 +30,6 @@ Spec: docs/superpowers/specs/2026-10-06-airo-rebuild-design.md
 - Existing production data and custom-session authorization are preserved.
 - New private data uses current_app_user_id, never auth.uid.
 - No fabricated percentage: implementation and verified acceptance are recorded separately.
+
+## Resumed QCL — 2026-10-06
+See legacy-membership-audit.md for reproduced findings, fixes, test evidence and remaining gates. Legacy anonymous creation, granular membership reads, retired position adapter, historical agenda cancellation and date-effective projections are fixed. 42 Node tests, TypeScript and Next production build pass. Five SQL rollback suites pass. Production remains gated on signed-in UI/mobile/offline acceptance.

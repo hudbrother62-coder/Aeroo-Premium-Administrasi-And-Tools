@@ -1,4 +1,4 @@
-import {effectiveMembership} from '@/lib/domain';
+import {effectiveMembership,projectMember} from '@/lib/domain';
 import {saveMember} from '@/lib/member-save';
 import {publicProjection} from '@/lib/public-read';
 import {NextRequest,NextResponse} from 'next/server';
@@ -32,7 +32,7 @@ export async function GET(req:NextRequest){
 
   const office=req.nextUrl.searchParams.get('office');
   if(slug||classId||levelId||office)rows=rows.filter((p:any)=>p.member_memberships?.some((m:any)=>effectiveMembership(m)&&(!slug||m.categories?.slug===slug)&&(!classId||m.class_id===classId)&&(!levelId||m.level_id===levelId)&&(!office||[m.office,m.section].some(v=>v?.toLowerCase().includes(office.toLowerCase())))));
-  return NextResponse.json(rows.map((p:any)=>({...p,member_memberships:p.member_memberships?.map((m:any)=>({...m,effective:effectiveMembership(m)}))})));
+  return NextResponse.json(rows.map((p:any)=>projectMember(p)));
 }
 
 export async function POST(req:NextRequest){return saveMember(await req.json(),null)}
