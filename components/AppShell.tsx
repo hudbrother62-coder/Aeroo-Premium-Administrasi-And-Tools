@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import GlobalTools from '@/components/GlobalTools';
 import {usePathname} from 'next/navigation';
 import {useEffect,useMemo,useState} from 'react';
 import {
   LayoutDashboard,Database,ClipboardCheck,BookOpen,Target,
-  CalendarDays,ChartNoAxesCombined,FileText,Settings,Moon,Sun,Menu,X,LogOut,LogIn,MoreHorizontal,NotebookPen,Network,Archive,Upload,PanelLeftClose,PanelLeftOpen,Plus,UserPlus
+  CalendarDays,ChartNoAxesCombined,FileText,Settings,Moon,Sun,Menu,X,LogOut,LogIn,MoreHorizontal,NotebookPen,Network,Archive,Upload,PanelLeftClose,PanelLeftOpen,Plus,UserPlus,Users,FileSearch
 } from 'lucide-react';
 
 type Role='ADMIN'|'DEWAN_GURU'|'KELOMPOK'|'VIEWER';
@@ -25,10 +26,12 @@ const nav=[
   {href:'/catatan',label:'Catatan',icon:NotebookPen,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[]},
   {href:'/arsip',label:'Arsip',icon:Archive,roles:['ADMIN','DEWAN_GURU','KELOMPOK'] as Role[]},
   {href:'/impor',label:'Import Center',icon:Upload,roles:['ADMIN','DEWAN_GURU','KELOMPOK'] as Role[]},
+  {href:'/tim-akses',label:'Akses',icon:Users,roles:['ADMIN'] as Role[]},
+  {href:'/audit',label:'Audit',icon:FileSearch,roles:['ADMIN'] as Role[]},
   {href:'/pengaturan',label:'Pengaturan',icon:Settings,roles:['ADMIN'] as Role[]},
 ];
 
-const sections=[['BERANDA',['/']],['OPERASIONAL',['/agenda','/presensi','/jurnal']],['PEMBINAAN',['/target']],['DATA',['/database','/struktur']],['PRIBADI',['/catatan']],['ANALISIS',['/rekap','/laporan']],['SISTEM',['/arsip','/impor','/pengaturan']]] as const;
+const sections=[['BERANDA',['/']],['OPERASIONAL',['/agenda','/presensi','/jurnal']],['PEMBINAAN',['/target']],['DATA',['/database','/struktur']],['PRIBADI',['/catatan']],['ANALISIS',['/rekap','/laporan']],['SISTEM',['/arsip','/impor','/tim-akses','/audit','/pengaturan']]] as const;
 const roleLabel:Record<Role,string>={ADMIN:'Admin',DEWAN_GURU:'Dewan Guru',KELOMPOK:'Operator',VIEWER:'Viewer'};
 
 function Brand({compact=false}:{compact?:boolean}){
@@ -128,6 +131,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
     </aside>
 
     <main className="contentArea">
+      <div className="globalToolsDock"><GlobalTools enabled={!!user}/></div>
       <header className="mobileHeader">
         <Link href="/" className="mobileBrand"><Image src="/aeroo-mark.webp" alt="" width={48} height={38} priority/><span><b>AIRO</b><small>{title}</small></span></Link>
         <div className="headerActions">
