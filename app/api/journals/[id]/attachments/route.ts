@@ -20,11 +20,27 @@ async function can(s:any,id:string,mode:'read'|'write'){
   return data===true;
 }
 
-export async function GET(_req:NextRequest,{params}:{params:Promise<{id:string}>}){
+export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}){
   try{
     const {id}=await params;
     const s=await db();
     if(!await can(s,id,'read'))return NextResponse.json({error:'Akses ditolak.'},{status:403});
+
+    const downloadId=req.nextUrl.searchParams.get('download');
+    if(downloadId){
+      const {data:attachment,error:attachmentError}=await s.from('journal_attachments').select('id,file_path,file_name,mime_type').eq('id',downloadId).eq('journal_id',id).single();
+      if(attachmentError||!attachment)return NextResponse.json({error:'Dokumentasi tidak ditemukan.'},{status:404});
+      const {data:file,error:fileError}=await s.storage.from(bucket).download(attachment.file_path);
+      if(fileError||!file)throw Error(fileError?.message||'File tidak dapat diunduh.');
+      const buffer=await file.arrayBuffer();
+      const name=attachment.file_name||'dokumentasi';
+      return new Response(buffer,{headers:{
+        'Content-Type':attachment.mime_type||file.type||'application/octet-stream',
+        'Content-Length':String(buffer.byteLength),
+        'Content-Disposition':`attachment; filename*=UTF-8''${encodeURIComponent(name)}`,
+        'Cache-Control':'private, no-store'
+      }});
+    }
 
     const {data,error}=await s.from('journal_attachments')
       .select('id,journal_id,file_path,file_name,mime_type,created_at')
