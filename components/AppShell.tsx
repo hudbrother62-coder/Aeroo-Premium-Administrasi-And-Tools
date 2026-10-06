@@ -21,6 +21,7 @@ const nav=[
   {href:'/target',label:'Target & Progres',icon:Target,roles:['ADMIN','DEWAN_GURU','VIEWER'] as Role[],publicRead:true},
   {href:'/agenda',label:'Agenda',icon:CalendarDays,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
   {href:'/rekap',label:'Rekap',icon:ChartNoAxesCombined,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
+  {href:'/kelengkapan',label:'Kelengkapan',icon:ClipboardCheck,roles:['ADMIN','DEWAN_GURU','KELOMPOK'] as Role[]},
   {href:'/laporan',label:'Laporan',icon:FileText,roles:['ADMIN','DEWAN_GURU','VIEWER'] as Role[],publicRead:true},
   {href:'/struktur',label:'Struktur & Pengurus',icon:Network,roles:['ADMIN','KELOMPOK'] as Role[]},
   {href:'/catatan',label:'Catatan',icon:NotebookPen,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[]},
@@ -31,7 +32,7 @@ const nav=[
   {href:'/pengaturan',label:'Pengaturan',icon:Settings,roles:['ADMIN'] as Role[]},
 ];
 
-const sections=[['BERANDA',['/']],['OPERASIONAL',['/agenda','/presensi','/jurnal']],['PEMBINAAN',['/target']],['DATA',['/database','/struktur']],['PRIBADI',['/catatan']],['ANALISIS',['/rekap','/laporan']],['SISTEM',['/arsip','/impor','/tim-akses','/audit','/pengaturan']]] as const;
+const sections=[['BERANDA',['/']],['OPERASIONAL',['/agenda','/presensi','/jurnal']],['PEMBINAAN',['/target']],['DATA',['/database','/struktur']],['PRIBADI',['/catatan']],['ANALISIS',['/rekap','/kelengkapan','/laporan']],['SISTEM',['/arsip','/impor','/tim-akses','/audit','/pengaturan']]] as const;
 const roleLabel:Record<Role,string>={ADMIN:'Admin',DEWAN_GURU:'Dewan Guru',KELOMPOK:'Operator',VIEWER:'Viewer'};
 
 function Brand({compact=false}:{compact?:boolean}){
