@@ -1,18 +1,11 @@
 import {randomUUID} from 'crypto';
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
+import {evidenceContentDisposition,validateEvidenceMeta} from '@/lib/evidence';
 
 export const runtime='nodejs';
 
 const bucket='airo-evidence';
-const allowed=new Set(['image/jpeg','image/png','image/webp','application/pdf']);
-const maxBytes=10*1024*1024;
-
-function safeName(name:string){
-  const clean=name.normalize('NFKC').replace(/[\\/\0-\x1f\x7f]+/g,'-').replace(/[^a-zA-Z0-9._() -]+/g,'-').trim();
-  return (clean||'dokumen').slice(0,120);
-}
-
 async function can(s:any,id:string,mode:'read'|'write'){
   const fn=mode==='write'?'can_write_journal_id':'can_read_journal_id';
   const {data,error}=await s.rpc(fn,{p_journal_id:id});
@@ -37,7 +30,7 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}
       return new Response(buffer,{headers:{
         'Content-Type':attachment.mime_type||file.type||'application/octet-stream',
         'Content-Length':String(buffer.byteLength),
-        'Content-Disposition':`attachment; filename*=UTF-8''${encodeURIComponent(name)}`,
+        'Content-Disposition':evidenceContentDisposition(name),
         'Cache-Control':'private, no-store'
       }});
     }
@@ -67,10 +60,8 @@ export async function POST(req:NextRequest,{params}:{params:Promise<{id:string}>
     const form=await req.formData();
     const file=form.get('file');
     if(!(file instanceof File))return NextResponse.json({error:'Pilih file dokumentasi.'},{status:400});
-    if(file.size<=0||file.size>maxBytes)return NextResponse.json({error:'Ukuran file harus 1 byte–10 MB.'},{status:400});
-    if(!allowed.has(file.type))return NextResponse.json({error:'Format yang diizinkan: JPG, PNG, WebP, atau PDF.'},{status:400});
-
-    const displayName=safeName(file.name);
+    let meta;try{meta=validateEvidenceMeta({name:file.name,type:file.type,size:file.size})}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'File tidak valid.'},{status:400})}
+    const displayName=meta.name;
     const path=`journals/${id}/${randomUUID()}-${displayName}`;
     const {error:uploadError}=await s.storage.from(bucket).upload(path,file,{
       contentType:file.type,
