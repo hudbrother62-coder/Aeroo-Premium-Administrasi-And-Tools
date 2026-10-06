@@ -485,3 +485,18 @@ h1{font-size:clamp(28px,3vw,40px);letter-spacing:-.035em}h2{font-size:19px}h3{fo
   .memberDetailActions{padding:12px 14px 14px}
   .memberDetailActions .btn{flex:1;min-width:120px}
 }
+
+
+/* Member status + sorting refinement */
+.memberRowStatus{display:inline-flex;align-items:center;justify-content:center;min-width:64px;height:25px;padding:0 8px;border-radius:999px;font-size:10px;font-weight:850;white-space:nowrap;flex:0 0 auto}
+.memberRowStatus.active{color:var(--success);background:color-mix(in srgb,var(--success) 10%,var(--surface))}
+.memberRowStatus.inactive{color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,var(--surface))}
+.memberCompactRow.inactiveRow{background:color-mix(in srgb,var(--surface-2) 55%,var(--surface))}
+.memberCompactRow.inactiveRow .memberCompactName{color:var(--muted)}
+@media(min-width:1100px){
+  .databaseTools{grid-template-columns:minmax(220px,1.25fr) repeat(4,minmax(145px,.75fr)) minmax(170px,.9fr) auto}
+}
+@media(max-width:560px){
+  .memberRowStatus{min-width:54px;height:23px;padding:0 6px;font-size:9px}
+  .memberCompactRow{gap:7px}
+}
