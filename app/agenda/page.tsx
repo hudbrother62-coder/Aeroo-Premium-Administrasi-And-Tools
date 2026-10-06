@@ -4,7 +4,6 @@ import Link from 'next/link';
 import {writeScopesForRole,audienceLabels,type Audience} from '@/lib/access';
 import {jakartaDate,slugByAudience} from '@/lib/domain';
 import {FormEvent,useEffect,useMemo,useState} from 'react';
-import * as XLSX from 'xlsx';
 import {CalendarPlus,ChevronLeft,ChevronRight,Download,MapPin,UserRound,Clock3} from 'lucide-react';
 
 type Activity={id:string;name:string;audience:string};
@@ -46,7 +45,8 @@ export default function AgendaPage(){
     setShow(false);setSelected(form.date);setMonth(new Date(Number(form.date.slice(0,4)),Number(form.date.slice(5,7))-1,1));setMessage('Agenda tersimpan.');await load();
   }
   async function remove(e:Agenda){if(!confirm(`Batalkan agenda “${e.title}”? Absensi dan jurnal tetap tersimpan.`))return;const r=await fetch('/api/agenda/'+e.id,{method:'DELETE'});if(!r.ok){setError((await r.json()).error||'Gagal menghapus agenda.');return}setMessage('Agenda dibatalkan; tidak dihitung sebagai Alfa.');await load()}
-  function exportExcel(){
+  async function exportExcel(){
+    const XLSX=await import('xlsx');
     const rows=data.map(e=>({Tanggal:localDay(e.starts_at),'Jam mulai':time(e.starts_at),'Jam selesai':e.ends_at?time(e.ends_at):'',Kegiatan:e.title,Jenis:e.activity_types?.name||'',Pemateri:e.presenter||'',Tempat:e.location||'',Catatan:e.notes||''}));
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows.length?rows:[{Tanggal:'',Kegiatan:'Belum ada agenda'}]),'Agenda');XLSX.writeFile(wb,`agenda-${monthKey(month)}.xlsx`);
   }
