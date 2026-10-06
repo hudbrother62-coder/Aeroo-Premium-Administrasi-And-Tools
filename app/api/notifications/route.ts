@@ -1,5 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
+import {targetGaps} from '@/lib/target-gaps';
 
 function jakartaDate(){
   return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
@@ -12,6 +13,7 @@ export async function GET(){
   const me=user?.[0];
   if(uErr||!me)return NextResponse.json({error:'Masuk untuk melihat notifikasi.'},{status:401});
   const today=jakartaDate();
+  const {data:canTarget}=await s.rpc('has_app_permission',{p_permission:'target.read'});
   const now=new Date();
   const soon=new Date(now.getTime()+36*60*60*1000).toISOString();
   const [agenda,events,journals,decisions,imports,reads]=await Promise.all([
@@ -47,6 +49,10 @@ export async function GET(){
     const k=key('import',j.id,j.status);
     items.push({key:k,kind:'IMPORT',title:j.status==='FAILED'?'Import gagal':'Import perlu diperiksa',detail:j.file_name||j.resource_type,href:'/impor',created_at:j.created_at,read:readSet.has(k)});
   }
+  if(canTarget){for(const t of (await targetGaps(s,today)).slice(0,20)){
+    const k=key('target',t.id,today.slice(0,7),t.missing);
+    items.push({key:k,kind:'TARGET',title:'Target belum dinilai',detail:t.title+' · '+t.missing+' dari '+t.eligible+' anggota',href:t.href,created_at:today,read:readSet.has(k)});
+  }}
   items.sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
   return NextResponse.json({items,unread:items.filter(x=>!x.read).length});
 }
