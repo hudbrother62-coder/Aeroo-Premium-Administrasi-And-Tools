@@ -16,7 +16,7 @@ export async function GET(){
     s.from('login_history').select('id',{count:'exact',head:true}).eq('success',false).gte('created_at',dayAgo),
     s.from('audit_logs').select('id,created_at,action,resource_type').order('created_at',{ascending:false}).limit(1),
     s.from('journals').select('id',{count:'exact',head:true}).eq('state','DRAFT').lt('updated_at',weekAgo),
-    s.from('app_users').select('id',{count:'exact',head:true}).eq('active',true)
+    s.rpc('list_app_users')
   ]);
 
   const firstError=[imports,logins,audit,drafts,users].find((x:any)=>x.error)?.error;
@@ -25,13 +25,14 @@ export async function GET(){
   const failedImports=imports.count||0;
   const failedLogins=logins.count||0;
   const staleDrafts=drafts.count||0;
+  const activeUsers=(users.data||[]).filter((x:any)=>x.active).length;
   const lastAudit=audit.data?.[0]||null;
 
   return NextResponse.json({
     checked_at:new Date().toISOString(),
     summary:{
       database:'OK',
-      active_users:users.count||0,
+      active_users:activeUsers,
       failed_imports_7d:failedImports,
       failed_logins_24h:failedLogins,
       stale_drafts_7d:staleDrafts,
