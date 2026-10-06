@@ -33,3 +33,5 @@ Spec: docs/superpowers/specs/2026-10-06-airo-rebuild-design.md
 
 ## Resumed QCL — 2026-10-06
 See legacy-membership-audit.md for reproduced findings, fixes, test evidence and remaining gates. Legacy anonymous creation, granular membership reads, retired position adapter, historical agenda cancellation and date-effective projections are fixed. 42 Node tests, TypeScript and Next production build pass. Five SQL rollback suites pass. Production remains gated on signed-in UI/mobile/offline acceptance.
+
+Latest code checkpoint: d51b77c10373bf85d611cf483cdc66a96d08c576. Preview dpl_4BsSYAhxJyzbDpsHN3zm3Ynqv6h6 is READY. Remote browser reproduced the public-viewer login redirect and verified its fix on this preview. Secure sign-in request was declined, so authenticated acceptance could not proceed. No production promotion performed. Final SQL recount: zero members and zero memberships.

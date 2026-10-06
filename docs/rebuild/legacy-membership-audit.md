@@ -21,6 +21,7 @@ Status: VERIFYING. Production promotion requires signed-in UI acceptance.
 - Lifecycle deletion expectation was updated to the current requirement: operational history blocks permanent deletion; archival preserves snapshots and assessments.
 - Position fixtures now use general persons with zero program memberships; positions do not create synthetic membership categories.
 - 42 Node tests passed; TypeScript passed; Next production build passed.
+- Latest code checkpoint d51b77c is READY on preview dpl_4BsSYAhxJyzbDpsHN3zm3Ynqv6h6. Browser verified the login form remains open for an anonymous viewer after the fix.
 - Live production database has zero members and zero memberships; all SQL test fixtures were rolled back.
 
 ## Remaining release gates
@@ -28,3 +29,4 @@ Status: VERIFYING. Production promotion requires signed-in UI acceptance.
 - Mobile/theme visual checks and actual offline reconnect/conflict flow.
 - Verify final preview deployment, then promote exactly that verified commit to production.
 - Remote browser opened the READY preview using a temporary Vercel share link. Public dashboard rendered; login redirect regression was reproduced and fixed. Authenticated acceptance remains pending. No production promotion has been performed.
+- The secure sign-in request was declined. Authenticated UI, upload/download and real reconnect acceptance remain blocked until an authorized browser session is available.
