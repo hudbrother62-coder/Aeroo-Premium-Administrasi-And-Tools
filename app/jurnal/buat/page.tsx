@@ -1,6 +1,7 @@
 'use client';
 
 import MeetingDecisions from '@/components/MeetingDecisions';
+import JournalAttachments from '@/components/JournalAttachments';
 import {studyDuration} from '@/lib/rebuild';
 import {jakartaDate} from '@/lib/domain';
 import {writeScopesForRole,type Audience} from '@/lib/access';
@@ -60,7 +61,7 @@ export default function Page(){
     try{const r=await fetch(journalId?'/api/journals/'+journalId:'/api/journals',{method:journalId?'PATCH':'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
     const j=await r.json();
     if(!r.ok){setError(r.status===409?'Konflik revisi: jurnal telah diubah orang lain. Muat ulang sebelum menyimpan.':j.error||'Gagal menyimpan jurnal.');setSaving(false);return}
-    window.location.href='/jurnal';}catch(e){setError(e instanceof Error?e.message:'Gagal menyimpan jurnal.');setSaving(false)}
+    if(!journalId&&j?.id){window.location.href='/jurnal/buat?journal_id='+j.id+'&saved=1';return}window.location.href='/jurnal';}catch(e){setError(e instanceof Error?e.message:'Gagal menyimpan jurnal.');setSaving(false)}
   }
 
   const set=(k:string,v:string)=>setForm(x=>({...x,[k]:v}));
@@ -94,6 +95,7 @@ export default function Page(){
       {error&&<div className="notice error section">{error}</div>}
       <div className="formActions"><a className="btn ghost" href="/jurnal">Batal</a><button className="btn" disabled={saving}>{saving?'Menyimpan…':'Simpan'}</button></div>
     </form>
+    {journalId&&<JournalAttachments journalId={journalId} readOnly={state==='ARCHIVED'}/>} 
     {journalId&&form.journal_kind==='PENGURUS'&&state!=='ARCHIVED'&&<MeetingDecisions journalId={journalId}/>}
   </>;
 }
