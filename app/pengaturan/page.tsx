@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import {FormEvent,useEffect,useState} from 'react';
+import {Archive,FileSearch,ShieldCheck,Upload,Users,Activity} from 'lucide-react';
 
 type Login={id:number;username:string;success:boolean;user_agent?:string;created_at:string};
 type Health={checked_at:string;summary:any;checks:Array<{key:string;label:string;status:'OK'|'WARN'|'ERROR';detail:string}>};
@@ -26,9 +27,19 @@ export default function SettingsPage(){
   async function save(e:FormEvent){e.preventDefault();setSaved('');setError('');const r=await fetch('/api/settings',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({group_info:group,usage_manual:manual})});const j=await r.json();if(!r.ok){setError(j.error||'Gagal menyimpan.');return}setSaved('Pengaturan tersimpan.');}
 
   return <>
-    <div className="pageHeader"><div><h1>Pengaturan</h1></div><Link className="btn ghost" href="/tim-akses">Akses</Link></div>
-    <form className="card" onSubmit={save}>
-      <h2>Kelompok Pengorgan</h2>
+    <div className="pageHeader"><div><h1>Pengaturan</h1><p>Konfigurasi aplikasi dan kontrol Super Admin.</p></div></div>
+    <section className="card adminControlPanel">
+      <div className="cardHead"><div><h2>Kontrol Super Admin</h2><p>Akses cepat untuk pengguna, audit, impor, arsip, dan kesehatan sistem.</p></div><ShieldCheck size={22}/></div>
+      <div className="adminControlGrid">
+        <Link href="/tim-akses" className="adminControlItem"><Users size={18}/><span><strong>Akses Pengguna</strong><small>Role, izin, dan cakupan data</small></span></Link>
+        <Link href="/audit" className="adminControlItem"><FileSearch size={18}/><span><strong>Audit Aktivitas</strong><small>Riwayat perubahan administrasi</small></span></Link>
+        <Link href="/impor" className="adminControlItem"><Upload size={18}/><span><strong>Import Center</strong><small>Kelola impor data terstruktur</small></span></Link>
+        <Link href="/arsip" className="adminControlItem"><Archive size={18}/><span><strong>Arsip</strong><small>Pulihkan atau tinjau data nonaktif</small></span></Link>
+        <button type="button" className="adminControlItem" onClick={async()=>{const r=await fetch('/api/system-health',{cache:'no-store'});if(r.ok)setHealth(await r.json())}}><Activity size={18}/><span><strong>Periksa Sistem</strong><small>Refresh status layanan sekarang</small></span></button>
+      </div>
+    </section>
+    <form className="card section" onSubmit={save}>
+      <h2>Identitas Kelompok</h2>
       <div className="formGrid">
         <label>Nama kelompok<input className="input" value={group.name} onChange={e=>setGroup({...group,name:e.target.value})}/></label>
         <label>Kontak<input className="input" value={group.contact} onChange={e=>setGroup({...group,contact:e.target.value})}/></label>

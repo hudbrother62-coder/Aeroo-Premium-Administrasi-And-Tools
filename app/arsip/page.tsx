@@ -76,7 +76,7 @@ export default function Archive(){
     </div>
 
     <div className="tabBar">
-      <button className={tab==='members'?'tab active':'tab'} onClick={()=>setTab('members')}>Anggota</button>
+      <button className={tab==='members'?'tab active':'tab'} onClick={()=>setTab('members')}>Database</button>
       <button className={tab==='journals'?'tab active':'tab'} onClick={()=>setTab('journals')}>Jurnal</button>
     </div>
 
@@ -124,7 +124,7 @@ export default function Archive(){
         {dep.type==='member'&&<div className={dep.can_permanent_delete?'notice section':'notice warning section'}>
           {dep.can_permanent_delete
             ? 'Tidak ada histori operasional yang terikat. Permanent delete diizinkan.'
-            : 'Permanent delete dikunci karena ada histori operasional. Biarkan anggota di arsip agar presensi, jurnal, progres, dan riwayat jabatan tetap utuh.'}
+            : 'Permanent delete dikunci karena ada histori operasional. Biarkan anggota di arsip agar presensi, jurnal, progres, dan riwayat dapukan tetap utuh.'}
         </div>}
         {dep.type==='journal'&&<div className="notice section">
           Jurnal tidak dihapus permanen. Pulihkan sebagai Draft bila perlu melakukan koreksi.

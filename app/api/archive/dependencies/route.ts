@@ -26,7 +26,7 @@ export async function GET(req:NextRequest){
       {key:'attendance',label:'Presensi',count:attendance.count||0,blocking:(attendance.count||0)>0},
       {key:'progress',label:'Progres',count:progress.count||0,blocking:(progress.count||0)>0},
       {key:'journals',label:'Jurnal individu',count:journals.count||0,blocking:(journals.count||0)>0},
-      {key:'positions',label:'Riwayat jabatan',count:positions.count||0,blocking:(positions.count||0)>0},
+      {key:'positions',label:'Riwayat dapukan',count:positions.count||0,blocking:(positions.count||0)>0},
       {key:'memberships',label:'Riwayat keikutsertaan',count:memberships.count||0,blocking:false}
     ];
     return NextResponse.json({
