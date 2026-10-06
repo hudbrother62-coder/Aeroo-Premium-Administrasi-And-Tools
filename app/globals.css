@@ -812,3 +812,15 @@ html[data-theme="dark"] .quickAddButton{background:#f1f3f6!important;color:#1113
 .dependencyRow{display:grid;grid-template-columns:minmax(0,1fr) 64px auto;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--border);border-radius:9px}
 .dependencyRow>strong{text-align:right}
 @media(max-width:560px){.archiveRow{align-items:flex-start;gap:10px}.archiveRow>.row{flex-wrap:wrap;justify-content:flex-end}.dependencyRow{grid-template-columns:1fr auto}.dependencyRow .badge{grid-column:1/-1;width:max-content}}
+
+
+/* AIRO journal evidence */
+.evidenceUpload{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
+.evidenceGrid{display:grid;gap:7px}
+.evidenceItem{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:9px;align-items:center;padding:9px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)}
+.evidenceIcon{width:34px;height:34px;border-radius:8px;background:var(--surface);display:grid;place-items:center;border:1px solid var(--border)}
+.evidenceInfo{min-width:0;display:grid;gap:3px}
+.evidenceInfo a{color:var(--text);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.evidenceInfo a:hover{text-decoration:underline;text-underline-offset:3px}
+.evidenceInfo span{font-size:10px;color:var(--muted)}
+@media(max-width:560px){.evidenceUpload{grid-template-columns:1fr}.evidenceUpload .btn{width:100%}}
