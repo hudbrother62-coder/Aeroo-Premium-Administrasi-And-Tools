@@ -1160,3 +1160,184 @@ h2{font-weight:800}
 @media(prefers-reduced-motion:reduce){
   *,*:before,*:after{scroll-behavior:auto!important;animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
 }
+
+
+/* Simpul clean pass — 2026-10-06 */
+body{font-weight:400;letter-spacing:0}
+h1{font-weight:720;letter-spacing:-.035em}
+h2{font-weight:680;letter-spacing:-.02em}
+h3{font-weight:640}
+strong,b{font-weight:640}
+p{font-weight:400}
+.navItem,.sideButton,.btn,.tab,.smallAction,.badge,.chip,.table th,.formGrid label,.dialogCard>label,.loginCard label{font-weight:600}
+.metricCard strong,.statCard strong{font-weight:700}
+.eyebrow,.navGroupLabel{font-weight:650}
+.brandWordmark strong{font-weight:720;letter-spacing:-.035em}
+.brandWordmark small{font-weight:600}
+.input,.select,.textarea{font-weight:400}
+.table td{font-weight:400}
+.table th{letter-spacing:.035em}
+.itemTitle,.categoryRow strong{font-weight:620}
+
+/* Cleaner content surfaces */
+.pageContent{max-width:1500px;width:100%;margin:0 auto;animation:simpulPageIn .14s ease-out}
+.card,.metricCard,.tableWrap,.item,.agendaItem,.levelCard,.healthCard{box-shadow:none}
+.card,.tableWrap,.item,.agendaItem,.levelCard,.healthCard{border-color:color-mix(in srgb,var(--border) 94%,transparent)}
+@media(hover:hover){
+  .card:hover,.metricCard:hover,.levelCard:hover{transform:none;box-shadow:none;border-color:color-mix(in srgb,var(--primary) 20%,var(--border))}
+  .item:hover,.agendaItem:hover,.categoryRow:hover{transform:none;background:color-mix(in srgb,var(--primary-soft) 22%,var(--surface))}
+}
+.btn,.smallAction,.iconOnly,.navItem,.tab,.quickAddItem{transition:background-color .12s ease,border-color .12s ease,color .12s ease,transform .12s ease}
+.btn{box-shadow:none}
+.btn:hover,.smallAction:hover,.iconOnly:hover{transform:none}
+.section{margin-top:18px}
+.pageHeader{margin-bottom:16px}
+.pageHeader h1{margin:0}
+.pageHeader p{display:block!important;color:var(--muted);font-size:12px!important;margin:5px 0 0}
+
+/* Utility controls no longer overlap page actions */
+@media(min-width:980px){
+  .contentArea{min-width:0}
+  .globalToolsDock{
+    position:sticky!important;top:0!important;right:auto!important;z-index:48!important;
+    min-height:56px;padding:8px 20px;display:flex;justify-content:flex-end;align-items:center;
+    background:color-mix(in srgb,var(--bg) 90%,transparent);
+    backdrop-filter:blur(16px) saturate(1.08);
+    border-bottom:1px solid color-mix(in srgb,var(--border) 76%,transparent)
+  }
+  .pageContent{padding-top:18px!important}
+}
+@media(max-width:979px){
+  .globalToolsDock{top:10px!important;right:58px!important}
+}
+
+/* Viewer */
+.viewerAccess{display:grid;gap:8px}
+.viewerAccessInfo{display:flex;align-items:center;gap:9px;padding:9px 10px;border:1px solid rgba(255,255,255,.08);border-radius:11px;color:#dfe6f6}
+.viewerAccessInfo>span{display:grid;gap:1px}
+.viewerAccessInfo strong{font-size:11px}
+.viewerAccessInfo small{font-size:9px;color:#7f8ca6}
+.viewerLoginButton{justify-content:center!important}
+.viewerHero{
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;
+  margin:0 0 14px;padding:15px 16px;border:1px solid var(--border);border-radius:16px;background:var(--surface)
+}
+.viewerHeroIcon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--primary-soft);color:var(--primary)}
+.viewerHero span{font-size:9px;letter-spacing:.12em;color:var(--primary);font-weight:650}
+.viewerHero h2{font-size:16px;margin:2px 0 1px}
+.viewerHero p{font-size:11px;color:var(--muted);margin:0}
+.viewerHeroLogin{white-space:nowrap}
+.viewerNote .cardHead p{display:block!important}
+@media(max-width:700px){
+  .viewerHero{grid-template-columns:auto 1fr}
+  .viewerHeroLogin{grid-column:1/-1;width:100%}
+}
+
+/* Database */
+.databaseTools{gap:8px}
+.compactCreateForm{grid-template-columns:minmax(220px,1fr) auto!important;max-width:720px}
+.compactCreateForm .btn{align-self:end}
+.personLink strong{font-weight:610}
+.memberPhone{font-weight:400}
+@media(max-width:700px){
+  .compactCreateForm{grid-template-columns:1fr!important}
+}
+
+/* Dapukan */
+.structureGrid .card h2{font-weight:650;margin-bottom:6px}
+.structureGrid .card strong{font-weight:600}
+.structureGrid .card p{color:var(--muted);font-size:12px}
+.structureGrid .card small{color:var(--muted);font-weight:400}
+
+/* Agenda — compact planner inspired by Buku Kerja */
+.agendaHeaderActions{flex-wrap:wrap;justify-content:flex-end}
+.agendaPanel{padding:14px!important}
+.calendarHead{margin-bottom:10px}
+.calendarHead h2{font-size:17px}
+.agendaCalendar{gap:4px!important}
+.agendaCell{
+  min-height:96px!important;padding:7px!important;border-radius:10px!important;
+  background:var(--surface)!important
+}
+.agendaCell.selected{outline:none!important;border-color:var(--primary)!important;background:color-mix(in srgb,var(--primary-soft) 52%,var(--surface))!important}
+.agendaCell.today .calendarDate{background:var(--primary)!important;color:#fff}
+.agendaCell .calendarEvent{font-weight:500!important;border:1px solid var(--border);background:var(--surface-2)!important}
+.agendaCount{font-weight:550!important;color:var(--muted)!important}
+.agendaWeekGrid{
+  display:grid!important;grid-template-columns:1fr!important;gap:0!important;
+  overflow:hidden;border:1px solid var(--border);border-radius:14px;background:var(--surface)
+}
+.agendaWeekDay{
+  min-height:0!important;display:grid!important;grid-template-columns:110px minmax(0,1fr);align-items:start;gap:12px;
+  padding:11px 12px!important;border:0!important;border-bottom:1px solid var(--border)!important;border-radius:0!important;background:var(--surface)!important
+}
+.agendaWeekDay:last-child{border-bottom:0!important}
+.agendaWeekDay.selected{background:color-mix(in srgb,var(--primary-soft) 42%,var(--surface))!important}
+.agendaWeekDay>strong{font-size:12px!important;font-weight:620!important}
+.agendaWeekItems{display:flex!important;flex-wrap:wrap;gap:7px!important;margin-top:0!important}
+.weekEvent{
+  display:flex!important;align-items:center;gap:7px;padding:7px 9px;border:1px solid var(--border);
+  border-radius:9px;background:var(--surface-2);color:var(--text);text-align:left
+}
+.weekEvent span{font-size:10px;color:var(--primary);font-weight:600}
+.weekEvent b{font-size:11px;font-weight:550}
+.agendaItem{padding:13px!important;border-radius:12px!important}
+.agendaTime{font-weight:620!important;color:var(--primary)!important}
+.agendaInfo h3{font-weight:620}
+@media(max-width:700px){
+  .agendaHeaderActions{width:100%;display:grid!important;grid-template-columns:1fr 1fr!important}
+  .agendaHeaderActions .btn:last-child{grid-column:1/-1}
+  .agendaWeekDay{grid-template-columns:78px minmax(0,1fr)}
+  .agendaCalendar .calendarEvent{display:none!important}
+}
+
+/* Super admin settings */
+.adminControlPanel{padding:16px}
+.adminControlPanel .cardHead p{display:block!important}
+.adminControlGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.adminControlItem{
+  border:1px solid var(--border);background:var(--surface-2);color:var(--text);border-radius:12px;
+  min-height:66px;padding:10px 12px;display:flex;align-items:center;gap:10px;text-decoration:none;text-align:left;cursor:pointer
+}
+.adminControlItem>svg{color:var(--primary);flex:0 0 auto}
+.adminControlItem span{display:grid;gap:2px}
+.adminControlItem strong{font-size:12px;font-weight:620}
+.adminControlItem small{font-size:10px;color:var(--muted);font-weight:400}
+@media(max-width:700px){.adminControlGrid{grid-template-columns:1fr}}
+
+/* Login readability */
+.loginCard{box-shadow:0 18px 48px rgba(22,28,66,.10)!important}
+.loginCard h1{font-weight:700}
+.loginWelcome{display:grid;gap:4px}
+.loginWelcome p{font-size:12px;line-height:1.55;color:var(--muted);margin:0}
+.loginSecurity{width:max-content;max-width:100%;display:inline-flex;align-items:center;gap:6px;padding:6px 8px;border-radius:999px;background:var(--primary-soft);color:var(--primary);font-size:10px;font-weight:600}
+.passwordField{position:relative}
+.passwordField .input{width:100%;padding-right:44px}
+.passwordToggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;border:0;border-radius:9px;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer}
+.viewerBackLink{display:inline-flex;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:11px;text-decoration:none;padding:5px}
+.viewerBackLink:hover{color:var(--primary)}
+.loginFeatureRow span{font-weight:500}
+.loginLogo strong{font-weight:700}
+.loginBrandContent h2{font-weight:700}
+
+/* Dialogs and audit */
+.dialogCard{gap:12px;border-radius:16px}
+.dialogCard>label{font-weight:550;color:var(--text)}
+.dialogCard>label>.input,.dialogCard>label>.select{margin-top:2px}
+.notice.error{font-weight:450}
+.healthCard strong{font-weight:620}
+
+/* Less visual noise in dark mode */
+html[data-theme="dark"] .card,
+html[data-theme="dark"] .tableWrap,
+html[data-theme="dark"] .item,
+html[data-theme="dark"] .agendaItem{background:#11192c}
+html[data-theme="dark"] .input,
+html[data-theme="dark"] .select,
+html[data-theme="dark"] .textarea{background:#0f1728}
+
+/* Perceived speed */
+.skeleton{animation-duration:.85s}
+@supports(content-visibility:auto){
+  .structureGrid,.adminControlGrid,.agendaWeekGrid{content-visibility:auto;contain-intrinsic-size:auto 320px}
+}
