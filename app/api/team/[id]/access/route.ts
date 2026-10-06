@@ -21,13 +21,14 @@ export async function PUT(req:NextRequest,{params}:{params:Promise<{id:string}>}
   const b=await req.json();
   const scopes=Array.isArray(b.scopes)?b.scopes.filter((x:any)=>audiences.includes(x.audience)):null;
   const perms=Array.isArray(b.permissions)?b.permissions.filter((x:any)=>permissions.includes(x.permission)):null;
-  if(scopes){
-    const del=await s.from('user_audience_scopes').delete().eq('user_id',id);if(del.error)return NextResponse.json({error:del.error.message},{status:400});
-    if(scopes.length){const ins=await s.from('user_audience_scopes').insert(scopes.map((x:any)=>({user_id:id,audience:x.audience,can_read:!!x.can_read,can_write:!!x.can_write})));if(ins.error)return NextResponse.json({error:ins.error.message},{status:400})}
-  }
-  if(perms){
-    const del=await s.from('user_permissions').delete().eq('user_id',id);if(del.error)return NextResponse.json({error:del.error.message},{status:400});
-    if(perms.length){const ins=await s.from('user_permissions').insert(perms.map((x:any)=>({user_id:id,permission:x.permission,allowed:!!x.allowed})));if(ins.error)return NextResponse.json({error:ins.error.message},{status:400})}
-  }
-  return NextResponse.json({ok:true});
+  if(!scopes||!perms)return NextResponse.json({error:'Payload akses tidak valid.'},{status:400});
+  const normalizedScopes=scopes.map((x:any)=>({audience:x.audience,can_read:!!x.can_read,can_write:!!x.can_write}));
+  const normalizedPerms=perms.map((x:any)=>({permission:x.permission,allowed:!!x.allowed}));
+  const {data,error}=await s.rpc('admin_save_user_access',{
+    p_user_id:id,
+    p_scopes:normalizedScopes,
+    p_permissions:normalizedPerms
+  });
+  if(error)return NextResponse.json({error:error.message},{status:400});
+  return NextResponse.json({ok:true,...(data||{})});
 }
