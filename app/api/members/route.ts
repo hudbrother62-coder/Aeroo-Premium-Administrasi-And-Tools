@@ -14,12 +14,19 @@ export async function GET(req:NextRequest){
   const segment=req.nextUrl.searchParams.get('segment')??'ALL';
   const classId=req.nextUrl.searchParams.get('class_id');
   const levelId=req.nextUrl.searchParams.get('level_id');
-  const archived=req.nextUrl.searchParams.get('archived')==='1';
+  const archivedParam=req.nextUrl.searchParams.get('archived');
+  const status=req.nextUrl.searchParams.get('status')??(archivedParam==='1'?'INACTIVE':'ACTIVE');
+  const sort=req.nextUrl.searchParams.get('sort')??'name_asc';
 
   let query=s.from('members')
-    .select('*,levels(id,name),classes!members_class_id_fkey(id,name,audience),member_categories(category_id,categories(id,name,slug)),member_memberships(*,categories(id,name,slug),classes(id,name),levels(id,name))')
-    .eq('status',archived?'INACTIVE':'ACTIVE').order('name');
+    .select('*,levels(id,name),classes!members_class_id_fkey(id,name,audience),member_categories(category_id,categories(id,name,slug)),member_memberships(*,categories(id,name,slug),classes(id,name),levels(id,name))');
+  if(status==='ACTIVE'||status==='INACTIVE')query=query.eq('status',status);
   if(q)query=query.ilike('name',`%${q}%`);
+  if(sort==='source')query=query.order('source_order',{ascending:true,nullsFirst:false}).order('name',{ascending:true});
+  else if(sort==='name_desc')query=query.order('name',{ascending:false});
+  else if(sort==='newest')query=query.order('created_at',{ascending:false}).order('name',{ascending:true});
+  else if(sort==='oldest')query=query.order('created_at',{ascending:true}).order('name',{ascending:true});
+  else query=query.order('name',{ascending:true});
 
 
 
