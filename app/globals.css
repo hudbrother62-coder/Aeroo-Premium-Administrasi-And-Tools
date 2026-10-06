@@ -686,3 +686,40 @@ html[data-theme="dark"] .attendanceButtons button.on{background:#f1f3f6;color:#1
   .calendarCell{min-height:62px}
   .agendaCount{font-size:9px}
 }
+
+
+/* AIRO quick add */
+.desktopQuickAdd{position:relative}
+.quickAddButton{width:100%;background:var(--text)!important;color:var(--surface)!important;border-color:var(--text)!important}
+html[data-theme="dark"] .quickAddButton{background:#f1f3f6!important;color:#111318!important;border-color:#f1f3f6!important}
+.quickAddPanel{
+  position:absolute;left:0;right:0;bottom:48px;z-index:60;
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;
+  padding:8px;border:1px solid var(--border);border-radius:14px;
+  background:var(--surface);box-shadow:var(--shadow-lg)
+}
+.quickAddItem{
+  min-height:40px;display:flex;align-items:center;gap:8px;
+  padding:8px 9px;border-radius:9px;text-decoration:none;color:var(--text);
+  font-size:12px;font-weight:700
+}
+.quickAddItem:hover{background:var(--surface-2)}
+.mobileQuickFab{
+  display:none;position:fixed;right:16px;bottom:82px;z-index:45;
+  width:50px;height:50px;border:0;border-radius:15px;
+  align-items:center;justify-content:center;
+  background:var(--text);color:var(--surface);box-shadow:var(--shadow-lg)
+}
+.mobileQuickPanel{
+  display:none;position:fixed;left:10px;right:10px;bottom:140px;z-index:44;
+  padding:10px;border:1px solid var(--border);border-radius:16px;
+  background:var(--surface);box-shadow:var(--shadow-lg)
+}
+.quickAddGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.dataCreateActions{display:flex;gap:8px;flex-wrap:wrap}
+.dataCreateActions .btn{min-width:max-content}
+@media(max-width:979px){
+  .desktopQuickAdd{display:none}
+  .mobileQuickFab,.mobileQuickPanel{display:flex}
+  .mobileQuickPanel{display:block}
+}
