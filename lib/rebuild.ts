@@ -1,6 +1,6 @@
 export function studyDuration(start:string,end:string){
  const time=(s:string)=>{if(!/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(s))throw Error('Waktu tidak valid.');return Number(s.slice(0,2))*60+Number(s.slice(3,5))};
- const n=time(end)-time(start);if(n<=0)throw Error('Waktu selesai harus setelah mulai.');return n;
+ let n=time(end)-time(start);if(n<0)n+=1440;if(n===0)throw Error('Durasi pengkajian tidak valid.');return n;
 }
 export type StudyRow={state?:string;started_at?:string;ended_at?:string;assessment?:{presenter?:string;presenter_id?:string;materials?:Array<{status?:string}>}};
 export function studyRecap(rows:StudyRow[]){const done=rows.filter(x=>x.state==='COMPLETED');let minutes=0,completed=0,unfinished=0;const presenters=new Set<string>();for(const r of done){try{minutes+=studyDuration(r.started_at||'',r.ended_at||'')}catch{}const p=r.assessment?.presenter_id||r.assessment?.presenter?.trim().toLowerCase();if(p)presenters.add(p);for(const m of r.assessment?.materials||[]){if(m.status==='TUNTAS')completed++;else unfinished++}}return {sessions:done.length,minutes,presenters:presenters.size,completed,unfinished}}
