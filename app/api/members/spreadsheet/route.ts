@@ -33,7 +33,7 @@ export async function GET(req:NextRequest){
       return workbook([
         columns,
         ['','','Contoh Nama','L','Malang','2010-01-01','08123456789','Alamat lengkap','SD 1','','Caberawit','','','','']
-      ],'template-anggota-airo.xlsx');
+      ],'template-anggota-simpul.xlsx');
     }
 
     const s=await db();
@@ -81,11 +81,11 @@ export async function GET(req:NextRequest){
         .join('\r\n');
       return new Response(csv,{headers:{
         'Content-Type':'text/csv; charset=utf-8',
-        'Content-Disposition':'attachment; filename="anggota-airo.csv"'
+        'Content-Disposition':'attachment; filename="anggota-simpul.csv"'
       }});
     }
 
-    return workbook(rows,'anggota-airo.xlsx');
+    return workbook(rows,'anggota-simpul.xlsx');
   }catch(e){
     return NextResponse.json({error:e instanceof Error?e.message:'Export gagal'},{status:400});
   }
