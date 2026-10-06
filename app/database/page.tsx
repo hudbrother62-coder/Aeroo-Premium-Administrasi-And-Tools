@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import {FormEvent,useEffect,useMemo,useRef,useState} from 'react';
-import {Archive,Download,FileUp,RotateCcw,Trash2,Users} from 'lucide-react';
+import {Archive,Download,Eye,FileUp,Pencil,RotateCcw,Trash2,Users,X} from 'lucide-react';
 import {type Role} from '@/lib/access';
 
-type Member={member_memberships?:any[];revision?:number;level_id?:string;id:string;name:string;gender?:string;phone?:string;section?:string;status:string;class_id?:string;levels?:{name?:string};classes?:{name?:string};member_categories?:Array<{category_id:string;categories?:{name?:string;slug?:string}}>};
+type Member={member_memberships?:any[];revision?:number;level_id?:string;id:string;name:string;gender?:string;phone?:string;section?:string;status:string;class_id?:string;birth_place?:string;birth_date?:string;address?:string;notes?:string;guardian_name?:string;guardian_phone?:string;photo_url?:string;levels?:{name?:string};classes?:{name?:string};member_categories?:Array<{category_id:string;categories?:{name?:string;slug?:string}}>};
 type ClassRow={id:string;name:string;audience:string;level_id?:string};
 type Category={id:string;name:string;slug:string};
 const tabs=[['ALL','Semua anggota'],['KELOMPOK','Kelompok'],['CABERAWIT','Jabirawit'],['MUDA_MUDI','Muda-Mudi'],['IBU_IBU','Ibu-Ibu'],['PENGURUS','Pengurus']] as const;
@@ -14,8 +14,7 @@ export default function DatabasePage(){
   const[segment,setSegment]=useState('ALL'),[q,setQ]=useState(''),[classId,setClassId]=useState(''),[archived,setArchived]=useState(false),[levelId,setLevelId]=useState(''),[office,setOffice]=useState(''),[levels,setLevels]=useState<any[]>([]);
   const[data,setData]=useState<Member[]>([]),[classes,setClasses]=useState<ClassRow[]>([]),[categories,setCategories]=useState<Category[]>([]);
   const[role,setRole]=useState<Role|null>(null),[selected,setSelected]=useState<string[]>([]),[bulkCategories,setBulkCategories]=useState<string[]>([]),[bulkClass,setBulkClass]=useState('');
-  const[showClass,setShowClass]=useState(false),[className,setClassName]=useState(''),[newClassLevel,setNewClassLevel]=useState(''),[edit,setEdit]=useState<Member|null>(null);
-  const[editName,setEditName]=useState(''),[editSection,setEditSection]=useState(''),[editClass,setEditClass]=useState('');
+  const[showClass,setShowClass]=useState(false),[className,setClassName]=useState(''),[newClassLevel,setNewClassLevel]=useState(''),[detail,setDetail]=useState<Member|null>(null),[detailLoading,setDetailLoading]=useState(false);
   const[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');
   const upload=useRef<HTMLInputElement>(null);
   const canWrite=role==='ADMIN'||role==='DEWAN_GURU'||role==='KELOMPOK';
@@ -38,24 +37,26 @@ export default function DatabasePage(){
   useEffect(()=>setSelected([]),[segment,classId,archived,levelId]);
 
   async function action(id:string,kind:'archive'|'restore'|'delete'){
-    if(!window.confirm(kind==='delete'?'Hapus permanen? Identitas anggota hilang, riwayat kegiatan tetap tersimpan.':kind==='archive'?'Arsipkan anggota ini?':'Pulihkan anggota dari arsip?'))return;
+    if(!window.confirm(kind==='delete'?'Hapus permanen? Identitas anggota hilang, riwayat kegiatan tetap tersimpan.':kind==='archive'?'Hapus anggota ini dari daftar aktif? Data akan dipindahkan ke arsip dan masih bisa dipulihkan.':'Pulihkan anggota dari arsip?'))return false;
     setBusy(true);setMessage('');setError('');
     const r=await fetch('/api/members/'+id+(kind==='delete'?'?permanent=1':''),{method:kind==='restore'?'PATCH':'DELETE',headers:{'content-type':'application/json'},body:kind==='restore'?JSON.stringify({status:'ACTIVE'}):undefined});
     const j=await r.json();setBusy(false);
-    if(!r.ok){setError(j.error||'Tindakan gagal.');return}
-    setMessage(kind==='archive'?'Anggota dipindahkan ke arsip.':kind==='restore'?'Anggota dipulihkan.':'Data pribadi dihapus permanen.');await load();
+    if(!r.ok){setError(j.error||'Tindakan gagal.');return false}
+    setMessage(kind==='archive'?'Anggota dipindahkan ke arsip.':kind==='restore'?'Anggota dipulihkan.':'Data pribadi dihapus permanen.');await load();return true;
+  }
+  async function openDetail(member:Member){
+    setDetail(member);setDetailLoading(true);setError('');
+    try{
+      const r=await fetch('/api/members/'+member.id,{cache:'no-store'});
+      if(!r.ok)throw new Error('Detail anggota tidak dapat dimuat.');
+      setDetail(await r.json());
+    }catch(e){setError(e instanceof Error?e.message:'Gagal memuat detail anggota.')}finally{setDetailLoading(false)}
   }
   async function addClass(e:FormEvent){
     e.preventDefault();setBusy(true);setError('');
     const r=await fetch('/api/classes',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:className,level_id:newClassLevel||null,audience:segment==='MUDA_MUDI'?'MUDA_MUDI':'CABERAWIT'})});
     const j=await r.json();setBusy(false);
     if(!r.ok){setError(j.error||'Kelas gagal dibuat.');return}setClassName('');setShowClass(false);setMessage('Kelas berhasil dibuat.');await load();
-  }
-  async function saveEdit(e:FormEvent){
-    e.preventDefault();if(!edit)return;setBusy(true);setError('');
-    const r=await fetch('/api/members/'+edit.id,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({name:editName,section:editSection||null,class_id:editClass||null})});
-    const j=await r.json();setBusy(false);
-    if(!r.ok){setError(j.error||'Perubahan gagal.');return}setEdit(null);setMessage('Perubahan anggota tersimpan.');await load();
   }
   async function applyBulk(){
     if(!selected.length||(!bulkCategories.length&&!bulkClass))return;
@@ -91,7 +92,43 @@ export default function DatabasePage(){
     {segment==='PENGURUS'&&!archived&&<section className="classLanes section"><div className="cardHead"><div><h2>Bagian pengurus</h2><p>Bagian dapat diedit pada anggota atau dipindah dengan drag & drop.</p></div></div><div className="classLaneList">{Array.from(new Set(['Pengurus','Sekretariat','Bendahara',...data.map(m=>m.section||'Pengurus')])).map(section=><div className="classLane" key={section} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const id=e.dataTransfer.getData('text/member-id');if(id)void moveSection(id,section)}}><strong>{section}</strong><span>{data.filter(m=>(m.section||'Pengurus')===section).length} anggota</span></div>)}</div></section>}
     {message&&<div className="notice success section" role="status">{message}</div>}{error&&<div className="notice error section" role="alert">{error}</div>}
     {canWrite&&selected.length>0&&!archived&&<div className="bulkPanel card section"><div><strong>{selected.length} dipilih</strong><p>Centang bagian tujuan; keanggotaan yang sudah ada tidak digandakan.</p></div><div className="chips">{allowedCategories.map(c=><label className="chip" key={c.id}><input type="checkbox" checked={bulkCategories.includes(c.id)} onChange={e=>setBulkCategories(v=>e.target.checked?[...v,c.id]:v.filter(x=>x!==c.id))}/>{c.name}</label>)}</div>{classOptions.length>0&&<select className="select" value={bulkClass} onChange={e=>setBulkClass(e.target.value)}><option value="">Kelas tidak diubah</option>{classOptions.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select>}<button className="btn" disabled={busy||(!bulkClass&&!bulkCategories.length)} onClick={()=>void applyBulk()}>{busy?'Menyimpan…':'Terapkan'}</button></div>}
-    <div className="tableWrap responsiveWrap section"><table className="table responsiveTable"><thead><tr><th>{canWrite&&!archived&&<input type="checkbox" aria-label="Pilih semua" checked={selectAll} onChange={e=>setSelected(e.target.checked?data.map(x=>x.id):[])}/>}</th><th>Nama</th><th>Bagian</th><th>Jenjang</th><th>Kelas / seksi</th><th>Aksi</th></tr></thead><tbody>{loading?<tr><td colSpan={6}>Memuat anggota…</td></tr>:data.map(m=><tr key={m.id} draggable={canWrite&&!archived} onDragStart={e=>e.dataTransfer.setData('text/member-id',m.id)}><td data-label="Pilih">{canWrite&&!archived&&<input type="checkbox" checked={selected.includes(m.id)} onChange={e=>setSelected(v=>e.target.checked?[...v,m.id]:v.filter(x=>x!==m.id))}/>}</td><td data-label="Nama"><strong>{m.name}</strong><small className="muted memberPhone">{m.phone||''}</small></td><td data-label="Bagian">{m.member_categories?.map(x=>x.categories?.name).filter(Boolean).join(', ')||'—'}</td><td data-label="Jenjang">{m.member_memberships?.filter(mm=>mm.effective??mm.active).map(mm=>mm.levels?.name).filter(Boolean).join(', ')||'—'}</td><td data-label="Kelas / seksi">{m.member_memberships?.filter(mm=>mm.effective??mm.active).map(mm=>[mm.classes?.name,mm.office,mm.section].filter(Boolean).join(' · ')).filter(Boolean).join(', ')||'—'}</td><td data-label="Aksi"><div className="row">{canWrite&&!archived&&<Link className="smallAction" href={"/database/tambah?id="+m.id}>Edit biodata</Link>}{role==='ADMIN'&&(archived?<><button className="smallAction" disabled={busy} onClick={()=>void action(m.id,'restore')} title="Pulihkan"><RotateCcw size={16}/></button><button className="smallAction danger" disabled={busy} onClick={()=>void action(m.id,'delete')} title="Hapus permanen"><Trash2 size={16}/></button></>:<button className="smallAction" disabled={busy} onClick={()=>void action(m.id,'archive')} title="Arsipkan"><Archive size={16}/></button>)}</div></td></tr>)}{!loading&&!data.length&&<tr><td colSpan={6}><div className="emptyState"><Users size={24}/><p>{archived?'Arsip kosong.':'Belum ada anggota pada filter ini.'}</p></div></td></tr>}</tbody></table></div>
-    {edit&&<div className="dialogBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setEdit(null)}}><form className="dialogCard" onSubmit={saveEdit} role="dialog" aria-modal="true" aria-label="Edit anggota"><div className="cardHead"><h2>Edit anggota</h2><button className="smallAction" type="button" onClick={()=>setEdit(null)}>Tutup</button></div><label>Nama<input className="input" required value={editName} onChange={e=>setEditName(e.target.value)}/></label><label>Bagian pengurus<input className="input" value={editSection} onChange={e=>setEditSection(e.target.value)} placeholder="Contoh: Sekretariat"/></label><label>Kelas<select className="select" value={editClass} onChange={e=>setEditClass(e.target.value)}><option value="">Tanpa kelas</option>{classes.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>{error&&<div className="notice error">{error}</div>}<div className="formActions"><button className="btn" disabled={busy}>{busy?'Menyimpan…':'Simpan perubahan'}</button></div></form></div>}
+    <section className="memberCompactList section" aria-label="Daftar anggota">
+      <div className="memberListHead"><strong>{loading?'Memuat…':data.length+' anggota'}</strong>{canWrite&&!archived&&data.length>0&&<label className="memberSelectAll"><input type="checkbox" aria-label="Pilih semua anggota" checked={selectAll} onChange={e=>setSelected(e.target.checked?data.map(x=>x.id):[])}/><span>Pilih semua</span></label>}</div>
+      {loading?<div className="memberListLoading">Memuat anggota…</div>:data.map(m=><div className="memberCompactRow" key={m.id} draggable={canWrite&&!archived} onDragStart={e=>e.dataTransfer.setData('text/member-id',m.id)}>
+        {canWrite&&!archived&&<input className="memberRowCheck" type="checkbox" aria-label={'Pilih '+m.name} checked={selected.includes(m.id)} onChange={e=>setSelected(v=>e.target.checked?[...v,m.id]:v.filter(x=>x!==m.id))}/>}
+        <strong className="memberCompactName" title={m.name}>{m.name}</strong>
+        <button className="smallAction detailButton" type="button" onClick={()=>void openDetail(m)}><Eye size={15}/>Lihat detail</button>
+      </div>)}
+      {!loading&&!data.length&&<div className="memberListEmpty"><Users size={24}/><p>{archived?'Arsip kosong.':'Belum ada anggota pada filter ini.'}</p></div>}
+    </section>
+    {detail&&<div className="dialogBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setDetail(null)}}>
+      <div className="dialogCard memberDetailDialog" role="dialog" aria-modal="true" aria-label={'Detail '+detail.name}>
+        <div className="memberDetailHead"><div className="memberDetailIdentity"><div className="memberDetailAvatar">{detail.name.trim().charAt(0).toUpperCase()}</div><div><small>Detail anggota</small><h2>{detail.name}</h2><span className={detail.status==='ACTIVE'?'detailStatus active':'detailStatus'}>{detail.status==='ACTIVE'?'Aktif':'Arsip / tidak aktif'}</span></div></div><button className="smallAction iconAction" type="button" onClick={()=>setDetail(null)} aria-label="Tutup detail"><X size={18}/></button></div>
+        {detailLoading?<div className="memberDetailLoading">Memuat biodata lengkap…</div>:<>
+          <section className="memberDetailSection"><h3>Identitas</h3><div className="memberDetailGrid">
+            <div className="memberDetailField"><span>Jenis kelamin</span><strong>{detail.gender==='L'?'Laki-laki':detail.gender==='P'?'Perempuan':'—'}</strong></div>
+            <div className="memberDetailField"><span>Tempat lahir</span><strong>{detail.birth_place||'—'}</strong></div>
+            <div className="memberDetailField"><span>Tanggal lahir</span><strong>{detail.birth_date?new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(detail.birth_date+'T00:00:00Z')):'—'}</strong></div>
+            <div className="memberDetailField"><span>No. HP</span><strong>{detail.phone||'—'}</strong></div>
+            <div className="memberDetailField spanDetail"><span>Alamat</span><strong>{detail.address||'—'}</strong></div>
+          </div></section>
+          <section className="memberDetailSection"><h3>Penempatan</h3><div className="memberDetailGrid">
+            <div className="memberDetailField"><span>Program</span><strong>{detail.member_memberships?.filter(mm=>mm.effective??mm.active).map(mm=>mm.categories?.name).filter(Boolean).join(', ')||detail.member_categories?.map(x=>x.categories?.name).filter(Boolean).join(', ')||detail.section||'—'}</strong></div>
+            <div className="memberDetailField"><span>Jenjang</span><strong>{detail.member_memberships?.filter(mm=>mm.effective??mm.active).map(mm=>mm.levels?.name).filter(Boolean).join(', ')||detail.levels?.name||'—'}</strong></div>
+            <div className="memberDetailField spanDetail"><span>Kelas / seksi</span><strong>{detail.member_memberships?.filter(mm=>mm.effective??mm.active).map(mm=>[mm.classes?.name,mm.office,mm.section].filter(Boolean).join(' · ')).filter(Boolean).join(', ')||detail.classes?.name||detail.section||'—'}</strong></div>
+          </div></section>
+          <section className="memberDetailSection"><h3>Keluarga & catatan</h3><div className="memberDetailGrid">
+            <div className="memberDetailField"><span>Wali / keluarga</span><strong>{detail.guardian_name||'—'}</strong></div>
+            <div className="memberDetailField"><span>HP wali</span><strong>{detail.guardian_phone||'—'}</strong></div>
+            <div className="memberDetailField spanDetail"><span>Catatan</span><strong>{detail.notes||'—'}</strong></div>
+          </div></section>
+        </>}
+        {error&&<div className="notice error">{error}</div>}
+        <div className="memberDetailActions">
+          {canWrite&&!archived&&<Link className="btn secondary" href={'/database/tambah?id='+detail.id}><Pencil size={16}/>Edit</Link>}
+          {role==='ADMIN'&&(archived?<><button className="btn secondary" type="button" disabled={busy} onClick={async()=>{if(await action(detail.id,'restore'))setDetail(null)}}><RotateCcw size={16}/>Pulihkan</button><button className="btn dangerButton" type="button" disabled={busy} onClick={async()=>{if(await action(detail.id,'delete'))setDetail(null)}}><Trash2 size={16}/>Hapus permanen</button></>:<button className="btn dangerButton" type="button" disabled={busy} onClick={async()=>{if(await action(detail.id,'archive'))setDetail(null)}}><Trash2 size={16}/>Hapus</button>)}
+        </div>
+      </div>
+    </div>}
   </>;
 }
