@@ -723,3 +723,34 @@ html[data-theme="dark"] .quickAddButton{background:#f1f3f6!important;color:#1113
   .mobileQuickFab,.mobileQuickPanel{display:flex}
   .mobileQuickPanel{display:block}
 }
+
+
+/* AIRO global tools */
+.globalToolsDock{position:fixed;top:14px;right:18px;z-index:55}
+.globalTools{display:flex;align-items:center;gap:6px;position:relative}
+.globalToolButton{background:var(--surface);border:1px solid var(--border);box-shadow:none}
+.notificationButton{position:relative}
+.notificationCount{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--danger);color:#fff;font-size:9px;font-weight:800;display:grid;place-items:center;border:2px solid var(--surface)}
+.notificationPanel{position:absolute;top:42px;right:0;width:min(380px,calc(100vw - 24px));max-height:70vh;overflow:auto;border:1px solid var(--border);border-radius:14px;background:var(--surface);box-shadow:var(--shadow-lg)}
+.panelHead{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;padding:12px 12px 10px;background:var(--surface);border-bottom:1px solid var(--border)}
+.notificationList{display:grid}
+.notificationItem{display:grid;gap:3px;padding:11px 12px;text-decoration:none;color:var(--text);border-bottom:1px solid var(--border)}
+.notificationItem:hover{background:var(--surface-2)}
+.notificationItem.read{opacity:.58}
+.notificationItem strong{font-size:12px}
+.notificationItem span{font-size:11px;color:var(--muted);line-height:1.4}
+.globalSearchBackdrop{z-index:80;align-items:flex-start;padding-top:min(15vh,120px)}
+.globalSearchCard{width:min(680px,calc(100vw - 24px));max-height:min(72vh,650px);overflow:hidden;border:1px solid var(--border);border-radius:16px;background:var(--surface);box-shadow:var(--shadow-lg)}
+.globalSearchInput{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:9px;padding:11px 12px;border-bottom:1px solid var(--border)}
+.globalSearchInput input{width:100%;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-size:15px}
+.globalSearchResults{max-height:560px;overflow:auto;padding:8px}
+.globalSearchResults section{display:grid;gap:3px;margin-bottom:10px}
+.searchResult{display:grid;gap:2px;padding:9px 10px;border-radius:9px;text-decoration:none;color:var(--text)}
+.searchResult:hover{background:var(--surface-2)}
+.searchResult strong{font-size:12px}
+.searchResult span{font-size:10.5px;color:var(--muted)}
+@media(max-width:979px){
+  .globalToolsDock{top:9px;right:58px;z-index:61}
+  .globalToolButton{width:36px;height:36px;background:transparent;border:0}
+  .notificationPanel{position:fixed;top:58px;right:8px}
+}
