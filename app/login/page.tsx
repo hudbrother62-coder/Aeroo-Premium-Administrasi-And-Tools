@@ -1,14 +1,16 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import {FormEvent,useEffect,useState} from 'react';
-import {ArrowRight,CheckCircle2,Link2,NotebookTabs} from 'lucide-react';
+import {ArrowLeft,ArrowRight,CheckCircle2,Eye,EyeOff,Link2,NotebookTabs,ShieldCheck} from 'lucide-react';
 
 export default function LoginPage(){
   const[username,setUsername]=useState('');
   const[password,setPassword]=useState('');
   const[loading,setLoading]=useState(false);
   const[error,setError]=useState('');
+  const[showPassword,setShowPassword]=useState(false);
 
   useEffect(()=>{
     let mounted=true;
@@ -48,11 +50,12 @@ export default function LoginPage(){
     <section className="loginPanel">
       <form className="loginCard" onSubmit={submit}>
         <div className="loginCardBrand"><Image src="/simpul-logo.webp" alt="" width={54} height={54}/><div><strong>Simpul</strong><span>Masuk ke workspace</span></div></div>
-        <div><h1>Masuk</h1><p>Gunakan akun yang sudah diberikan.</p></div>
-        <label>Username<input className="input" value={username} autoComplete="username" onChange={e=>setUsername(e.target.value)} autoFocus/></label>
-        <label>Password<input className="input" type="password" value={password} autoComplete="current-password" onChange={e=>setPassword(e.target.value)}/></label>
+        <div className="loginWelcome"><span className="loginSecurity"><ShieldCheck size={14}/>Akses administrasi terlindungi</span><h1>Selamat datang</h1><p>Masuk untuk mengelola database, agenda, presensi, jurnal, laporan, dan dapukan.</p></div>
+        <label>Username<input className="input" value={username} autoComplete="username" onChange={e=>setUsername(e.target.value)} autoFocus placeholder="Masukkan username"/></label>
+        <label>Password<div className="passwordField"><input className="input" type={showPassword?'text':'password'} value={password} autoComplete="current-password" onChange={e=>setPassword(e.target.value)} placeholder="Masukkan password"/><button type="button" className="passwordToggle" aria-label={showPassword?'Sembunyikan password':'Lihat password'} onClick={()=>setShowPassword(v=>!v)}>{showPassword?<EyeOff size={17}/>:<Eye size={17}/>}</button></div></label>
         {error&&<div className="notice error">{error}</div>}
-        <button className="btn loginSubmit" disabled={loading}>{loading?'Memeriksa…':<>Masuk <ArrowRight size={17}/></>}</button>
+        <button className="btn loginSubmit" disabled={loading||!username.trim()||!password}>{loading?'Memeriksa…':<>Masuk ke Simpul <ArrowRight size={17}/></>}</button>
+        <Link className="viewerBackLink" href="/"><ArrowLeft size={15}/>Kembali sebagai Viewer</Link>
       </form>
     </section>
   </main>;
