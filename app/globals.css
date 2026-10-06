@@ -803,3 +803,12 @@ html[data-theme="dark"] .quickAddButton{background:#f1f3f6!important;color:#1113
 .successBadge{color:var(--success)}
 .warningBadge{color:var(--warning)}
 @media(max-width:800px){.healthGrid{grid-template-columns:1fr}}
+
+
+/* AIRO archive safety */
+.archiveRow{align-items:center}
+.archiveDependencyDialog{width:min(620px,94vw)!important}
+.dependencyList{display:grid;gap:7px}
+.dependencyRow{display:grid;grid-template-columns:minmax(0,1fr) 64px auto;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--border);border-radius:9px}
+.dependencyRow>strong{text-align:right}
+@media(max-width:560px){.archiveRow{align-items:flex-start;gap:10px}.archiveRow>.row{flex-wrap:wrap;justify-content:flex-end}.dependencyRow{grid-template-columns:1fr auto}.dependencyRow .badge{grid-column:1/-1;width:max-content}}
