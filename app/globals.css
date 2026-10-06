@@ -434,3 +434,54 @@ h1{font-size:clamp(28px,3vw,40px);letter-spacing:-.035em}h2{font-size:19px}h3{fo
  .mobileDrawer{z-index:45}.mobileOverlay{z-index:44}
 }
 @media(min-width:980px){.mobileHeader{display:none!important}.brandLogo{width:100%;margin-bottom:20px}.mobileBottomNav,.mobileMorePanel{display:none!important}}
+
+
+/* Compact member database + detail modal */
+.memberCompactList{overflow:hidden;border:1px solid var(--border);border-radius:16px;background:var(--surface)}
+.memberListHead{min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 13px;background:var(--surface-2);border-bottom:1px solid var(--border)}
+.memberListHead strong{font-size:12px;color:var(--muted)}
+.memberSelectAll{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:750;color:var(--muted);cursor:pointer}
+.memberSelectAll input,.memberRowCheck{width:17px;height:17px;accent-color:var(--teal);flex:0 0 auto}
+.memberCompactRow{min-height:52px;display:flex;align-items:center;gap:10px;padding:8px 11px;border-bottom:1px solid var(--border);background:var(--surface)}
+.memberCompactRow:last-of-type{border-bottom:0}
+.memberCompactRow[draggable="true"]{cursor:grab}
+.memberCompactRow[draggable="true"]:active{cursor:grabbing}
+.memberCompactName{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;letter-spacing:-.01em}
+.detailButton{white-space:nowrap;flex:0 0 auto}
+.memberListLoading,.memberListEmpty{padding:22px 14px;text-align:center;color:var(--muted);font-size:12px}
+.memberListEmpty p{margin:7px 0 0}
+.memberDetailDialog{width:min(620px,100%);gap:0;padding:0;overflow:hidden}
+.memberDetailHead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:18px 18px 14px;border-bottom:1px solid var(--border)}
+.memberDetailIdentity{display:flex;align-items:center;gap:12px;min-width:0}
+.memberDetailIdentity>div:last-child{min-width:0}
+.memberDetailIdentity small{display:block;color:var(--muted);font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:.08em}
+.memberDetailIdentity h2{margin:2px 0 6px;overflow-wrap:anywhere}
+.memberDetailAvatar{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;flex:0 0 44px;background:var(--teal-soft);color:var(--teal);font-size:18px;font-weight:950}
+.detailStatus{display:inline-flex;align-items:center;min-height:24px;padding:3px 8px;border-radius:999px;background:color-mix(in srgb,var(--danger) 10%,var(--surface));color:var(--danger);font-size:10px;font-weight:850}
+.detailStatus.active{background:color-mix(in srgb,var(--success) 11%,var(--surface));color:var(--success)}
+.iconAction{width:38px;min-width:38px;height:38px;padding:0}
+.memberDetailLoading{padding:28px 18px;color:var(--muted);font-size:13px}
+.memberDetailSection{padding:16px 18px;border-bottom:1px solid var(--border)}
+.memberDetailSection h3{margin:0 0 11px;font-size:13px}
+.memberDetailGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.memberDetailField{min-width:0;padding:10px 11px;border:1px solid var(--border);border-radius:11px;background:var(--surface-2)}
+.memberDetailField span{display:block;margin-bottom:4px;color:var(--muted);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.memberDetailField strong{display:block;font-size:12px;line-height:1.45;overflow-wrap:anywhere;white-space:pre-wrap}
+.spanDetail{grid-column:1/-1}
+.memberDetailActions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding:14px 18px 18px;background:var(--surface)}
+.dangerButton{background:var(--danger)}
+@media(max-width:560px){
+  .memberCompactList{border-radius:14px}
+  .memberListHead{padding:8px 10px}
+  .memberCompactRow{min-height:50px;padding:7px 9px;gap:8px}
+  .memberCompactName{font-size:12px}
+  .memberCompactRow .smallAction{min-height:34px;padding:5px 8px;font-size:11px}
+  .detailButton svg{display:none}
+  .memberDetailHead{padding:15px 14px 12px}
+  .memberDetailAvatar{width:40px;height:40px;flex-basis:40px;border-radius:11px}
+  .memberDetailSection{padding:13px 14px}
+  .memberDetailGrid{grid-template-columns:1fr}
+  .spanDetail{grid-column:auto}
+  .memberDetailActions{padding:12px 14px 14px}
+  .memberDetailActions .btn{flex:1;min-width:120px}
+}
