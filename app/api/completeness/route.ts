@@ -16,7 +16,7 @@ export async function GET(){
     s.from('members').select('id,name,status,member_memberships(id,active,valid_from,valid_to,ended_on,level_id,class_id,categories(slug,name))').eq('status','ACTIVE').order('name'),
     s.from('attendance_events').select('id,title,event_date,audience,state,attendance_records(status)').lte('event_date',today).neq('state','CANCELLED').order('event_date',{ascending:false}).limit(100),
     s.from('journals').select('id,title,journal_date,journal_kind,state,agenda_id,journal_attachments(id)').in('state',['DRAFT']).order('journal_date',{ascending:false}).limit(100),
-    s.from('agenda').select('id,title,starts_at,status,journal_required,documentation_required,target_tracking_enabled,journals(id,state,journal_attachments(id))').lte('starts_at',new Date().toISOString()).neq('status','CANCELLED').order('starts_at',{ascending:false}).limit(100),
+    s.from('agenda').select('id,title,starts_at,status,journal_required,documentation_required,target_tracking_enabled,journals(id,state,assessment,journal_attachments(id))').lte('starts_at',new Date().toISOString()).neq('status','CANCELLED').order('starts_at',{ascending:false}).limit(100),
     s.from('meeting_decisions').select('id,decision,deadline,status,journal_id').lt('deadline',today).neq('status','COMPLETED').neq('status','CANCELLED').order('deadline').limit(100),
     s.from('import_jobs').select('id,resource_type,file_name,status,error_rows,created_at').in('status',['FAILED','PARTIAL']).order('created_at',{ascending:false}).limit(100)
   ]);
@@ -41,7 +41,7 @@ export async function GET(){
   const journalDraft=(journals.data||[]).map((j:any)=>({id:j.id,title:j.title,detail:j.journal_date+' · draft',href:'/jurnal/buat?journal_id='+j.id}));
   const journalMissing=(agenda.data||[]).filter((a:any)=>a.journal_required&&!(a.journals||[]).some((j:any)=>j.state!=='ARCHIVED')).map((a:any)=>({id:'agenda:'+a.id,title:a.title,detail:'Jurnal wajib belum dibuat',href:'/jurnal/buat?agenda_id='+a.id}));
   const journal=[...journalMissing,...journalDraft.filter((j:any)=>!journalMissing.some((m:any)=>m.href.includes(j.id)))];
-  const documentation=(agenda.data||[]).filter((a:any)=>a.documentation_required&&!(a.journals||[]).some((j:any)=>(j.journal_attachments||[]).length>0)).map((a:any)=>({id:a.id,title:a.title,detail:'Dokumentasi wajib belum tersedia',href:'/jurnal/buat?agenda_id='+a.id}));
+  const documentation=(agenda.data||[]).filter((a:any)=>a.documentation_required&&!(a.journals||[]).some((j:any)=>(j.journal_attachments||[]).length>0||String(j.assessment?.documentation||'').trim().length>0)).map((a:any)=>({id:a.id,title:a.title,detail:'Dokumentasi wajib belum tersedia',href:'/jurnal/buat?agenda_id='+a.id}));
   const overdue=(decisions.data||[]).map((d:any)=>({id:d.id,title:d.decision,detail:'Deadline '+d.deadline,href:'/jurnal/buat?journal_id='+d.journal_id}));
   const importProblems=(imports.data||[]).map((j:any)=>({id:j.id,title:j.file_name||j.resource_type,detail:j.status+' · '+j.error_rows+' error',href:'/impor'}));
   const targetIssues=canTarget?await targetGaps(s,today):[];
