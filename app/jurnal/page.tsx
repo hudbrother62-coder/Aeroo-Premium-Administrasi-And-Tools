@@ -3,7 +3,7 @@
 import {jakartaDate} from '@/lib/domain';
 import {studyRecap} from '@/lib/rebuild';
 import Link from 'next/link';
-import {readScopesForRole,writeScopesForRole} from '@/lib/access';
+import {readScopesForRole,writeScopesForRole,type Audience} from '@/lib/access';
 import {useEffect,useState} from 'react';
 
 type Journal={id:string;journal_date:string;journal_kind:string;title:string;state?:string;revision?:number;started_at?:string;ended_at?:string;material?:string;summary?:string;decisions?:string;assessment?:{presenter?:string;presenter_id?:string;materials?:Array<{topic:string;page:string;status?:string}>;meeting_type?:string;absence?:string};classes?:{name?:string};members?:{name?:string}};
@@ -12,7 +12,7 @@ const labels:Record<string,string>={PENGKAJIAN:'Pengkajian',KELOMPOK:'Kelompok',
 
 export default function Page(){
   const[month,setMonth]=useState(jakartaDate().slice(0,7));
-  const[kind,setKind]=useState('');const[role,setRole]=useState('VIEWER'),[scopedRead,setScopedRead]=useState<string[]|null>(null),[scopedWrite,setScopedWrite]=useState<string[]|null>(null);useEffect(()=>{fetch('/api/auth/me').then(r=>r.json()).then(u=>{setRole(u.role);setScopedRead(Array.isArray(u.read_scopes)?u.read_scopes:null);setScopedWrite(Array.isArray(u.write_scopes)?u.write_scopes:null)})},[]);
+  const[kind,setKind]=useState('');const[role,setRole]=useState('VIEWER'),[scopedRead,setScopedRead]=useState<Audience[]|null>(null),[scopedWrite,setScopedWrite]=useState<Audience[]|null>(null);useEffect(()=>{fetch('/api/auth/me').then(r=>r.json()).then(u=>{setRole(u.role);setScopedRead(Array.isArray(u.read_scopes)?u.read_scopes:null);setScopedWrite(Array.isArray(u.write_scopes)?u.write_scopes:null)})},[]);
   const[data,setData]=useState<Journal[]>([]);
   const[loading,setLoading]=useState(true);
   const[error,setError]=useState('');
