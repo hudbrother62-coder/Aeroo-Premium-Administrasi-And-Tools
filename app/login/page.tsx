@@ -9,7 +9,15 @@ export default function LoginPage(){
   const[loading,setLoading]=useState(false);
   const[error,setError]=useState('');
 
-  useEffect(()=>{fetch('/api/auth/me').then(r=>{if(r.ok)window.location.href='/'})},[]);
+  useEffect(()=>{
+    let mounted=true;
+    fetch('/api/auth/me').then(async r=>{
+      if(!r.ok)return;
+      const me=await r.json();
+      if(mounted&&me.id&&me.active&&!me.public)window.location.href='/';
+    }).catch(()=>{});
+    return()=>{mounted=false};
+  },[]);
 
   async function submit(e:FormEvent){
     e.preventDefault();setLoading(true);setError('');

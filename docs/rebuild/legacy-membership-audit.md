@@ -13,6 +13,7 @@ Status: VERIFYING. Production promotion requires signed-in UI acceptance.
 - P1: target gaps omitted scheduled transitions and counted cleared/invalid evidence as assessed. Respect latest chronology, actual zero, cancelled events and attendance eligibility.
 - P1: old database quick-edit and Pengurus section paths remained. Remove unused paths and route class moves through the guarded batch endpoint.
 - Recover live SQL migration records missing from source control, without resetting application data.
+- Browser QCL found that login redirected anonymous viewers because /api/auth/me returns HTTP 200 for public identities. Redirect only an active, non-public identity with a user ID.
 
 ## Evidence
 - The anonymous creation and revoked-read vulnerabilities were reproduced in rollback transactions before applying fixes; the regression suite now passes.
@@ -26,4 +27,4 @@ Status: VERIFYING. Production promotion requires signed-in UI acceptance.
 - Signed-in browser checks: members, import, notes, positions, study journals, report download and native evidence upload.
 - Mobile/theme visual checks and actual offline reconnect/conflict flow.
 - Verify final preview deployment, then promote exactly that verified commit to production.
-- Browser binaries were unavailable locally; network policy prevented browser installation. Preview UI is protected by Vercel sign-in. No production promotion has been performed.
+- Remote browser opened the READY preview using a temporary Vercel share link. Public dashboard rendered; login redirect regression was reproduced and fixed. Authenticated acceptance remains pending. No production promotion has been performed.
