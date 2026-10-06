@@ -18,7 +18,7 @@ export async function GET(){
     s.from('agenda').select('id,title,starts_at,status').gte('starts_at',now.toISOString()).lte('starts_at',soon).neq('status','CANCELLED').order('starts_at').limit(20),
     s.from('attendance_events').select('id,title,event_date,state,attendance_records(status)').gte('event_date',today).limit(30),
     s.from('journals').select('id,title,journal_date,journal_kind,state').eq('state','DRAFT').order('journal_date',{ascending:false}).limit(30),
-    s.from('meeting_decisions').select('id,decision,deadline,status,journal_id').lt('deadline',today).neq('status','SELESAI').order('deadline').limit(30),
+    s.from('meeting_decisions').select('id,decision,deadline,status,journal_id').lt('deadline',today).neq('status','COMPLETED').neq('status','CANCELLED').order('deadline').limit(30),
     s.from('import_jobs').select('id,resource_type,file_name,status,error_rows,created_at').in('status',['FAILED','PARTIAL']).order('created_at',{ascending:false}).limit(20),
     s.from('notification_reads').select('notification_key').eq('user_id',me.id)
   ]);
