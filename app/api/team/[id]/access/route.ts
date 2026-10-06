@@ -2,7 +2,7 @@ import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
 
 const audiences=['KELOMPOK','CABERAWIT','MUDA_MUDI','IBU_IBU','PENGURUS'] as const;
-const permissions=['person.read','person.write','attendance.read','attendance.write','journal.read','journal.write','target.read','target.write','report.read','report.publish','archive.manage','user.manage','settings.manage'] as const;
+const permissions=['person.read','person.write','agenda.read','agenda.write','attendance.read','attendance.write','journal.read','journal.write','target.read','target.write','position.read','position.write','decision.write','report.read','report.publish','import.manage','archive.manage','user.manage','settings.manage'] as const;
 
 export async function GET(_req:NextRequest,{params}:{params:Promise<{id:string}>}){
   const {id}=await params;const s=await db();const {data:me}=await s.rpc('get_current_app_user');
