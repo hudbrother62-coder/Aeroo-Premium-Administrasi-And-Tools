@@ -63,8 +63,9 @@ export default function ReportPage(){
 
   async function editTemplate(id:string,changes:{name?:string;active?:boolean}){setError('');try{const r=await fetch('/api/report-templates',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id,...changes})});const j=await r.json();if(!r.ok)throw new Error(j.error);if(templateId===id&&changes.active===false)setTemplateId('');await load()}catch(e){setError(e instanceof Error?e.message:'Gagal mengubah template.')}}
   return <>
+    <div className="pageHeader"><h1>Laporan</h1></div>
     <OperationalReport/>
-    <div className="pageHeader"><div><div className="eyebrow">Dokumen yang dapat diedit</div><h1>Laporan Caberawit</h1><p>Data presensi dan progres disusun ke template Word atau PowerPoint.</p></div></div>
+    <div className="sectionTitle section"><h2>Caberawit</h2></div>
     <div className="dashboardGrid">
       <section className="card">
         <h2>Buat Laporan</h2>
@@ -81,7 +82,7 @@ export default function ReportPage(){
         <label className="reportOption"><input type="checkbox" checked={aiNote} onChange={e=>setAiNote(e.target.checked)}/> Catatan otomatis</label>
         {aiNote&&<label>Petunjuk catatan tambahan<textarea className="textarea" maxLength={500} value={aiInstruction} onChange={e=>setAiInstruction(e.target.value)} placeholder="Soroti hal yang ingin diperhatikan, tanpa menambah fakta baru."/></label>}
         {!aiNote&&mode==='class'&&<label>Catatan kelas (opsional)<textarea className="textarea" value={manualNote} onChange={e=>setManualNote(e.target.value)}/></label>}
-        <div className="notice section">Placeholder template: <strong>{'{{NAMA}}'}</strong>, {'{{PERIODE}}'}, {'{{KELAS}}'}, {'{{JENJANG}}'}, {'{{HADIR}}'}, {'{{IZIN}}'}, {'{{ALFA}}'}, {'{{KEHADIRAN}}'}, {'{{PROGRES}}'}, {'{{CATATAN}}'}.</div>
+        <details className="notice section"><summary>Placeholder template</summary><div className="itemMeta section"><strong>{'{{NAMA}}'}</strong>, {'{{PERIODE}}'}, {'{{KELAS}}'}, {'{{JENJANG}}'}, {'{{HADIR}}'}, {'{{IZIN}}'}, {'{{ALFA}}'}, {'{{KEHADIRAN}}'}, {'{{PROGRES}}'}, {'{{CATATAN}}'}</div></details>
         {error&&<div className="notice error section">{error}</div>}{message&&<div className="notice section">{message}</div>}
         <button className="btn section" onClick={()=>void generate()} disabled={loading||!versionId||(mode==='individual'&&!memberId)||(mode==='class'&&!classFilter)}>{loading?'Menyusun laporan…':'Cetak'}</button>
         <button className="btn section" onClick={()=>void generate(true)} disabled={loading||!versionId||(mode==='individual'&&!memberId)||(mode==='class'&&!classFilter)}>Pratinjau</button>
