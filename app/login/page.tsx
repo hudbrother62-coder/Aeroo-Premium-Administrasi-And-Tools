@@ -32,7 +32,7 @@ export default function LoginPage(){
 
   return <main className="loginPage">
     <section className="loginBrandPanel">
-      <Image src="/aeroo-logo-new.webp" alt="AEROO" width={440} height={444} priority/>
+      <Image src="/simpul-logo.webp" alt="Simpul" width={320} height={320} priority/>
     </section>
     <section className="loginPanel">
       <form className="loginCard" onSubmit={submit}>
