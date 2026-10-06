@@ -73,7 +73,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
     }).then(v=>{
       if(v){setUser(v.public?null:v);document.documentElement.dataset.role=v.role}
     }).catch(()=>{setUser(null);document.documentElement.dataset.role='PUBLIC'}).finally(()=>setChecking(false));
-  },[isLogin,path]);
+  },[isLogin]);
 
   useEffect(()=>{setDrawer(false);setMoreOpen(false);setQuickOpen(false)},[path]);
   const visible=useMemo(()=>user?nav.filter(x=>x.roles.includes(user.role)&&(navPermission[x.href]?user.permissions?.[navPermission[x.href]]!==false:true)):nav.filter(x=>x.publicRead),[user]);
@@ -140,7 +140,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
           <button className="iconOnly headerTheme" onClick={()=>setDark(v=>!v)} aria-label="Tema">{dark?<Sun size={19}/>:<Moon size={19}/>}</button>
         </div>
       </header>
-      <div className="pageContent">{checking?<div className="card"><div className="skeleton" style={{height:90}}/></div>:children}</div>
+      <div className="pageContent" key={path}>{checking?<div className="card"><div className="skeleton" style={{height:90}}/></div>:children}</div>
       {user&&quickItems.length>0&&<><button className="mobileQuickFab" onClick={()=>{setQuickOpen(v=>!v);setMoreOpen(false)}} aria-label="Tambah data" aria-expanded={quickOpen}><Plus size={22}/></button>{quickOpen&&<div className="mobileQuickPanel"><div className="quickAddGrid">{quickItems.map(item=>{const Icon=item.icon;return <Link key={item.href} href={item.href} className="quickAddItem"><Icon size={18}/><span>{item.label}</span></Link>})}</div></div>}</>}
       <nav className="mobileBottomNav" aria-label="Navigasi utama">
         {renderNav(mobilePrimary,'bottomNavItems')}
