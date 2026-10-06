@@ -33,6 +33,7 @@ export default function AgendaPage(){
     }catch(e){setError(e instanceof Error?e.message:'Agenda tidak dapat dimuat.')}
   }
   useEffect(()=>{void load()},[month]);
+  useEffect(()=>{if(new URLSearchParams(window.location.search).get('create')==='1')setTimeout(()=>openFor(jakartaDate()),0)},[role]);
   function changeMonth(offset:number){const d=new Date(month.getFullYear(),month.getMonth()+offset,1);setMonth(d);setSelected(dateKey(d))}
   function openFor(date:string){setEditId('');setRevision(0);setScope('this');setForm({...defaults,audience:writeScopesForRole(role)[0]||'KELOMPOK',title:'',date,start:'08:00',end:'',activity_type_id:'',location:'',presenter:'',notes:''});setShow(true)}
   function editEvent(e:Agenda){const day=localDay(e.starts_at);setEditId(e.id);setRevision(e.revision);setScope('this');setForm({...defaults,audience:e.audience,class_id:e.class_id||'',level_id:e.level_id||'',participant_ids:e.participant_ids||[],person_in_charge:e.person_in_charge||'',attendance_enabled:e.attendance_enabled!==false,status:e.status||'SCHEDULED',recurrence:e.recurrence||'once',title:e.title,date:day,start:time(e.starts_at).replace('.',':'),end:e.ends_at?time(e.ends_at).replace('.',':'):'',activity_type_id:e.activity_type_id||'',location:e.location||'',presenter:e.presenter||'',notes:e.notes||''});setShow(true)}
