@@ -7,10 +7,10 @@ type TeamUser={id:string;username:string;display_name:string|null;role:Role;acti
 type Visit={id:string;display_name:string|null;device:string;visited_at:string};
 
 const roleInfo:Record<Role,{label:string;desc:string}> = {
-  ADMIN:{label:'Admin Utama',desc:'Akses penuh termasuk Tim Akses dan seluruh data.'},
-  DEWAN_GURU:{label:'Dewan Guru',desc:'Input dan pengelolaan Caberawit serta Muda-Mudi, termasuk presensi, jurnal, perkembangan, rekap, dan laporan terkait.'},
-  KELOMPOK:{label:'Kelompok',desc:'Input Kelompok, Ibu-Ibu, dan Pengurus. Data Muda-Mudi tetap dapat terlihat dalam konteks Kelompok, tetapi input Muda-Mudi dikelola Dewan Guru.'},
-  VIEWER:{label:'Viewer publik',desc:'Ringkasan jumlah terbuka tanpa login. Akun Viewer lama tetap baca saja.'},
+  ADMIN:{label:'Admin',desc:'Akses sistem penuh.'},
+  DEWAN_GURU:{label:'Dewan Guru',desc:'Kelola Caberawit dan Muda-Mudi sesuai scope.'},
+  KELOMPOK:{label:'Operator',desc:'Kelola operasional Kelompok Pengorgan dan Ibu-Ibu sesuai scope.'},
+  VIEWER:{label:'Viewer',desc:'Baca saja pada data yang diizinkan.'},
 };
 
 export default function TeamPage(){
@@ -56,7 +56,7 @@ export default function TeamPage(){
 
   return <>
     <div className="pageHeader">
-      <div><div className="eyebrow">Pengaturan Akses</div><h1>Tim Akses</h1><p>Kelola siapa yang dapat masuk ke Aeroo dan batasi menu sesuai tanggung jawabnya.</p></div>
+      <h1>Akses</h1>
       <button className="btn" onClick={()=>setShowForm(v=>!v)}>{showForm?'Tutup Form':'+ Tambah Akun'}</button>
     </div>
 
@@ -68,13 +68,13 @@ export default function TeamPage(){
     </div>
 
     {showForm&&<form onSubmit={createUser} className="card section">
-      <div className="sectionTitle"><div><h2>Tambah akun tim</h2><p>Tidak ada menu daftar. Hanya admin yang dapat membuat akun baru.</p></div></div>
+      <div className="sectionTitle"><h2>Tambah Akun</h2></div>
       <div className="formGrid">
         <label>Nama tampilan<input className="input" value={form.display_name} onChange={e=>setForm({...form,display_name:e.target.value})} placeholder="Contoh: Dewan Guru 1"/></label>
         <label>Username<input className="input" value={form.username} onChange={e=>setForm({...form,username:e.target.value})} placeholder="Minimal 3 karakter" required/></label>
         <label>Password<input className="input" type="password" value={form.password} onChange={e=>setForm({...form,password:e.target.value})} placeholder="Minimal 8 karakter" required/></label>
         <label>Role<select className="select" value={form.role} onChange={e=>setForm({...form,role:e.target.value as Role})}>
-          <option value="DEWAN_GURU">Dewan Guru</option><option value="KELOMPOK">Kelompok</option><option value="VIEWER">Viewer</option><option value="ADMIN">Admin Utama</option>
+          <option value="DEWAN_GURU">Dewan Guru</option><option value="KELOMPOK">Operator</option><option value="VIEWER">Viewer</option><option value="ADMIN">Admin Utama</option>
         </select></label>
       </div>
       <button className="btn" disabled={saving} style={{marginTop:18}}>{saving?'Menyimpan…':'Buat Akun'}</button>
@@ -83,7 +83,7 @@ export default function TeamPage(){
     {error&&<div className="notice error section" role="alert">{error}</div>}
 
     <section className="section">
-      <div className="sectionTitle"><div><h2>Daftar akun</h2><p>{loading?'Memuat akun…':data.length+' akun terdaftar'}</p></div></div>
+      <div className="sectionTitle"><h2>Daftar Akun</h2><span className="itemMeta">{loading?'Memuat…':data.length+' akun'}</span></div>
       <div className="list">
         {loading?[1,2].map(i=><div className="item" key={i}><div className="skeleton" style={{height:56}}/></div>):
         data.map(user=><div className="item row between" key={user.id}>
@@ -95,6 +95,6 @@ export default function TeamPage(){
         </div>)}
       </div>
     </section>
-    <section className="section"><div className="sectionTitle"><div><h2>Kunjungan viewer</h2><p>100 kunjungan terbaru. Nama bersifat opsional; perangkat berasal dari browser.</p></div></div><div className="tableWrap"><table className="table"><thead><tr><th>Waktu</th><th>Nama</th><th>Perangkat</th></tr></thead><tbody>{visits.map(v=><tr key={v.id}><td>{new Date(v.visited_at).toLocaleString('id-ID')}</td><td>{v.display_name||'Anonim'}</td><td>{v.device.slice(0,120)}</td></tr>)}{!visits.length&&<tr><td colSpan={3}>Belum ada kunjungan.</td></tr>}</tbody></table></div></section>
+    <section className="section"><div className="sectionTitle"><h2>Kunjungan Viewer</h2></div><div className="tableWrap"><table className="table"><thead><tr><th>Waktu</th><th>Nama</th><th>Perangkat</th></tr></thead><tbody>{visits.map(v=><tr key={v.id}><td>{new Date(v.visited_at).toLocaleString('id-ID')}</td><td>{v.display_name||'Anonim'}</td><td>{v.device.slice(0,120)}</td></tr>)}{!visits.length&&<tr><td colSpan={3}>Belum ada kunjungan.</td></tr>}</tbody></table></div></section>
   </>;
 }
