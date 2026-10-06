@@ -81,11 +81,15 @@ export default function AppShell({children}:{children:React.ReactNode}){
     const items:{href:string;label:string;icon:any}[]=[];
     if(canWriteFormal){
       items.push({href:'/database/tambah',label:'Anggota',icon:UserPlus});
+      if(user?.role==='ADMIN'||user?.role==='DEWAN_GURU'){
+        items.push({href:'/database?create=level',label:'Jenjang',icon:Target});
+        items.push({href:'/database?create=class',label:'Kelas',icon:Database});
+      }
       items.push({href:'/agenda?create=1',label:'Agenda',icon:CalendarDays});
       items.push({href:'/presensi/buat',label:'Presensi',icon:ClipboardCheck});
       items.push({href:'/jurnal/buat',label:'Jurnal',icon:BookOpen});
       items.push({href:'/jurnal/buat?kind=PENGKAJIAN',label:'Pengkajian',icon:NotebookPen});
-      if(user?.role==='ADMIN'||user?.role==='DEWAN_GURU')items.push({href:'/target',label:'Target',icon:Target});
+      if(user?.role==='ADMIN'||user?.role==='DEWAN_GURU')items.push({href:'/target?create=1',label:'Target',icon:Target});
       if(user?.role==='ADMIN'||user?.role==='KELOMPOK')items.push({href:'/struktur?create=1',label:'Jabatan',icon:Network});
     }
     if(user)items.push({href:'/catatan?create=1',label:'Catatan',icon:NotebookPen});
