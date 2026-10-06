@@ -4,19 +4,22 @@ import Link from 'next/link';
 import {FormEvent,useEffect,useState} from 'react';
 
 type Login={id:number;username:string;success:boolean;user_agent?:string;created_at:string};
+type Health={checked_at:string;summary:any;checks:Array<{key:string;label:string;status:'OK'|'WARN'|'ERROR';detail:string}>};
 
 export default function SettingsPage(){
   const[group,setGroup]=useState({name:'Kelompok Pengorgan',address:'',contact:'',timezone:'Asia/Jakarta'});
   const[manual,setManual]=useState({title:'Panduan Penggunaan AIRO',content:''});
   const[logins,setLogins]=useState<Login[]>([]);
+  const[health,setHealth]=useState<Health|null>(null);
   const[saved,setSaved]=useState('');
   const[error,setError]=useState('');
 
   useEffect(()=>{
-    Promise.all([fetch('/api/settings').then(r=>r.json()),fetch('/api/login-history').then(r=>r.json())]).then(([s,l])=>{
+    Promise.all([fetch('/api/settings').then(r=>r.json()),fetch('/api/login-history').then(r=>r.json()),fetch('/api/system-health').then(r=>r.ok?r.json():null)]).then(([s,l,h])=>{
       if(s.group_info)setGroup({...group,...s.group_info});
       if(s.usage_manual)setManual({...manual,...s.usage_manual});
       setLogins(Array.isArray(l)?l:[]);
+      if(h?.checks)setHealth(h);
     });
   },[]);
 
@@ -35,6 +38,13 @@ export default function SettingsPage(){
       {saved&&<div className="notice section">{saved}</div>}{error&&<div className="notice error section">{error}</div>}
       <div className="formActions"><button className="btn">Simpan Pengaturan</button></div>
     </form>
+    <section className="section">
+      <div className="cardHead"><h2>System Health</h2><button className="smallAction" onClick={async()=>{const r=await fetch('/api/system-health',{cache:'no-store'});if(r.ok)setHealth(await r.json())}}>Periksa</button></div>
+      <div className="healthGrid">
+        {health?.checks.map(x=><div className="healthCard" key={x.key}><div className="row between"><strong>{x.label}</strong><span className={x.status==='OK'?'badge successBadge':'badge warningBadge'}>{x.status}</span></div><p>{x.detail}</p></div>)}
+        {!health&&<div className="emptyState">Status sistem belum tersedia.</div>}
+      </div>
+    </section>
     <section className="section">
       <div className="cardHead"><h2>Riwayat Login</h2></div>
       <div className="tableWrap"><table className="table"><thead><tr><th>Waktu</th><th>Akun</th><th>Status</th><th>Perangkat</th></tr></thead><tbody>
