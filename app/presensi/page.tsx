@@ -15,14 +15,14 @@ export default function Page(){
   const[classId,setClassId]=useState('');
   const[classes,setClasses]=useState<ClassRow[]>([]);
   const[events,setEvents]=useState<Event[]>([]);
-  const[role,setRole]=useState<Role|null>(null);
+  const[role,setRole]=useState<Role|null>(null);const[scopedRead,setScopedRead]=useState<Audience[]|null>(null),[scopedWrite,setScopedWrite]=useState<Audience[]|null>(null);
   const[loading,setLoading]=useState(true);
   const[error,setError]=useState('');
   const[view,setView]=useState<'input'|'recap'>('input');
   useEffect(()=>{if(new URLSearchParams(window.location.search).get('view')==='rekap')setView('recap')},[]);
 
-  const readable=useMemo(()=>readScopesForRole(role),[role]);
-  const writable=useMemo(()=>writeScopesForRole(role),[role]);
+  const readable=useMemo(()=>scopedRead??readScopesForRole(role),[role,scopedRead]);
+  const writable=useMemo(()=>scopedWrite??writeScopesForRole(role),[role,scopedWrite]);
 
   const load=async()=>{
     setLoading(true);setError('');
@@ -35,7 +35,7 @@ export default function Page(){
     try{
       const[r,c,u]=await Promise.all([fetch('/api/attendance?'+q),fetch('/api/classes'),fetch('/api/auth/me')]);
       if(!r.ok||!c.ok||!u.ok)throw new Error();
-      setEvents(await r.json());setClasses(await c.json());setRole((await u.json()).role??null);
+      setEvents(await r.json());setClasses(await c.json());const me=await u.json();setRole(me.role??null);setScopedRead(Array.isArray(me.read_scopes)?me.read_scopes:null);setScopedWrite(Array.isArray(me.write_scopes)?me.write_scopes:null);
     }catch{setError('Presensi belum dapat dimuat.')}
     finally{setLoading(false)}
   };
