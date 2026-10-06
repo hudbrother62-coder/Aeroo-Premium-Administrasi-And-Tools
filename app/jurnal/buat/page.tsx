@@ -3,7 +3,7 @@
 import MeetingDecisions from '@/components/MeetingDecisions';
 import {studyDuration} from '@/lib/rebuild';
 import {jakartaDate} from '@/lib/domain';
-import {writeScopesForRole} from '@/lib/access';
+import {writeScopesForRole,type Audience} from '@/lib/access';
 import {FormEvent,useEffect,useMemo,useState} from 'react';
 import {prepareJournalPayloadProgress} from '../helpers';
 
@@ -14,7 +14,7 @@ type TargetRow={id:string;title:string;class_id?:string;level_id?:string;target_
 const kinds=[['PENGKAJIAN','Pengkajian Kelompok'],['KELOMPOK','Kegiatan Kelompok'],['IBU_IBU','Ibu-Ibu'],['PENGURUS','Musyawarah Pengurus'],['CABERAWIT_CLASS','Caberawit Kelas'],['CABERAWIT_INDIVIDUAL','Caberawit Individu'],['MUDA_MUDI_CLASS','Muda-Mudi Kelas'],['MUDA_MUDI_INDIVIDUAL','Muda-Mudi Individu']] as const;
 
 export default function Page(){
-  const today=jakartaDate();const[role,setRole]=useState('VIEWER'),[scopedWrite,setScopedWrite]=useState<string[]|null>(null);useEffect(()=>{fetch('/api/auth/me').then(r=>r.json()).then(u=>{setRole(u.role);const scopes=Array.isArray(u.write_scopes)?u.write_scopes:writeScopesForRole(u.role);setScopedWrite(Array.isArray(u.write_scopes)?u.write_scopes:null);const first=scopes[0];if(first&&!location.search)setForm(v=>({...v,journal_kind:first==='CABERAWIT'?'CABERAWIT_CLASS':first==='MUDA_MUDI'?'MUDA_MUDI_CLASS':first}))})},[]);
+  const today=jakartaDate();const[role,setRole]=useState('VIEWER'),[scopedWrite,setScopedWrite]=useState<Audience[]|null>(null);useEffect(()=>{fetch('/api/auth/me').then(r=>r.json()).then(u=>{setRole(u.role);const scopes=Array.isArray(u.write_scopes)?u.write_scopes:writeScopesForRole(u.role);setScopedWrite(Array.isArray(u.write_scopes)?u.write_scopes:null);const first=scopes[0];if(first&&!location.search)setForm(v=>({...v,journal_kind:first==='CABERAWIT'?'CABERAWIT_CLASS':first==='MUDA_MUDI'?'MUDA_MUDI_CLASS':first}))})},[]);
   const[activities,setActivities]=useState<Activity[]>([]);
   const[classes,setClasses]=useState<ClassRow[]>([]);
   const[targets,setTargets]=useState<TargetRow[]>([]);
