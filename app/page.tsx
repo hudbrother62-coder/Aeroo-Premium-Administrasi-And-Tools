@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import {useEffect,useState} from 'react';
-import {ArrowRight,CalendarDays,ClipboardCheck,Database,FileText} from 'lucide-react';
+import {ArrowRight,CalendarDays,ClipboardCheck,Database,Eye,FileText,LogIn,ShieldCheck} from 'lucide-react';
 
 type Overview={members:number;categories:Array<{name:string;count:number}>;attendance:{meetings:number;present:number;excused:number;absent:number};journals:number};
 type Dashboard=Overview&{role?:string;levels:Array<{id:string;name:string;count:number;present:number;total:number}>;todayEvents?:Array<{id:string;title:string;audience?:string}>;unfinishedAttendance?:Array<{id:string;title:string}>;draftJournals?:Array<{id:string;title:string}>;overdueDecisions?:Array<{id:string;title:string;journal_id:string;deadline:string}>;completeness?:{members:number;attendance:number;journals:number;followups:number;imports:number};monthly?:Array<{month:string;meetings:number;journals:number;present:number}>};
@@ -49,6 +49,7 @@ export default function Home(){
       <div className="homeIntroLogo" aria-hidden="true"><Image src="/simpul-logo.webp" alt="" width={82} height={82} priority/></div>
     </div>
     {error&&<div className="notice error">{error}</div>}
+    {!loggedIn&&<section className="viewerHero"><div className="viewerHeroIcon"><Eye size={22}/></div><div><span>MODE VIEWER</span><h2>Ringkasan publik Simpul</h2><p>Data ditampilkan dalam mode baca saja. Perubahan administrasi hanya tersedia setelah masuk.</p></div><Link className="btn secondary viewerHeroLogin" href="/login"><LogIn size={16}/>Masuk Admin</Link></section>}
     {!loggedIn&&<div className="toolbar card viewerFilters"><label>Bulan<input className="input" type="month" value={viewerMonth} onChange={e=>setViewerMonth(e.target.value)}/></label><label>Periode<select className="select" value={viewerSpan} onChange={e=>setViewerSpan(Number(e.target.value) as 1|6)}><option value={1}>1 bulan</option><option value={6}>6 bulan</option></select></label></div>}
     {loggedIn&&<div className="taskLinks"><Link className="btn" href="/agenda?create=1">+ Agenda</Link><Link className="btn secondary" href="/presensi/buat">Presensi</Link><Link className="btn secondary" href="/jurnal/buat">Jurnal</Link><Link className="btn ghost" href="/catatan?create=1">Catatan</Link></div>}
 
@@ -66,7 +67,7 @@ export default function Home(){
     </div>}
 
     <div className="metricGrid section">
-      <Link href="/database" className="metricCard"><Database size={18}/><span>Anggota</span><strong>{data?.members??'—'}</strong></Link>
+      <Link href="/database" className="metricCard"><Database size={18}/><span>Database</span><strong>{data?.members??'—'}</strong></Link>
       <Link href="/agenda" className="metricCard"><CalendarDays size={18}/><span>Kegiatan</span><strong>{attendance?.meetings??'—'}</strong></Link>
       <Link href="/presensi?view=rekap" className="metricCard"><ClipboardCheck size={18}/><span>Kehadiran</span><strong>{total?Math.round((attendance?.present??0)/total*100)+'%':'—'}</strong></Link>
       <Link href="/jurnal" className="metricCard"><FileText size={18}/><span>Jurnal</span><strong>{data?.journals??'—'}</strong></Link>
@@ -77,6 +78,6 @@ export default function Home(){
     </section>}
 
     {!loggedIn&&viewerSpan===6&&<section className="card section"><div className="cardHead"><h2>6 Bulan</h2></div><div className="tableWrap"><table className="table"><thead><tr><th>Bulan</th><th>Kegiatan</th><th>Hadir</th><th>Jurnal</th></tr></thead><tbody>{data?.monthly?.map(x=><tr key={x.month}><td>{x.month}</td><td>{x.meetings}</td><td>{x.present}</td><td>{x.journals}</td></tr>)}</tbody></table></div></section>}
-    {!loggedIn&&<section className="card section viewerNote"><div className="cardHead"><h2>Viewer</h2></div><div className="viewerIdentify"><input className="input" value={visitorName} onChange={e=>setVisitorName(e.target.value)} maxLength={80} placeholder="Nama (opsional)" aria-label="Nama pengunjung"/><button className="btn secondary" onClick={()=>void identify()} disabled={!visitorName.trim()}>Simpan</button></div>{visitMessage&&<div className="notice">{visitMessage}</div>}</section>}
+    {!loggedIn&&<section className="card section viewerNote"><div className="cardHead"><div><h2>Kunjungan Viewer</h2><p>Nama hanya opsional untuk pencatatan kunjungan.</p></div><ShieldCheck size={20}/></div><div className="viewerIdentify"><input className="input" value={visitorName} onChange={e=>setVisitorName(e.target.value)} maxLength={80} placeholder="Nama pengunjung (opsional)" aria-label="Nama pengunjung"/><button className="btn secondary" onClick={()=>void identify()} disabled={!visitorName.trim()}>Catat kunjungan</button></div>{visitMessage&&<div className="notice">{visitMessage}</div>}</section>}
   </div>;
 }
