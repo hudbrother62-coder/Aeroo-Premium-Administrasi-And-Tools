@@ -1,5 +1,6 @@
 'use client';
 
+import OperationalReport from '@/components/OperationalReport';
 import {reportMemberships} from '@/lib/report-scope';
 import {jakartaDate} from '@/lib/domain';
 import {FormEvent,useEffect,useMemo,useState} from 'react';
@@ -62,6 +63,7 @@ export default function ReportPage(){
 
   async function editTemplate(id:string,changes:{name?:string;active?:boolean}){setError('');try{const r=await fetch('/api/report-templates',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({id,...changes})});const j=await r.json();if(!r.ok)throw new Error(j.error);if(templateId===id&&changes.active===false)setTemplateId('');await load()}catch(e){setError(e instanceof Error?e.message:'Gagal mengubah template.')}}
   return <>
+    <OperationalReport/>
     <div className="pageHeader"><div><div className="eyebrow">Dokumen yang dapat diedit</div><h1>Laporan Caberawit</h1><p>Data presensi dan progres disusun ke template Word atau PowerPoint.</p></div></div>
     <div className="dashboardGrid">
       <section className="card">
