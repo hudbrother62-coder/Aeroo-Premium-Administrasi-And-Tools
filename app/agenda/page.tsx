@@ -17,7 +17,7 @@ const time=(iso:string)=>new Intl.DateTimeFormat('id-ID',{timeZone:'Asia/Jakarta
 export default function AgendaPage(){
   const[today]=useState(()=>new Date(jakartaDate()+'T12:00:00'));
   const[month,setMonth]=useState(new Date(today.getFullYear(),today.getMonth(),1));
-  const[selected,setSelected]=useState(jakartaDate());const[dayOpen,setDayOpen]=useState(false),[role,setRole]=useState('VIEWER'),[classes,setClasses]=useState<any[]>([]),[levels,setLevels]=useState<any[]>([]),[people,setPeople]=useState<any[]>([]),[scope,setScope]=useState('this'),[revision,setRevision]=useState(0);
+  const[selected,setSelected]=useState(jakartaDate());const[dayOpen,setDayOpen]=useState(false),[role,setRole]=useState('VIEWER'),[scopedWrite,setScopedWrite]=useState<string[]|null>(null),[classes,setClasses]=useState<any[]>([]),[levels,setLevels]=useState<any[]>([]),[people,setPeople]=useState<any[]>([]),[scope,setScope]=useState('this'),[revision,setRevision]=useState(0);
   const[data,setData]=useState<Agenda[]>([]),[activities,setActivities]=useState<Activity[]>([]);
   const[show,setShow]=useState(false),[busy,setBusy]=useState(false),[editId,setEditId]=useState(''),[canWrite,setCanWrite]=useState(false),[isOwner,setIsOwner]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
   const defaults={audience:'KELOMPOK',class_id:'',level_id:'',participant_ids:[] as string[],person_in_charge:'',attendance_enabled:true,status:'SCHEDULED',recurrence:'once',repeat_until:''};
@@ -29,7 +29,7 @@ export default function AgendaPage(){
     try{
       const [a,t,u,k,l,p]=await Promise.all([fetch('/api/agenda?'+q),fetch('/api/activity-types'),fetch('/api/auth/me'),fetch('/api/classes'),fetch('/api/levels'),fetch('/api/members')]);
       if(!a.ok||!t.ok||!u.ok)throw new Error('Agenda tidak dapat dimuat.');
-      setData(await a.json());setActivities(await t.json());const role=(await u.json()).role;setRole(role);setClasses(await k.json());setLevels(await l.json());setPeople(await p.json());setCanWrite(role!=='VIEWER');setIsOwner(role==='ADMIN');setError('');
+      setData(await a.json());setActivities(await t.json());const role=(await u.json()).role;setRole(role);setScopedWrite(Array.isArray((await u.clone().json?.())?.write_scopes)?[]:null);setClasses(await k.json());setLevels(await l.json());setPeople(await p.json());setCanWrite(role!=='VIEWER');setIsOwner(role==='ADMIN');setError('');
     }catch(e){setError(e instanceof Error?e.message:'Agenda tidak dapat dimuat.')}
   }
   useEffect(()=>{void load()},[month]);
