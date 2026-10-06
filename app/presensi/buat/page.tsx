@@ -57,7 +57,7 @@ export default function Page(){
   useEffect(()=>{const retry=()=>queue.current?.retry();window.addEventListener('online',retry);return()=>window.removeEventListener('online',retry)},[]);
   function change(key:string,value:AttendanceValue){setStatus(v=>({...v,[key]:value.status}));setNotes(v=>({...v,[key]:value.notes}));queue.current?.enqueue(key,value)}
   function recoverPending(item:{key:string;pending:any}){for(const [key,value] of Object.entries(item.pending) as Array<[string,any]>){if(!people.some(p=>p.id===key))continue;if(Number.isInteger(value.revision))queue.current?.seed(key,{...value,revision:value.revision});change(key,value)}setRecovery(v=>v.filter(x=>x.key!==item.key))}
-  function allPresent(){const previous=Object.fromEntries(people.map(p=>[p.id,{status:statusRef.current[p.id]??null,notes:notesRef.current[p.id]||''}]));setUndo(previous);people.forEach(p=>change(p.id,{status:'H',notes:notesRef.current[p.id]||''}))}
+  function allPresent(){const pending=people.filter(p=>statusRef.current[p.id]==null);if(!pending.length)return;const previous=Object.fromEntries(pending.map(p=>[p.id,{status:statusRef.current[p.id]??null,notes:notesRef.current[p.id]||''}]));setUndo(previous);pending.forEach(p=>change(p.id,{status:'H',notes:notesRef.current[p.id]||''}))}
   function resolve(key:string,keep:boolean){const server=conflicts[key];queue.current?.resolve(key,server,keep);setConflicts(v=>{const next={...v};delete next[key];return next})}
 
   useEffect(()=>{
@@ -83,13 +83,13 @@ export default function Page(){
   }
 
   return <>
-    <div className="pageHeader"><div><h1>Buat Presensi</h1><p>Form otomatis mengikuti akses akun.</p></div></div>
-    {role&&<div className="notice scopeNotice"><div><strong>Ruang input</strong><span>{allowed.map(a=>audienceLabels[a]).join(' · ')}</span></div></div>}
+    <div className="pageHeader"><h1>Presensi</h1></div>
+    {role&&<div className="chips scopeChips">{allowed.map(a=><span className="chip" key={a}>{audienceLabels[a]}</span>)}</div>}
     <form onSubmit={e=>{if(eventId)e.preventDefault();else void save(e)}} className="section">
       <section className="card"><fieldset disabled={!!eventId} style={{border:0,padding:0,margin:0}}>
         <div className="formGrid">
           <label>Tanggal<input className="input" type="date" required value={form.event_date} onChange={e=>setForm({...form,event_date:e.target.value})}/></label>
-          <label>Kategori<select className="select" value={form.audience} onChange={e=>setForm({...form,audience:e.target.value as Audience,activity_type_id:'',level_id:'',class_id:''})}>
+          <label>Lingkup<select className="select" value={form.audience} onChange={e=>setForm({...form,audience:e.target.value as Audience,activity_type_id:'',level_id:'',class_id:''})}>
             {allowed.map(v=><option key={v} value={v}>{audienceLabels[v]}</option>)}
           </select></label>
 
@@ -111,12 +111,12 @@ export default function Page(){
       </fieldset>{!eventId&&<button className="btn section" disabled={saving}>{saving?'Membuka…':'Buka daftar'}</button>}</section>
 
       {eventId&&<section className="section">
-        <div className="cardHead"><div><h2>Peserta</h2><p>{people.length} orang</p></div><button type="button" className="btn ghost" onClick={allPresent}>Semua H</button></div>
+        <div className="cardHead"><div><h2>Peserta</h2><p>{people.length} orang</p></div><button type="button" className="btn ghost" onClick={allPresent}>Semua Hadir</button></div>
         {recovery.map(item=><div className="notice" key={item.key}>Ada perubahan belum tersimpan dari tab atau sesi lain. <button type="button" onClick={()=>recoverPending(item)}>Pulihkan perubahan</button></div>)}
         <input className="input" placeholder="Cari peserta" value={search} onChange={e=>setSearch(e.target.value)}/>
         {undo&&<button type="button" className="btn ghost" onClick={()=>{Object.entries(undo).forEach(([key,value])=>change(key,value));setUndo(null)}}>Urungkan Semua H</button>}
         <div className="list">
-          {people.filter(p=>p.name.toLowerCase().includes(search.toLowerCase())).map(p=><div className="item" key={p.id}><div className="row between"><div><div className="itemTitle">{p.name}</div><div className="itemMeta">{p.meta} · {status[p.id]??'Belum diisi'}</div></div><div>{(['H','I','A',null] as Status[]).map((value,i)=><button type="button" className={status[p.id]===value?'on':''} key={i} onClick={()=>change(p.id,{status:value,notes:notes[p.id]||''})}>{value??'Kosong'}</button>)}</div></div>
+          {people.filter(p=>p.name.toLowerCase().includes(search.toLowerCase())).map(p=><div className="item" key={p.id}><div className="row between"><div><div className="itemTitle">{p.name}</div><div className="itemMeta">{p.meta} · {status[p.id]??'Belum diisi'}</div></div><div className="attendanceButtons">{(['H','I','A',null] as Status[]).map((value,i)=><button type="button" className={status[p.id]===value?'on':''} key={i} onClick={()=>change(p.id,{status:value,notes:notes[p.id]||''})}>{value??'Belum'}</button>)}</div></div>
             <input className="input" aria-label={`Keterangan ${p.name}`} placeholder="Keterangan (opsional)" maxLength={2000} value={notes[p.id]||''} onChange={e=>change(p.id,{status:status[p.id]??null,notes:e.target.value})}/>
             <div className="itemMeta">{sync[p.id]==='saving'?'Menyimpan…':sync[p.id]==='saved'?'Tersimpan':sync[p.id]==='error'?'Belum tersimpan; perubahan tetap di perangkat':sync[p.id]==='conflict'?'Konflik: peserta diubah pada perangkat lain':''}</div>
             {sync[p.id]==='error'&&<button type="button" className="btn" onClick={()=>queue.current?.retry(p.id)}>Coba lagi</button>}
@@ -128,7 +128,7 @@ export default function Page(){
       </section>}
 
       {error&&<div className="notice error section">{error}</div>}
-      {eventId&&<div className="stickyAction row between"><div><strong>{count('H')} H</strong><span> · {count('I')} I · {count('A')} A · {people.length-count('H')-count('I')-count('A')} belum diisi</span></div><span>Perubahan tersimpan otomatis</span></div>}
+      {eventId&&<div className="stickyAction row between"><div><strong>{count('H')} H</strong><span> · {count('I')} I · {count('A')} A · {people.length-count('H')-count('I')-count('A')} belum diisi</span></div><span>Tersimpan otomatis</span></div>}
     </form>
   </>;
 }
