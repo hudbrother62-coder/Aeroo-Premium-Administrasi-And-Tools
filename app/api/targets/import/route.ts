@@ -38,6 +38,8 @@ export async function GET(req:NextRequest){
 }
 
 export async function POST(req:NextRequest){
+  let jobId:string|undefined;
+  let client:Awaited<ReturnType<typeof db>>|undefined;
   try{
     const form=await req.formData();
     const file=form.get('file');
@@ -46,12 +48,13 @@ export async function POST(req:NextRequest){
     const period_start=norm(form.get('period_start'))||null;
     const period_end=norm(form.get('period_end'))||null;
 
-    const authDb=await db();const {data:role}=await authDb.rpc('current_app_role');if(!['ADMIN','DEWAN_GURU'].includes(role||''))return NextResponse.json({error:'Akses input ditolak.'},{status:403});
+    const authDb=await db();client=authDb;const {data:role}=await authDb.rpc('current_app_role');if(!['ADMIN','DEWAN_GURU'].includes(role||''))return NextResponse.json({error:'Akses input ditolak.'},{status:403});const {data:me}=await authDb.rpc('get_current_app_user');
     if(period_start&&!validDate(period_start)||period_end&&!validDate(period_end)||period_start&&period_end&&period_end<period_start)throw Error('Periode tidak valid.');
     const wb=await readWorkbook(file);
     const sheet=wb.Sheets[wb.SheetNames[0]];
     const rawRows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''}) as unknown[][];const rows=rawRows.map(r=>r.map(norm));if(rows.length>3020)throw Error('Maksimal 3000 baris target.');
     if(!rows.length)return NextResponse.json({error:'Excel kosong.'},{status:400});
+    if(me?.[0]?.id){const {data:job}=await authDb.from('import_jobs').insert({owner_user_id:me[0].id,resource_type:'TARGET',file_name:file.name,status:'VALIDATING',total_rows:rows.length-1}).select('id').single();jobId=job?.id}
 
     let headerRow=0,best=-1;
     for(let i=0;i<Math.min(rows.length,20);i++){
@@ -115,6 +118,7 @@ export async function POST(req:NextRequest){
       });
     }
     if(!payload.length)throw Error('Tidak menemukan target yang dapat dibaca.');
-    const{data,error:saveError}=await s.rpc('import_target_version',{p_meta:{title,period_start,period_end,source_file_name:file.name,source_structure:{headers},analysis},p_targets:payload});if(saveError)throw Error(saveError.message);return NextResponse.json(data);
-  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Gagal menganalisis Excel.'},{status:400})}
+    if(jobId)await s.from('import_jobs').update({status:'IMPORTING',total_rows:payload.length}).eq('id',jobId);
+    const{data,error:saveError}=await s.rpc('import_target_version',{p_meta:{title,period_start,period_end,source_file_name:file.name,source_structure:{headers},analysis},p_targets:payload});if(saveError)throw Error(saveError.message);if(jobId)await s.from('import_jobs').update({status:'COMPLETED',inserted_rows:payload.length,completed_at:new Date().toISOString()}).eq('id',jobId);return NextResponse.json(data);
+  }catch(e){if(jobId&&client)await client.from('import_jobs').update({status:'FAILED',error_rows:1,errors:[e instanceof Error?e.message:'Gagal menganalisis Excel.'],completed_at:new Date().toISOString()}).eq('id',jobId);return NextResponse.json({error:e instanceof Error?e.message:'Gagal menganalisis Excel.'},{status:400})}
 }
