@@ -917,3 +917,246 @@ body{
  html{scroll-behavior:auto}
  *,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
+
+
+/* =========================
+   SIMPUL — final brand system
+   ========================= */
+:root{
+  --bg:#f5f6fb;
+  --surface:#ffffff;
+  --surface-2:#f7f8fc;
+  --surface-3:#eef1f8;
+  --text:#11162a;
+  --muted:#697386;
+  --muted-2:#96a0b2;
+  --border:#e2e6f0;
+  --navy:#0a1022;
+  --navy-2:#111a37;
+  --primary:#6d5df7;
+  --primary-2:#388dff;
+  --primary-3:#35d6e5;
+  --primary-soft:#efedff;
+  --teal:#6d5df7;
+  --teal-soft:#efedff;
+  --blue:#388dff;
+  --danger:#e25367;
+  --success:#1aa77a;
+  --warning:#d89425;
+  --shadow:0 12px 32px rgba(24,31,55,.07);
+  --shadow-lg:0 24px 70px rgba(23,28,55,.16);
+  --brand-gradient:linear-gradient(135deg,#7f56f4 0%,#5a67f5 45%,#2aa7ff 72%,#32d8e4 100%);
+}
+html[data-theme="dark"]{
+  --bg:#080d1b;
+  --surface:#0f1629;
+  --surface-2:#141d34;
+  --surface-3:#1a2540;
+  --text:#f5f7ff;
+  --muted:#a8b2c7;
+  --muted-2:#74809a;
+  --border:#24304d;
+  --primary:#8a74ff;
+  --primary-2:#52a0ff;
+  --primary-3:#43dfeb;
+  --primary-soft:#26204e;
+  --teal:#9b86ff;
+  --teal-soft:#26204e;
+  --shadow:0 14px 34px rgba(0,0,0,.25);
+  --shadow-lg:0 30px 80px rgba(0,0,0,.42);
+}
+html{scroll-behavior:smooth}
+body{
+  background:
+    radial-gradient(circle at 88% -6%,rgba(101,83,244,.12),transparent 28rem),
+    radial-gradient(circle at 8% 7%,rgba(49,211,229,.08),transparent 24rem),
+    var(--bg);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+::selection{background:color-mix(in srgb,var(--primary) 24%,transparent)}
+h1{font-size:clamp(28px,3vw,38px);letter-spacing:-.045em;font-weight:850}
+h2{font-weight:800}
+.eyebrow{font-size:10px;font-weight:900;letter-spacing:.18em;color:var(--primary);display:block;margin-bottom:6px}
+
+/* Brand */
+.brandLogo{
+  width:auto!important;margin:0 0 16px!important;padding:8px!important;
+  display:flex!important;align-items:center;gap:10px;text-decoration:none;
+  border-radius:16px;overflow:visible!important;
+}
+.brandLogo:hover{background:rgba(255,255,255,.06)}
+.brandMark,.mobileLogoMark{
+  flex:0 0 auto;display:grid;place-items:center;overflow:hidden;
+  background:#0b1228;border:1px solid rgba(255,255,255,.11);
+  box-shadow:0 10px 28px rgba(70,76,220,.28);
+}
+.brandMark{width:42px;height:42px;border-radius:13px}
+.brandMark img,.mobileLogoMark img{width:100%!important;height:100%!important;object-fit:cover;border-radius:inherit!important}
+.brandWordmark{display:grid;gap:1px;min-width:0}
+.brandWordmark strong{font-size:20px;line-height:1;color:#fff;letter-spacing:-.04em}
+.brandWordmark small{font-size:8px;letter-spacing:.16em;color:#8f9ab3;white-space:nowrap}
+.mobileBrand{display:flex;align-items:center;gap:9px;text-decoration:none}
+.mobileLogoMark{width:38px;height:38px;border-radius:12px}
+.mobileTitle{display:grid;gap:2px}
+.mobileTitle b{font-size:16px;letter-spacing:-.03em}
+.mobileTitle small{font-size:8px!important;letter-spacing:.13em!important;color:var(--primary)!important;text-transform:uppercase}
+
+/* Premium shell */
+@media(min-width:980px){
+  .appShell{--sidebar:252px}
+  .desktopSidebar{
+    background:
+      radial-gradient(circle at 0 0,rgba(109,93,247,.22),transparent 220px),
+      linear-gradient(180deg,#0b1125 0%,#080e1d 100%)!important;
+    border-right:1px solid rgba(255,255,255,.08)!important;
+    box-shadow:18px 0 60px rgba(5,10,27,.08);
+  }
+  .desktopSidebar .navGroupLabel{color:#68738f}
+  .desktopSidebar .navItem{color:#99a5bd}
+  .desktopSidebar .navItem:hover{background:rgba(255,255,255,.06);color:#f8f9ff;transform:translateX(2px)}
+  .desktopSidebar .navItem.active{
+    color:#fff!important;border-color:rgba(133,111,255,.24)!important;
+    background:linear-gradient(100deg,rgba(112,84,246,.28),rgba(43,151,255,.12))!important;
+    box-shadow:inset 3px 0 0 #8066ff,0 8px 22px rgba(68,54,190,.12);
+  }
+  .desktopSidebar .navIcon{color:inherit}
+  .desktopSidebar .sideButton{background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.09);color:#dbe2f1}
+  .desktopSidebar .userBox{border-color:rgba(255,255,255,.1)}
+  .desktopSidebar .userBox small{color:#77849e}
+  .sidebarCollapsed .brandLogo{justify-content:center}
+  .sidebarCollapsed .brandWordmark{display:none}
+}
+.mobileHeader{
+  background:color-mix(in srgb,var(--surface) 88%,transparent)!important;
+  backdrop-filter:blur(18px) saturate(1.18);
+}
+.mobileBottomNav,.mobileMorePanel,.mobileQuickPanel,.notificationPanel{
+  backdrop-filter:blur(20px) saturate(1.2);
+}
+
+/* Motion: visual richness without JS cost */
+.pageContent{animation:simpulPageIn .26s cubic-bezier(.2,.7,.2,1)}
+.card,.metricCard,.levelCard,.agendaItem,.item,.categoryRow,.healthCard,.evidenceItem{
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease,background-color .18s ease;
+}
+@media(hover:hover){
+  .card:hover,.metricCard:hover,.levelCard:hover{transform:translateY(-2px);box-shadow:0 18px 42px rgba(35,42,78,.10);border-color:color-mix(in srgb,var(--primary) 18%,var(--border))}
+  .categoryRow:hover,.item:hover,.agendaItem:hover{transform:translateX(2px)}
+  .btn:hover,.smallAction:hover,.iconOnly:hover{transform:translateY(-1px)}
+}
+.btn,.smallAction,.iconOnly,.navItem,.tab,.quickAddItem{
+  transition:transform .16s ease,background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .16s ease;
+}
+.btn{
+  background:var(--brand-gradient);box-shadow:0 9px 24px rgba(91,80,230,.18);
+}
+.btn.secondary{background:var(--primary-soft);color:var(--primary);box-shadow:none}
+.btn.ghost{background:var(--surface);color:var(--text);box-shadow:none}
+.input:focus,.select:focus,.textarea:focus{
+  border-color:color-mix(in srgb,var(--primary) 55%,var(--border));
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--primary) 11%,transparent);
+}
+.tab.active{background:var(--brand-gradient);border-color:transparent;box-shadow:0 7px 20px rgba(91,80,230,.16)}
+.navItem.active{background:var(--primary-soft);color:var(--primary)}
+.iconOnly:focus-visible,.btn:focus-visible,.smallAction:focus-visible,.navItem:focus-visible,.tab:focus-visible,.input:focus-visible,.select:focus-visible,.textarea:focus-visible{
+  outline:2px solid color-mix(in srgb,var(--primary) 70%,white);outline-offset:2px;
+}
+
+/* Cards */
+.card,.metricCard,.tableWrap{
+  border-color:color-mix(in srgb,var(--border) 92%,transparent);
+}
+.metricCard{position:relative;overflow:hidden}
+.metricCard:before{
+  content:"";position:absolute;inset:0 auto auto 0;width:3px;height:100%;
+  background:var(--brand-gradient);opacity:.72
+}
+.metricCard svg{color:var(--primary)}
+.metricCard strong{font-weight:850}
+.skeleton{
+  background:linear-gradient(90deg,var(--surface-2) 20%,color-mix(in srgb,var(--surface-3) 70%,white) 50%,var(--surface-2) 80%);
+  background-size:240% 100%;animation:simpulShimmer 1.25s linear infinite
+}
+
+/* Dashboard intro */
+.homeIntro{
+  position:relative;overflow:hidden;min-height:120px;
+  display:flex;align-items:center;justify-content:space-between;gap:24px;
+  margin-bottom:18px;padding:22px 24px;border-radius:22px;
+  background:
+    radial-gradient(circle at 92% 5%,rgba(49,216,229,.20),transparent 32%),
+    linear-gradient(135deg,#0b1228,#151b45 62%,#1a1b58);
+  color:#fff;box-shadow:0 22px 54px rgba(27,31,76,.17);
+}
+.homeIntro h1{margin:0;color:#fff}
+.homeIntro p{margin:7px 0 0;color:#aeb9d2;font-size:12px}
+.homeIntro .eyebrow{color:#70e5ed}
+.homeIntroLogo{width:82px;height:82px;flex:0 0 82px;border-radius:24px;overflow:hidden;box-shadow:0 18px 42px rgba(74,70,225,.28);transform:rotate(3deg)}
+.homeIntroLogo img{display:block;width:100%;height:100%;object-fit:cover}
+
+/* Login */
+.loginPage{
+  background:#080e1f!important;position:relative;overflow:hidden;
+}
+.loginBrandPanel{
+  position:relative;overflow:hidden!important;
+  background:
+    radial-gradient(circle at 20% 18%,rgba(108,72,246,.34),transparent 24rem),
+    radial-gradient(circle at 85% 75%,rgba(38,191,230,.24),transparent 26rem),
+    linear-gradient(145deg,#090f20,#111737 65%,#0a1328)!important;
+}
+.loginBrandContent{position:relative;z-index:2;width:min(560px,86%);color:#fff}
+.loginLogo{display:flex;align-items:center;gap:16px;margin-bottom:56px}
+.loginLogo img,.loginCardBrand img{border-radius:18px;box-shadow:0 18px 42px rgba(68,66,221,.28)}
+.loginLogo span{display:grid;gap:3px}
+.loginLogo strong{font-size:26px;letter-spacing:-.04em}
+.loginLogo small{font-size:10px;color:#96a4bf;letter-spacing:.14em;text-transform:uppercase}
+.loginBrandContent h2{font-size:clamp(42px,5vw,72px);line-height:.98;letter-spacing:-.055em;margin:0 0 38px}
+.loginFeatureRow{display:flex;gap:9px;flex-wrap:wrap}
+.loginFeatureRow span{display:flex;align-items:center;gap:7px;padding:9px 11px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.055);color:#b9c5d8;font-size:11px;font-weight:750}
+.loginOrb{position:absolute;border-radius:50%;filter:blur(2px);opacity:.7;animation:simpulFloat 8s ease-in-out infinite}
+.loginOrbOne{width:320px;height:320px;right:-80px;top:-90px;background:radial-gradient(circle at 35% 35%,#755dff,#2839ae 55%,transparent 70%)}
+.loginOrbTwo{width:210px;height:210px;left:-70px;bottom:-50px;background:radial-gradient(circle at 35% 35%,#31d8e7,#3269ed 58%,transparent 72%);animation-delay:-3s}
+.loginPanel{background:var(--bg)!important;position:relative}
+.loginPanel:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 70% 20%,rgba(109,93,247,.08),transparent 28rem);pointer-events:none}
+.loginCard{position:relative;z-index:1;border-radius:26px!important;padding:30px!important}
+.loginCardBrand{display:flex;align-items:center;gap:11px;padding-bottom:5px}
+.loginCardBrand div{display:grid;gap:2px}
+.loginCardBrand strong{font-size:18px;letter-spacing:-.03em}
+.loginCardBrand span{font-size:10px;color:var(--muted)}
+.loginCard p{font-size:12px;margin:4px 0 0}
+.loginSubmit{width:100%;margin-top:2px}
+
+/* Route loading */
+.routeLoading{display:grid;gap:16px}
+.heroSkeleton{height:122px;border-radius:22px}
+.metricSkeleton{height:108px;border-radius:18px}
+.panelSkeleton{height:280px;border-radius:20px}
+
+/* Better perceived speed on long pages */
+@supports(content-visibility:auto){
+  .tableWrap,.levelGrid,.agendaList,.notificationList{content-visibility:auto;contain-intrinsic-size:auto 360px}
+}
+
+@keyframes simpulPageIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@keyframes simpulShimmer{to{background-position:-240% 0}}
+@keyframes simpulFloat{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(0,14px,0) scale(1.035)}}
+
+@media(max-width:919px){
+  .loginPage{background:var(--bg)!important}
+  .loginPanel{min-height:100vh}
+  .loginCard{padding:22px!important}
+  .loginCardBrand{margin-bottom:8px}
+}
+@media(max-width:640px){
+  .pageContent{padding-inline:12px}
+  .homeIntro{min-height:110px;padding:18px;border-radius:19px}
+  .homeIntro p{max-width:250px}
+  .homeIntroLogo{width:64px;height:64px;flex-basis:64px;border-radius:19px;opacity:.92}
+  .metricCard{padding:15px}
+  .card{border-radius:16px}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*:before,*:after{scroll-behavior:auto!important;animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
