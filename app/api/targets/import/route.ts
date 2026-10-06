@@ -38,6 +38,7 @@ export async function GET(req:NextRequest){
 }
 
 export async function POST(req:NextRequest){
+  const preview=req.nextUrl.searchParams.get('preview')==='1';
   let jobId:string|undefined;
   let client:Awaited<ReturnType<typeof db>>|undefined;
   try{
@@ -118,6 +119,7 @@ export async function POST(req:NextRequest){
       });
     }
     if(!payload.length)throw Error('Tidak menemukan target yang dapat dibaca.');
+    if(preview){if(jobId)await s.from('import_jobs').update({status:'PREVIEW',total_rows:payload.length,metadata:{analysis}}).eq('id',jobId);return NextResponse.json({preview:true,valid:true,total:payload.length,analysis,rows:payload.slice(0,25).map(x=>({code:x.code,title:x.title,target_month:x.target_month,target_value:x.target_value,target_unit:x.target_unit}))})}
     if(jobId)await s.from('import_jobs').update({status:'IMPORTING',total_rows:payload.length}).eq('id',jobId);
     const{data,error:saveError}=await s.rpc('import_target_version',{p_meta:{title,period_start,period_end,source_file_name:file.name,source_structure:{headers},analysis},p_targets:payload});if(saveError)throw Error(saveError.message);if(jobId)await s.from('import_jobs').update({status:'COMPLETED',inserted_rows:payload.length,completed_at:new Date().toISOString()}).eq('id',jobId);return NextResponse.json(data);
   }catch(e){if(jobId&&client)await client.from('import_jobs').update({status:'FAILED',error_rows:1,errors:[e instanceof Error?e.message:'Gagal menganalisis Excel.'],completed_at:new Date().toISOString()}).eq('id',jobId);return NextResponse.json({error:e instanceof Error?e.message:'Gagal menganalisis Excel.'},{status:400})}
