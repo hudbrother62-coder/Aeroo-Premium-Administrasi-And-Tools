@@ -8,7 +8,7 @@ type Health={checked_at:string;summary:any;checks:Array<{key:string;label:string
 
 export default function SettingsPage(){
   const[group,setGroup]=useState({name:'Kelompok Pengorgan',address:'',contact:'',timezone:'Asia/Jakarta'});
-  const[manual,setManual]=useState({title:'Panduan Penggunaan AIRO',content:''});
+  const[manual,setManual]=useState({title:'Panduan Penggunaan Simpul',content:''});
   const[logins,setLogins]=useState<Login[]>([]);
   const[health,setHealth]=useState<Health|null>(null);
   const[saved,setSaved]=useState('');
