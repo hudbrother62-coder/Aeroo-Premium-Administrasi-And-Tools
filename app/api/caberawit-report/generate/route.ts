@@ -93,7 +93,7 @@ export async function POST(req:NextRequest){
     ]})):[new TableRow({children:[new TableCell({children:[new Paragraph('Belum ada data progres')]}),new TableCell({children:[new Paragraph('-')]}),new TableCell({children:[new Paragraph('-')]})]})];
 
     const doc=new Document({sections:[{children:[
-      new Paragraph({text:'AEROO',heading:HeadingLevel.TITLE,alignment:AlignmentType.CENTER}),
+      new Paragraph({text:'Simpul',heading:HeadingLevel.TITLE,alignment:AlignmentType.CENTER}),
       new Paragraph({text:'Laporan Perkembangan Caberawit',heading:HeadingLevel.HEADING_1,alignment:AlignmentType.CENTER}),
       new Paragraph({text:`Periode ${from} s.d. ${to}`,alignment:AlignmentType.CENTER}),
       new Paragraph({text:''}),
