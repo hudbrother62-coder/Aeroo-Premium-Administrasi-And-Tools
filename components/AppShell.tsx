@@ -67,7 +67,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
   useEffect(()=>{
     if(isLogin){setChecking(false);return}
     setChecking(true);
-    fetch('/api/auth/me',{cache:'no-store'}).then(async r=>{
+    fetch('/api/auth/me').then(async r=>{
       if(!r.ok){setUser(null);document.documentElement.dataset.role='PUBLIC';return null}
       return r.json();
     }).then(v=>{
