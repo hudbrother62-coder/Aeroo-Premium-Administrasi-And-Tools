@@ -24,12 +24,12 @@ export default function DatabasePage(){
   const classOptions=useMemo(()=>classes.filter(c=>segment==='ALL'||c.audience===segment),[classes,segment]);
   const allowedCategories=categories.filter(c=>['caberawit','muda-mudi','ibu-ibu'].includes(c.slug)&&(role==='ADMIN'||(role==='DEWAN_GURU'&&['caberawit','muda-mudi'].includes(c.slug))||(role==='KELOMPOK'&&['muda-mudi','ibu-ibu'].includes(c.slug))));
 
-  async function loadMembers(){
+  async function loadMembers(fresh=false){
     setLoading(true);setError('');
     const params=new URLSearchParams({segment,status:statusFilter,sort,mode:'list'});
     if(q)params.set('q',q);if(classId)params.set('class_id',classId);if(levelId)params.set('level_id',levelId);if(office)params.set('office',office);
     try{
-      const r=await fetch('/api/members?'+params);
+      const r=await fetch('/api/members?'+params,{cache:fresh?'no-store':'default'});
       const j=await r.json();
       if(!r.ok)throw new Error(j.error||'Database tidak dapat dimuat.');
       setData(j);
@@ -53,39 +53,39 @@ export default function DatabasePage(){
     const r=await fetch('/api/members/'+id+(kind==='delete'?'?permanent=1':''),{method:kind==='restore'?'PATCH':'DELETE',headers:{'content-type':'application/json'},body:kind==='restore'?JSON.stringify({status:'ACTIVE'}):undefined});
     const j=await r.json();setBusy(false);
     if(!r.ok){setError(j.error||'Tindakan gagal.');return}
-    setMessage(kind==='archive'?'Anggota dipindahkan ke arsip.':kind==='restore'?'Anggota dipulihkan.':'Data pribadi dihapus permanen.');await loadMembers();
+    setMessage(kind==='archive'?'Anggota dipindahkan ke arsip.':kind==='restore'?'Anggota dipulihkan.':'Data pribadi dihapus permanen.');await loadMembers(true);
   }
   async function addLevel(e:FormEvent){
     e.preventDefault();setBusy(true);setError('');
     const r=await fetch('/api/levels',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:levelName})});
     const j=await r.json();setBusy(false);
-    if(!r.ok){setError(j.error||'Jenjang gagal dibuat.');return}setLevelName('');setShowLevel(false);setMessage('Jenjang berhasil dibuat.');await loadMeta();await loadMembers();
+    if(!r.ok){setError(j.error||'Jenjang gagal dibuat.');return}setLevelName('');setShowLevel(false);setMessage('Jenjang berhasil dibuat.');await loadMeta();await loadMembers(true);
   }
   async function addClass(e:FormEvent){
     e.preventDefault();setBusy(true);setError('');
     const r=await fetch('/api/classes',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:className,level_id:null,audience:segment==='MUDA_MUDI'?'MUDA_MUDI':'CABERAWIT'})});
     const j=await r.json();setBusy(false);
-    if(!r.ok){setError(j.error||'Kelas gagal dibuat.');return}setClassName('');setShowClass(false);setMessage('Kelas berhasil dibuat.');await loadMeta();await loadMembers();
+    if(!r.ok){setError(j.error||'Kelas gagal dibuat.');return}setClassName('');setShowClass(false);setMessage('Kelas berhasil dibuat.');await loadMeta();await loadMembers(true);
   }
   async function applyBulk(){
     if(!selected.length||(!bulkCategories.length&&!bulkClass))return;
     setBusy(true);setError('');
     const r=await fetch('/api/members/bulk',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({member_ids:selected,category_ids:bulkCategories,class_id:bulkClass||null})});
     const j=await r.json();setBusy(false);
-    if(!r.ok){setError(j.error||'Perubahan massal gagal.');return}setSelected([]);setBulkCategories([]);setBulkClass('');setMessage(`${j.updated} anggota diperbarui.`);await loadMembers();
+    if(!r.ok){setError(j.error||'Perubahan massal gagal.');return}setSelected([]);setBulkCategories([]);setBulkClass('');setMessage(`${j.updated} anggota diperbarui.`);await loadMembers(true);
   }
   async function importExcel(file:File){
     setBusy(true);setError('');setMessage('Mengimpor data…');
     const form=new FormData();form.set('file',file);
     const r=await fetch('/api/members/spreadsheet',{method:'POST',body:form});const j=await r.json();setBusy(false);
     if(!r.ok){setError((j.error||'Impor gagal.')+(j.errors?.length?' '+j.errors.slice(0,8).join(' '):''));setMessage('');return}
-    setMessage(`${j.inserted} anggota ditambah, ${j.updated||0} diperbarui.${j.errors.length?' '+j.errors.slice(0,4).join(' '):''}`);await loadMembers();
+    setMessage(`${j.inserted} anggota ditambah, ${j.updated||0} diperbarui.${j.errors.length?' '+j.errors.slice(0,4).join(' '):''}`);await loadMembers(true);
   }
   async function moveMember(id:string,to:string){
     if(!canWrite)return;setError('');
     try{
       const r=await fetch('/api/members/bulk',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({member_ids:[id],class_id:to})});
-      const j=await r.json();if(!r.ok)throw Error(j.error||'Gagal memindah kelas.');setMessage('Kelas anggota diperbarui.');await loadMembers();
+      const j=await r.json();if(!r.ok)throw Error(j.error||'Gagal memindah kelas.');setMessage('Kelas anggota diperbarui.');await loadMembers(true);
     }catch(e){setError(e instanceof Error?e.message:'Gagal memindah kelas.')}
   }
   const selectAll=selected.length===data.length&&data.length>0;
