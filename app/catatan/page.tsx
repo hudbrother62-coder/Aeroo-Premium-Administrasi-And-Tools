@@ -8,7 +8,7 @@ type Note={
  visibility:Visibility;context_type:ContextType;audience:string|null;class_id:string|null;member_id:string|null;agenda_id:string|null;
  event_id:string|null;journal_id:string|null;entity_type:string|null;entity_id:string|null;context_label:string|null;
 };
-type Option={id:string;name?:string;title?:string;event_date?:string;journal_date?:string;starts_at?:string;audience?:string;classes?:{name?:string}|null};
+type Option={id:string;name?:string;title?:string;event_date?:string;journal_date?:string;starts_at?:string;audience?:string;class_id?:string|null;classes?:{name?:string}|null};
 type Options={members:Option[];events:Option[];agenda:Option[];classes:Option[];journals:Option[];audiences:string[]};
 type Me={id:string|null;role:string;display_name?:string|null};
 
