@@ -1619,3 +1619,84 @@ drop policy if exists member_categories_delete on public.member_categories;
 create policy member_categories_delete on public.member_categories
 for delete to anon,authenticated
 using (public.current_app_role()='ADMIN'::public.app_role);
+
+
+-- Target maintenance follows the same class/global access contract.
+CREATE OR REPLACE FUNCTION public.import_target_version(p_meta jsonb, p_targets jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+ SET row_security TO 'off'
+AS $function$
+declare
+  v public.target_versions%rowtype;
+  t jsonb;
+  lid uuid;
+  cid uuid;
+begin
+  if not public.has_app_permission('target.write') or not public.has_app_permission('import.manage') then raise exception 'Akses target ditolak'; end if;
+  if p_targets is null or jsonb_typeof(p_targets)<>'array' or jsonb_array_length(p_targets)=0 or jsonb_array_length(p_targets)>3000 then raise exception 'Isi 1–3000 target';end if;
+  if nullif(p_meta->>'period_end','')::date<nullif(p_meta->>'period_start','')::date then raise exception 'Periode tidak valid';end if;
+  for t in select value from jsonb_array_elements(p_targets) loop
+    lid:=(t->>'level_id')::uuid;cid:=nullif(t->>'class_id','')::uuid;
+    if length(trim(coalesce(t->>'title','')))=0 or lid is null or not exists(select 1 from public.levels where id=lid and active) then raise exception 'Target atau jenjang tidak valid';end if;
+    if cid is not null then
+      if not exists(select 1 from public.classes where id=cid and audience in ('CABERAWIT','MUDA_MUDI') and active and (level_id=lid or level_id is null)) then raise exception 'Kelas target tidak sesuai jenjang';end if;
+      if not public.can_write_class(cid) then raise exception 'Kelas target di luar akses'; end if;
+    elsif not (
+      public.current_app_role()='ADMIN'::public.app_role
+      or public.can_write_audience_global('CABERAWIT'::public.audience_type)
+      or public.can_write_audience_global('MUDA_MUDI'::public.audience_type)
+    ) then
+      raise exception 'Target bersama memerlukan akses program keseluruhan';
+    end if;
+    if nullif(t->>'target_month','') is null or (t->>'target_month')::date<>date_trunc('month',(t->>'target_month')::date)::date then raise exception 'Bulan target wajib valid';end if;
+    if (nullif(p_meta->>'period_start','') is not null and (t->>'target_month')::date<date_trunc('month',(p_meta->>'period_start')::date)::date)
+       or (nullif(p_meta->>'period_end','') is not null and (t->>'target_month')::date>date_trunc('month',(p_meta->>'period_end')::date)::date)
+    then raise exception 'Bulan target di luar periode versi';end if;
+  end loop;
+  if exists(select 1 from jsonb_array_elements(p_targets) el group by el->>'level_id',el->>'class_id',el->>'target_month',lower(trim(el->>'title')) having count(*)>1) then raise exception 'Target duplikat pada kelas, jenjang, dan bulan yang sama';end if;
+  perform pg_advisory_xact_lock(hashtextextended('aeroo-target-version',0));
+  insert into public.target_versions(title,period_start,period_end,version,source_file_name,source_structure,analysis,published_at)
+  values(coalesce(nullif(p_meta->>'title',''),'Target belajar'),nullif(p_meta->>'period_start','')::date,nullif(p_meta->>'period_end','')::date,(select coalesce(max(version),0)+1 from public.target_versions),p_meta->>'source_file_name',coalesce(p_meta->'source_structure','{}'),coalesce(p_meta->'analysis','{}'),now())
+  returning * into v;
+  for t in select value from jsonb_array_elements(p_targets) loop
+    insert into public.learning_targets(version_id,level_id,class_id,code,title,description,target_value,target_unit,target_month,sort_order,active,source_metadata)
+    values(v.id,(t->>'level_id')::uuid,nullif(t->>'class_id','')::uuid,t->>'code',trim(t->>'title'),t->>'description',nullif(t->>'target_value','')::numeric,t->>'target_unit',(t->>'target_month')::date,coalesce((t->>'sort_order')::integer,0),true,coalesce(t->'source_metadata','{}'));
+  end loop;
+  return jsonb_build_object('version_id',v.id,'inserted',jsonb_array_length(p_targets),'analysis',v.analysis);
+end
+$function$;
+
+CREATE OR REPLACE FUNCTION public.save_learning_target(p_target jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+ SET row_security TO 'off'
+AS $function$
+declare
+  t public.learning_targets%rowtype;
+begin
+  if not public.has_app_permission('target.write') then raise exception 'Akses target ditolak'; end if;
+  t:=jsonb_populate_record(null::public.learning_targets,p_target);
+  t.id:=gen_random_uuid();t.source_metadata:=coalesce(t.source_metadata,'{}');t.created_at:=now();t.active:=true;t.sort_order:=coalesce(t.sort_order,0);t.title:=trim(coalesce(t.title,''));
+  if length(t.title)=0 or t.level_id is null or not exists(select 1 from public.levels where id=t.level_id and active) then raise exception 'Judul dan jenjang target wajib valid';end if;
+  if t.class_id is not null then
+    if not exists(select 1 from public.classes where id=t.class_id and (level_id=t.level_id or level_id is null) and audience in ('CABERAWIT','MUDA_MUDI') and active) then raise exception 'Kelas target tidak sesuai jenjang';end if;
+    if not public.can_write_class(t.class_id) then raise exception 'Kelas target di luar akses'; end if;
+  elsif not (
+    public.current_app_role()='ADMIN'::public.app_role
+    or public.can_write_audience_global('CABERAWIT'::public.audience_type)
+    or public.can_write_audience_global('MUDA_MUDI'::public.audience_type)
+  ) then
+    raise exception 'Target bersama memerlukan akses program keseluruhan';
+  end if;
+  if t.target_month is null then raise exception 'Bulan target wajib diisi';end if;
+  t.target_month:=date_trunc('month',t.target_month)::date;
+  if t.version_id is not null and not exists(select 1 from public.target_versions where id=t.version_id and (period_start is null or t.target_month>=date_trunc('month',period_start)::date) and (period_end is null or t.target_month<=date_trunc('month',period_end)::date)) then raise exception 'Versi atau periode tidak sesuai';end if;
+  insert into public.learning_targets select t.*;
+  return to_jsonb(t);
+end
+$function$;
