@@ -1381,3 +1381,22 @@ html[data-theme="dark"] .textarea{background:#0f1728}
   .attendancePresetGrid,.routineAttendancePanel{grid-template-columns:1fr}
   .routineAttendanceCard{align-items:flex-start}
 }
+
+
+/* Role access + context notes */
+.roleMatrix{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0 18px}
+.rolePolicyCard{padding:14px;display:grid;gap:8px}
+.rolePolicyCard>strong{font-size:13px}
+.rolePolicyCard p{font-size:10px;line-height:1.45;color:var(--muted);margin:0}
+.accessSubCard{padding:13px;background:var(--surface-2)}
+.accessModeGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.accessModeGrid .smallAction.active{border-color:var(--primary);background:color-mix(in srgb,var(--primary-soft) 55%,var(--surface));color:var(--text)}
+.noteMetaGrid{margin:10px 0}
+.noteContextLabel{font-size:9px;color:var(--muted)}
+.noteBody{min-height:260px;line-height:1.55}
+@media(max-width:900px){.roleMatrix{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){
+  .roleMatrix{grid-template-columns:1fr}
+  .accessModeGrid{grid-template-columns:1fr}
+  .noteBody{min-height:220px}
+}
