@@ -1359,3 +1359,25 @@ html[data-theme="dark"] .textarea{background:#0f1728}
   .agendaTableWrap{overflow:auto}
   .agendaTable{min-width:760px}
 }
+
+
+/* Routine attendance presets */
+.attendancePresetGrid,.routineAttendancePanel{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0 16px}
+.attendancePreset{appearance:none;border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text);padding:13px 14px;text-align:left;display:grid;gap:4px;cursor:pointer;transition:border-color .12s ease,background-color .12s ease,transform .12s ease}
+.attendancePreset:hover{border-color:color-mix(in srgb,var(--primary) 35%,var(--border))}
+.attendancePreset.active{border-color:var(--primary);background:color-mix(in srgb,var(--primary-soft) 55%,var(--surface))}
+.attendancePreset strong{font-size:13px;font-weight:650}
+.attendancePreset span{font-size:10px;color:var(--muted);line-height:1.4}
+.routineHint{margin-top:12px;padding:9px 11px;border-radius:10px;background:var(--surface-2);color:var(--muted);font-size:10px;line-height:1.45}
+.routineHint strong{color:var(--text);font-weight:620}
+.routineHint.warning{border:1px solid color-mix(in srgb,#d89a20 35%,var(--border));background:color-mix(in srgb,#d89a20 8%,var(--surface))}
+.routineAttendancePanel{grid-template-columns:repeat(2,minmax(0,1fr))}
+.routineAttendanceCard{border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text);padding:13px 14px;text-decoration:none;display:flex;align-items:center;justify-content:space-between;gap:14px}
+.routineAttendanceCard>div{display:grid;gap:3px}
+.routineAttendanceCard strong{font-size:13px;font-weight:650}
+.routineAttendanceCard span,.routineAttendanceCard small{font-size:10px;color:var(--muted);font-weight:400}
+.routineAttendanceCard:hover{border-color:color-mix(in srgb,var(--primary) 35%,var(--border));background:color-mix(in srgb,var(--primary-soft) 30%,var(--surface))}
+@media(max-width:700px){
+  .attendancePresetGrid,.routineAttendancePanel{grid-template-columns:1fr}
+  .routineAttendanceCard{align-items:flex-start}
+}
