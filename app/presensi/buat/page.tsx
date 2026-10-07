@@ -10,6 +10,7 @@ type ClassRow={id:string;name:string;audience:string;level_id?:string};
 type Participant={id:string;name:string;type:'member';meta:string};
 import {AttendanceSaveQueue,attendancePendingKey,persistAttendancePending,moveAttendancePending,type AttendanceStatus,type AttendanceRow,type AttendanceValue} from '@/lib/attendance-save';
 type Status=AttendanceStatus;
+type Preset='KELOMPOK'|'CABERAWIT'|'CUSTOM';
 
 export default function Page(){
   const[activities,setActivities]=useState<Activity[]>([]);
@@ -22,8 +23,9 @@ export default function Page(){
   const[saving,setSaving]=useState(false);
   const[eventId,setEventId]=useState('');const[recovery,setRecovery]=useState<Array<{key:string;pending:any}>>([]);const[notes,setNotes]=useState<Record<string,string>>({});const[sync,setSync]=useState<Record<string,string>>({});const[conflicts,setConflicts]=useState<Record<string,AttendanceRow>>({});const[search,setSearch]=useState('');const[audit,setAudit]=useState<Record<string,any[]>>({});const[undo,setUndo]=useState<Record<string,AttendanceValue>|null>(null);const queue=useRef<AttendanceSaveQueue|null>(null);const statusRef=useRef(status);const notesRef=useRef(notes);statusRef.current=status;notesRef.current=notes;
   const[error,setError]=useState('');
+  const[preset,setPreset]=useState<Preset>('CUSTOM');
   const today=jakartaDate();
-  const[form,setForm]=useState({title:'',event_date:today,event_time:'',audience:'KELOMPOK' as Audience,activity_type_id:'',level_id:'',class_id:'',notes:''});
+  const[form,setForm]=useState({title:'',event_date:today,event_time:'',audience:'KELOMPOK' as Audience,activity_type_id:'',level_id:'',class_id:'',teacher_name:'',notes:''});
 
   const allowed=useMemo(()=>scopedWrite??writeScopesForRole(role),[role,scopedWrite]);
 
@@ -40,14 +42,21 @@ export default function Page(){
       const nextRole=(u.role??'VIEWER') as Role;
       setRole(nextRole);setScopedWrite(Array.isArray(u.write_scopes)?u.write_scopes:null);
       const scopes=Array.isArray(u.write_scopes)?u.write_scopes:writeScopesForRole(nextRole);
-      if(scopes.length)setForm(v=>({...v,audience:scopes[0]}));
+      const requested=new URLSearchParams(window.location.search).get('preset');
+      if(requested==='kelompok'&&scopes.includes('KELOMPOK')){
+        const activity=(Array.isArray(a)?a:[]).find((x:Activity)=>x.audience==='KELOMPOK'&&x.name==='Pengajian Kelompok');
+        setPreset('KELOMPOK');setForm(v=>({...v,audience:'KELOMPOK',activity_type_id:activity?.id||'',title:'Pengajian Kelompok',level_id:'',class_id:'',teacher_name:''}));
+      }else if(requested==='caberawit'&&scopes.includes('CABERAWIT')){
+        const activity=(Array.isArray(a)?a:[]).find((x:Activity)=>x.audience==='CABERAWIT'&&x.name==='Pengajian Caberawit');
+        setPreset('CABERAWIT');setForm(v=>({...v,audience:'CABERAWIT',activity_type_id:activity?.id||'',title:'Pengajian Caberawit',level_id:'',class_id:'',teacher_name:''}));
+      }else if(scopes.length)setForm(v=>({...v,audience:scopes[0]}));
       setReady(true);
     }).catch(()=>{setError('Akses presensi belum dapat dimuat.');setReady(true)});
   },[]);
 
   async function openEvent(id:string){
     const response=await fetch('/api/attendance/'+id);const event=await response.json();if(!response.ok)throw new Error(event.error||'Daftar belum dapat dimuat.');
-    setEventId(id);setForm({title:event.title,event_date:event.event_date,event_time:event.event_time||'',audience:event.audience,activity_type_id:event.activity_type_id||'',level_id:event.level_id||'',class_id:event.class_id||'',notes:event.notes||''});
+    setEventId(id);const inferred:Preset=event.audience==='KELOMPOK'&&event.title==='Pengajian Kelompok'?'KELOMPOK':event.audience==='CABERAWIT'&&String(event.title||'').startsWith('Pengajian Caberawit')?'CABERAWIT':'CUSTOM';setPreset(inferred);setForm({title:event.title,event_date:event.event_date,event_time:event.event_time||'',audience:event.audience,activity_type_id:event.activity_type_id||'',level_id:event.level_id||'',class_id:event.class_id||'',teacher_name:event.teacher_name||'',notes:event.notes||''});
     const rows=event.attendance_records||[];setPeople(rows.map((r:any)=>({id:r.participant_key,name:r.member_name_snapshot||'Peserta',type:'member',meta:[r.class_name_snapshot,r.level_name_snapshot].filter(Boolean).join(' · ')})));setStatus(Object.fromEntries(rows.map((r:any)=>[r.participant_key,r.status])));setNotes(Object.fromEntries(rows.map((r:any)=>[r.participant_key,r.notes||''])));setAudit(Object.fromEntries(rows.map((r:any)=>[r.participant_key,r.attendance_changes||[]])));
     const writerId=crypto.randomUUID();const marker='attendance-writer:'+id;const priorWriter=sessionStorage.getItem(marker);sessionStorage.setItem(marker,writerId);const storageKey=attendancePendingKey(id,writerId);const priorKey=priorWriter?attendancePendingKey(id,priorWriter):'attendance-pending:'+id;const nextQueue=new AttendanceSaveQueue(async(key,value,revision)=>{const r=await fetch('/api/attendance/'+id,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({participant_key:key,revision,...value})});const data=await r.json();if(!r.ok&&r.status!==409)throw new Error(data.error);return data},(key,state,record)=>{setSync(v=>({...v,[key]:state}));if(state==='conflict'&&record)setConflicts(v=>({...v,[key]:record}));if(state==='saved'&&record){setStatus(v=>({...v,[key]:record.status}));setNotes(v=>({...v,[key]:record.notes||''}))}},pending=>{try{persistAttendancePending(localStorage,storageKey,pending)}catch{setError('Perubahan belum dapat disimpan di perangkat. Jangan tutup halaman.')}},()=>navigator.onLine);
     rows.forEach((r:any)=>nextQueue.seed(r.participant_key,{status:r.status,notes:r.notes||'',revision:r.revision??0}));queue.current=nextQueue;setSync({});setConflicts({});
@@ -69,9 +78,24 @@ export default function Page(){
 
   const matching=useMemo(()=>activities.filter(a=>a.audience===form.audience||a.audience==='CUSTOM'),[activities,form.audience]);
   const classOptions=useMemo(()=>classes.filter(c=>c.audience===form.audience),[classes,form.audience]);
+  const routineDay=useMemo(()=>new Date(form.event_date+'T12:00:00+07:00').getDay(),[form.event_date]);
+  const onRoutine=preset==='KELOMPOK'?(routineDay===1||routineDay===5):preset==='CABERAWIT'?(routineDay>=1&&routineDay<=6):true;
+  function applyPreset(next:Preset){
+    setPreset(next);
+    if(next==='KELOMPOK'){
+      const activity=activities.find(a=>a.audience==='KELOMPOK'&&a.name==='Pengajian Kelompok');
+      setForm(v=>({...v,audience:'KELOMPOK',activity_type_id:activity?.id||'',title:'Pengajian Kelompok',level_id:'',class_id:'',teacher_name:''}));
+    }else if(next==='CABERAWIT'){
+      const activity=activities.find(a=>a.audience==='CABERAWIT'&&a.name==='Pengajian Caberawit');
+      setForm(v=>({...v,audience:'CABERAWIT',activity_type_id:activity?.id||'',title:'Pengajian Caberawit',level_id:'',class_id:'',teacher_name:''}));
+    }else{
+      const fallback=allowed[0]||'KELOMPOK';
+      setForm(v=>({...v,audience:fallback,activity_type_id:'',title:'',level_id:'',class_id:'',teacher_name:''}));
+    }
+  }
 
   async function save(e:FormEvent){
-    e.preventDefault();setSaving(true);setError('');try{const payload={...form,event_time:form.event_time||null,activity_type_id:form.activity_type_id||null,level_id:form.level_id||null,class_id:form.class_id||null,notes:form.notes||null};const r=await fetch('/api/attendance',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});const j=await r.json();if(!r.ok)throw new Error(j.error||'Gagal membuka daftar.');await openEvent(j.id);window.history.replaceState(null,'','/presensi/buat?event_id='+j.id)}catch(e){setError(e instanceof Error?e.message:'Gagal membuka daftar.')}finally{setSaving(false)}
+    e.preventDefault();setSaving(true);setError('');try{if(preset==='CABERAWIT'&&!form.class_id)throw new Error('Pilih kelas Caberawit.');if(preset==='CABERAWIT'&&!form.teacher_name.trim())throw new Error('Isi Dewan Guru yang mengajar.');const payload={...form,event_time:form.event_time||null,activity_type_id:form.activity_type_id||null,level_id:preset==='CUSTOM'?(form.level_id||null):null,class_id:form.class_id||null,teacher_name:form.teacher_name.trim()||null,notes:form.notes||null};const r=await fetch('/api/attendance',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});const j=await r.json();if(!r.ok)throw new Error(j.error||'Gagal membuka daftar.');await openEvent(j.id);window.history.replaceState(null,'','/presensi/buat?event_id='+j.id)}catch(e){setError(e instanceof Error?e.message:'Gagal membuka daftar.')}finally{setSaving(false)}
   }
   const count=(s:Status)=>Object.values(status).filter(v=>v===s).length;
 
@@ -83,32 +107,46 @@ export default function Page(){
   }
 
   return <>
-    <div className="pageHeader"><h1>Presensi</h1></div>
-    {role&&<div className="chips scopeChips">{allowed.map(a=><span className="chip" key={a}>{audienceLabels[a]}</span>)}</div>}
+    <div className="pageHeader"><div><h1>Presensi</h1><p>Pilih jenis pengajian, lalu buka daftar absen.</p></div></div>
+    {!eventId&&<section className="attendancePresetGrid">
+      {allowed.includes('KELOMPOK')&&<button type="button" className={preset==='KELOMPOK'?'attendancePreset active':'attendancePreset'} onClick={()=>applyPreset('KELOMPOK')}><strong>Pengajian Kelompok</strong><span>Rutin Senin & Jumat · seluruh kelompok</span></button>}
+      {allowed.includes('CABERAWIT')&&<button type="button" className={preset==='CABERAWIT'?'attendancePreset active':'attendancePreset'} onClick={()=>applyPreset('CABERAWIT')}><strong>Pengajian Caberawit</strong><span>Rutin Senin–Sabtu · per kelas & Dewan Guru</span></button>}
+      <button type="button" className={preset==='CUSTOM'?'attendancePreset active':'attendancePreset'} onClick={()=>applyPreset('CUSTOM')}><strong>Kegiatan Lain</strong><span>Presensi di luar jadwal rutin</span></button>
+    </section>}
     <form onSubmit={e=>{if(eventId)e.preventDefault();else void save(e)}} className="section">
       <section className="card"><fieldset disabled={!!eventId} style={{border:0,padding:0,margin:0}}>
         <div className="formGrid">
           <label>Tanggal<input className="input" type="date" required value={form.event_date} onChange={e=>setForm({...form,event_date:e.target.value})}/></label>
-          <label>Lingkup<select className="select" value={form.audience} onChange={e=>setForm({...form,audience:e.target.value as Audience,activity_type_id:'',level_id:'',class_id:''})}>
+          {preset==='CUSTOM'?<label>Lingkup<select className="select" value={form.audience} onChange={e=>setForm({...form,audience:e.target.value as Audience,activity_type_id:'',level_id:'',class_id:'',teacher_name:''})}>
             {allowed.map(v=><option key={v} value={v}>{audienceLabels[v]}</option>)}
-          </select></label>
+          </select></label>:<label>Jenis pengajian<input className="input" readOnly value={preset==='KELOMPOK'?'Pengajian Kelompok':'Pengajian Caberawit'}/></label>}
 
-          {(form.audience==='CABERAWIT'||form.audience==='MUDA_MUDI')&&<>
+          {preset==='CABERAWIT'&&<>
+            <label>Kelas<select className="select" required value={form.class_id} onChange={e=>setForm({...form,class_id:e.target.value})}>
+              <option value="">Pilih kelas</option>{classOptions.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+            </select></label>
+            <label>Dewan Guru yang mengajar<input className="input" required value={form.teacher_name} onChange={e=>setForm({...form,teacher_name:e.target.value})} placeholder="Nama Dewan Guru"/></label>
+          </>}
+
+          {preset==='CUSTOM'&&(form.audience==='CABERAWIT'||form.audience==='MUDA_MUDI')&&<>
             <label>Jenjang<select className="select" value={form.level_id} onChange={e=>setForm({...form,level_id:e.target.value,class_id:''})}>
               <option value="">Semua jenjang</option>{levels.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}
             </select></label>
-            <label>Kelas<select className="select" value={form.class_id} onChange={e=>setForm({...form,class_id:e.target.value})}>
-              <option value="">Semua kelas</option>{classOptions.filter(c=>!form.level_id||!c.level_id||c.level_id===form.level_id).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+            <label>Kelas<select className="select" required={form.audience==='CABERAWIT'} value={form.class_id} onChange={e=>setForm({...form,class_id:e.target.value})}>
+              <option value="">{form.audience==='CABERAWIT'?'Pilih kelas':'Semua kelas'}</option>{classOptions.filter(c=>!form.level_id||!c.level_id||c.level_id===form.level_id).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
             </select></label>
+            {form.audience==='CABERAWIT'&&<label>Dewan Guru yang mengajar<input className="input" required value={form.teacher_name} onChange={e=>setForm({...form,teacher_name:e.target.value})} placeholder="Nama Dewan Guru"/></label>}
           </>}
 
-          <label>Judul kegiatan<input className="input" required value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></label>
+          {preset==='CUSTOM'&&<><label>Judul kegiatan<input className="input" required value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></label>
           <label>Jam<input className="input" type="time" value={form.event_time} onChange={e=>setForm({...form,event_time:e.target.value})}/></label>
           <label className="span2">Jenis kegiatan<select className="select" value={form.activity_type_id} onChange={e=>setForm({...form,activity_type_id:e.target.value})}>
             <option value="">Pilih</option>{matching.map(a=><option value={a.id} key={a.id}>{a.name}</option>)}
-          </select></label>
+          </select></label></>}
+          {preset!=='CUSTOM'&&<label>Jam (opsional)<input className="input" type="time" value={form.event_time} onChange={e=>setForm({...form,event_time:e.target.value})}/></label>}
         </div>
-      </fieldset>{!eventId&&<button className="btn section" disabled={saving}>{saving?'Membuka…':'Buka daftar'}</button>}</section>
+        {preset!=='CUSTOM'&&<div className={onRoutine?'routineHint':'routineHint warning'}><strong>Jadwal rutin:</strong> {preset==='KELOMPOK'?'Senin dan Jumat':'Senin sampai Sabtu'}{!onRoutine&&' · Tanggal ini di luar jadwal rutin, tetapi tetap boleh dibuat.'}</div>}
+      </fieldset>{!eventId&&<button className="btn section" disabled={saving}>{saving?'Membuka…':'Buka daftar absen'}</button>}</section>
 
       {eventId&&<section className="section">
         <div className="cardHead"><div><h2>Peserta</h2><p>{people.length} orang</p></div><button type="button" className="btn ghost" onClick={allPresent}>Semua Hadir</button></div>
