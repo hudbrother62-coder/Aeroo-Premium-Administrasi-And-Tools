@@ -1381,3 +1381,24 @@ html[data-theme="dark"] .textarea{background:#0f1728}
   .attendancePresetGrid,.routineAttendancePanel{grid-template-columns:1fr}
   .routineAttendanceCard{align-items:flex-start}
 }
+
+
+/* Role access matrix + scoped notes */
+.roleMatrix{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.roleMatrixCard{display:grid;gap:8px;align-content:start}
+.roleMatrixCard h3{margin:0;font-size:13px}
+.roleMatrixCard p{margin:0;color:var(--muted);font-size:11px;line-height:1.5}
+.roleMatrixCard small{color:var(--muted);line-height:1.5}
+.caberawitAccessBox{border:1px solid var(--border);border-radius:14px;padding:14px;background:var(--surface-2);margin:12px 0}
+.caberawitAccessBox h3{margin:0 0 4px}
+.scopeInline{display:flex;align-items:center;gap:8px;min-height:42px}
+.noteContextPanel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)}
+.noteContextPanel label{display:grid;gap:5px;font-size:10px;color:var(--muted)}
+.compactToggle{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);white-space:nowrap}
+.noteItem small{line-height:1.35}
+@media(max-width:900px){.roleMatrix{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){
+ .roleMatrix,.noteContextPanel{grid-template-columns:1fr}
+ .caberawitAccessBox{padding:12px}
+ .compactToggle{width:100%}
+}
