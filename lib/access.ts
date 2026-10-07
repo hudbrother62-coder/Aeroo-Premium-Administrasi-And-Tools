@@ -14,7 +14,7 @@ export const allAudiences=Object.keys(audienceLabels) as Audience[];
 export function writeScopesForRole(role:string|null|undefined):Audience[]{
   switch(role){
     case 'ADMIN': return allAudiences;
-    case 'DEWAN_GURU': return ['CABERAWIT','MUDA_MUDI'];
+    case 'DEWAN_GURU': return ['MUDA_MUDI'];
     case 'KELOMPOK': return ['KELOMPOK','IBU_IBU','PENGURUS'];
     default: return [];
   }
@@ -22,7 +22,7 @@ export function writeScopesForRole(role:string|null|undefined):Audience[]{
 
 export function readScopesForRole(role:string|null|undefined):Audience[]{
   switch(role){
-    case 'DEWAN_GURU': return ['CABERAWIT','MUDA_MUDI'];
+    case 'DEWAN_GURU': return ['MUDA_MUDI'];
     case 'KELOMPOK': return ['KELOMPOK','MUDA_MUDI','IBU_IBU','PENGURUS'];
     case 'ADMIN': return allAudiences;
     default: return allAudiences.filter(a=>a!=='PENGURUS');
