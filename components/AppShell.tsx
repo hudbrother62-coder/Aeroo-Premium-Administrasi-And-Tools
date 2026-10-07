@@ -86,7 +86,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
     const items:{href:string;label:string;icon:any}[]=[];
     if(canWriteFormal){
       if(user?.permissions?.['person.write']!==false)items.push({href:'/database/tambah',label:'Data',icon:UserPlus});
-      if(user?.role==='ADMIN'||user?.role==='DEWAN_GURU'){
+      if(user?.role==='ADMIN'){
         items.push({href:'/database?create=level',label:'Jenjang',icon:Target});
         items.push({href:'/database?create=class',label:'Kelas',icon:Database});
       }
