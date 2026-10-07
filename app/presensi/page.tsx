@@ -6,7 +6,7 @@ import {audienceLabels,readScopesForRole,writeScopesForRole,type Audience,type R
 import {jakartaDate} from '@/lib/domain';
 import Recap from '@/components/AttendanceRecap';
 
-type Event={id:string;title:string;event_date:string;audience:string;classes?:{name?:string};activity_types?:{name?:string};attendance_records?:unknown[]};
+type Event={id:string;title:string;event_date:string;audience:string;teacher_name?:string|null;classes?:{name?:string};activity_types?:{name?:string};attendance_records?:unknown[]};
 type ClassRow={id:string;name:string;audience:string};
 
 export default function Page(){
@@ -54,6 +54,10 @@ export default function Page(){
     </div>
     <div className="tabBar"><button className={view==='input'?'tab active':'tab'} onClick={()=>setView('input')}>Presensi</button><button className={view==='recap'?'tab active':'tab'} onClick={()=>setView('recap')}>Rekap</button></div>
     {view==='recap'?<Recap embedded/>:<>
+    {writable.length>0&&<section className="routineAttendancePanel">
+      {writable.includes('KELOMPOK')&&<Link href="/presensi/buat?preset=kelompok" className="routineAttendanceCard"><div><strong>Pengajian Kelompok</strong><span>Senin & Jumat</span></div><small>Absen seluruh kelompok</small></Link>}
+      {writable.includes('CABERAWIT')&&<Link href="/presensi/buat?preset=caberawit" className="routineAttendanceCard"><div><strong>Pengajian Caberawit</strong><span>Senin–Sabtu</span></div><small>Absen per kelas + Dewan Guru</small></Link>}
+    </section>}
     <div className="toolbar card">
       <input className="input" type="month" value={month} onChange={e=>setMonth(e.target.value)}/>
       <select className="select" value={audience} onChange={e=>{setAudience(e.target.value);setClassId('')}}>
@@ -66,7 +70,7 @@ export default function Page(){
     {error&&<div className="notice error section">{error}</div>}
     <div className="list section">
       {loading?<div className="card"><div className="skeleton" style={{height:62}}/></div>:events.map(e=><div className="item row between" key={e.id}>
-        <div><div className="itemTitle">{e.title}</div><div className="itemMeta">{new Date(e.event_date+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})} · {audienceLabels[e.audience as Audience]||e.audience}{e.classes?.name?' · '+e.classes.name:''}</div></div>
+        <div><div className="itemTitle">{e.title}</div><div className="itemMeta">{new Date(e.event_date+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'})} · {audienceLabels[e.audience as Audience]||e.audience}{e.classes?.name?' · '+e.classes.name:''}{e.teacher_name?' · Guru: '+e.teacher_name:''}</div></div>
         <span className="badge">{e.attendance_records?.length||0} peserta</span>{writable.includes(e.audience as Audience)&&<Link className="btn ghost" href={`/presensi/buat?event_id=${e.id}`}>Buka daftar</Link>}
       </div>)}
       {!loading&&!events.length&&<div className="emptyState">Belum ada presensi pada periode ini.</div>}
