@@ -14,7 +14,7 @@ export const allAudiences=Object.keys(audienceLabels) as Audience[];
 export function writeScopesForRole(role:string|null|undefined):Audience[]{
   switch(role){
     case 'ADMIN': return allAudiences;
-    case 'DEWAN_GURU': return ['CABERAWIT','MUDA_MUDI'];
+    case 'DEWAN_GURU': return [];
     case 'KELOMPOK': return ['KELOMPOK','IBU_IBU','PENGURUS'];
     default: return [];
   }
@@ -22,7 +22,7 @@ export function writeScopesForRole(role:string|null|undefined):Audience[]{
 
 export function readScopesForRole(role:string|null|undefined):Audience[]{
   switch(role){
-    case 'DEWAN_GURU': return ['CABERAWIT','MUDA_MUDI'];
+    case 'DEWAN_GURU': return [];
     case 'KELOMPOK': return ['KELOMPOK','MUDA_MUDI','IBU_IBU','PENGURUS'];
     case 'ADMIN': return allAudiences;
     default: return allAudiences.filter(a=>a!=='PENGURUS');
@@ -44,3 +44,11 @@ export function writeScopesForUser(user:AccessProfile|null|undefined):Audience[]
 export function userCan(user:AccessProfile|null|undefined,permission:string,defaultValue=true){
   return user?.permissions&&permission in user.permissions?user.permissions[permission]!==false:defaultValue;
 }
+
+
+export const roleAccessGuide:Record<Role,{label:string;summary:string;defaultRead:Audience[];defaultWrite:Audience[];pages:string[]}> = {
+  ADMIN:{label:'Admin',summary:'Akses penuh seluruh Simpul, akun, audit, pengaturan, semua Caberawit dan seluruh data.',defaultRead:allAudiences,defaultWrite:allAudiences,pages:['Semua menu']},
+  DEWAN_GURU:{label:'Dewan Guru',summary:'Default tanpa akses global. Dipasangkan ke tepat satu kelas Caberawit, atau dapat diberi akses seluruh Caberawit oleh Admin.',defaultRead:[],defaultWrite:[],pages:['Database sesuai kelas','Presensi sesuai kelas','Jurnal sesuai kelas','Target & Progres sesuai akses','Rekap/Laporan sesuai akses','Catatan']},
+  KELOMPOK:{label:'Operator Kelompok',summary:'Operasional kelompok, Muda-Mudi, Ibu-Ibu dan Pengurus. Caberawit hanya jika Admin memberi scope khusus.',defaultRead:['KELOMPOK','MUDA_MUDI','IBU_IBU','PENGURUS'],defaultWrite:['KELOMPOK','IBU_IBU','PENGURUS'],pages:['Database','Agenda','Presensi','Jurnal','Dapukan & Pengurus','Rekap','Kelengkapan','Catatan']},
+  VIEWER:{label:'Viewer',summary:'Baca saja pada data publik/yang diizinkan. Tidak dapat mengubah data atau catatan bersama.',defaultRead:['KELOMPOK','CABERAWIT','MUDA_MUDI','IBU_IBU'],defaultWrite:[],pages:['Beranda','Database','Presensi','Jurnal','Target','Agenda','Rekap','Laporan']}
+};
