@@ -43,9 +43,23 @@ begin
   where n.nspname='public' and p.proname='admin_save_user_access_v2';
   if position('Scope kelas Caberawit hanya untuk Dewan Guru' in coalesce(f,''))=0 then raise exception 'FAIL: class assignment role guard missing'; end if;
 
+  select pg_get_functiondef(p.oid) into f
+  from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+  where n.nspname='public' and p.proname='save_member';
+  if position('Kelas Caberawit di luar akses' in coalesce(f,''))=0 then raise exception 'FAIL: member class write guard missing'; end if;
+
+  select pg_get_functiondef(p.oid) into f
+  from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+  where n.nspname='public' and p.proname='save_learning_target';
+  if position('can_write_class' in coalesce(f,''))=0 then raise exception 'FAIL: target class write guard missing'; end if;
+
   select qual into p from pg_policies
   where schemaname='public' and tablename='caberawit' and policyname='caberawit_read';
   if position('can_read_audience_global' in coalesce(p,''))=0 then raise exception 'FAIL: legacy Caberawit still leaks to any Dewan Guru'; end if;
+
+  select qual into p from pg_policies
+  where schemaname='public' and tablename='classes' and policyname='classes_read';
+  if position('can_read_caberawit_class' in coalesce(p,''))=0 then raise exception 'FAIL: Caberawit class catalog not scope-aware'; end if;
 
   if exists(
     select 1 from public.personal_notes pn
