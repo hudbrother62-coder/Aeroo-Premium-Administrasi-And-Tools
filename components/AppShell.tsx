@@ -33,7 +33,7 @@ const nav=[
 ];
 
 const sections=[['BERANDA',['/']],['OPERASIONAL',['/agenda','/presensi','/jurnal']],['PEMBINAAN',['/target']],['DATA',['/database','/struktur']],['PRIBADI',['/catatan']],['ANALISIS',['/rekap','/kelengkapan','/laporan']],['SISTEM',['/arsip','/impor','/tim-akses','/audit','/pengaturan']]] as const;
-const navPermission:Record<string,string>={'/database':'person.read','/agenda':'agenda.read','/presensi':'attendance.read','/jurnal':'journal.read','/target':'target.read','/struktur':'position.read','/rekap':'report.read','/laporan':'report.read','/arsip':'archive.manage','/impor':'import.manage','/tim-akses':'user.manage','/pengaturan':'settings.manage'};
+const navPermission:Record<string,string>={'/database':'person.read','/agenda':'agenda.read','/presensi':'attendance.read','/jurnal':'journal.read','/target':'target.read','/struktur':'position.read','/catatan':'note.read','/rekap':'report.read','/laporan':'report.read','/arsip':'archive.manage','/impor':'import.manage','/tim-akses':'user.manage','/pengaturan':'settings.manage'};
 const roleLabel:Record<Role,string>={ADMIN:'Admin',DEWAN_GURU:'Dewan Guru',KELOMPOK:'Operator',VIEWER:'Viewer'};
 
 function Brand({compact=false}:{compact?:boolean}){
@@ -96,7 +96,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
       if((user?.role==='ADMIN'||user?.role==='DEWAN_GURU')&&user?.permissions?.['target.write']!==false)items.push({href:'/target?create=1',label:'Target',icon:Target});
       if((user?.role==='ADMIN'||user?.role==='KELOMPOK')&&user?.permissions?.['position.write']!==false)items.push({href:'/struktur?create=1',label:'Dapukan',icon:Network});
     }
-    if(user)items.push({href:'/catatan?create=1',label:'Catatan',icon:NotebookPen});
+    if(user&&user.role!=='VIEWER'&&user.permissions?.['note.write']!==false)items.push({href:'/catatan?create=1',label:'Catatan',icon:NotebookPen});
     return items;
   },[canWriteFormal,user]);
 
