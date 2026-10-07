@@ -13,7 +13,9 @@ export async function GET(){
     supabase.from('user_class_scopes').select('class_id,can_read,can_write,classes(name)').eq('user_id',me.id).maybeSingle()
   ]);
   const explicit=scopes.data||[];
-  const read_scopes:Audience[]=explicit.length?explicit.filter((x:any)=>x.can_read).map((x:any)=>x.audience):readScopesForRole(me.role);
-  const write_scopes:Audience[]=explicit.length?explicit.filter((x:any)=>x.can_write).map((x:any)=>x.audience):writeScopesForRole(me.role);
+  let read_scopes:Audience[]=explicit.length?explicit.filter((x:any)=>x.can_read).map((x:any)=>x.audience):readScopesForRole(me.role);
+  let write_scopes:Audience[]=explicit.length?explicit.filter((x:any)=>x.can_write).map((x:any)=>x.audience):writeScopesForRole(me.role);
+  if(classScope.data?.can_read&&!read_scopes.includes('CABERAWIT'))read_scopes=[...read_scopes,'CABERAWIT'];
+  if(classScope.data?.can_write&&!write_scopes.includes('CABERAWIT'))write_scopes=[...write_scopes,'CABERAWIT'];
   return NextResponse.json({...me,read_scopes,write_scopes,class_scope:classScope.data||null,permissions:Object.fromEntries((perms.data||[]).map((x:any)=>[x.permission,x.allowed]))},{headers:{'Cache-Control':'private, max-age=10'}});
 }
