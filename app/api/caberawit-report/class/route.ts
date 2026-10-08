@@ -1,5 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
+import {learningReportExport} from '@/lib/learning-report-export';
 import {analyzeJson} from '@/lib/gemini';
 import {appendReportDetails,replaceReportXml,validateOfficeTemplate,defaultPresentation} from '@/lib/report-template';
 import {reportMemberships,reportTargets,snapshotPlacements} from '@/lib/report-scope';
@@ -13,7 +14,7 @@ const cell=(text:string)=>new TableCell({children:[new Paragraph(text)]});
 export async function POST(req:NextRequest){
   try{
     const b=await req.json();const classId=String(b.class_id??''),from=String(b.period_start??''),to=String(b.period_end??''),format=String(b.format??'docx');
-    if(!classId||!validDate(from)||!validDate(to)||from>to||!['docx','pptx'].includes(format))return NextResponse.json({error:'Kelas, periode, atau format tidak valid.'},{status:400});
+    if(!classId||!validDate(from)||!validDate(to)||from>to||!['docx','pptx','pdf','xlsx'].includes(format))return NextResponse.json({error:'Kelas, periode, atau format tidak valid.'},{status:400});
     const s=await db();const {data:role}=await s.rpc('current_app_role');if(!['ADMIN','DEWAN_GURU'].includes(role??''))return NextResponse.json({error:'Cetak laporan memerlukan akses pengelola.'},{status:403});const [klass,memberResult,att]=await Promise.all([
       s.from('classes').select('id,name,audience').eq('id',classId).single(),
       s.from('members').select('id,name,member_memberships(*,categories(slug),classes(name),levels(name))'),
@@ -38,6 +39,18 @@ export async function POST(req:NextRequest){
     if(b.ai_note){const ai=await analyzeJson<{note:string}>('Tulis satu paragraf laporan kelas yang faktual. Jangan mengarang pencapaian, diagnosis, atau saran klinis. Kembalikan JSON {"note":"..."}. Petunjuk tambahan: '+String(b.ai_instruction??'').slice(0,500),{class_name:klass.data.name,period:{from,to},attendance:{H,I,A},individuals:perMember,notes:pr.slice(0,30).map(p=>p.progress_note)});if(!ai?.note)return NextResponse.json({error:'Catatan otomatis belum tersedia. Coba tanpa catatan otomatis.'},{status:503});note=String(ai.note).slice(0,2000)}
     const vals:Record<string,string>={KELAS:klass.data.name,PERIODE:`${from} s.d. ${to}`,JUMLAH:String(members.length),HADIR:String(H),IZIN:String(I),ALFA:String(A),KEHADIRAN:pct===null?'Belum dicatat':`${pct}%`,PROGRES:avg===null?'Belum dinilai':`${avg}%`,CATATAN:note,NAMA:klass.data.name,JENJANG:'Jabirawit'};
     if(b.preview)return NextResponse.json({title:'Laporan Kelas Caberawit',values:vals,individuals:perMember});
+    if(format==='pdf'||format==='xlsx'){
+      if(b.template_id)return NextResponse.json({error:'Template unggahan khusus Word/PowerPoint; untuk PDF/Excel gunakan format standar.'},{status:400});
+      return learningReportExport({
+        title:'Laporan Kelas Caberawit',values:vals,
+        individuals:perMember.map(p=>({'Nama':p.name,'Hadir':p.H,'Izin':p.I,'Alfa':p.A,
+          'Kehadiran (%)':p.attendance??'Belum dicatat',
+          'Progres (%)':p.progress??'Belum dinilai','Target dinilai':p.coverage})),
+        details:perMember.flatMap(p=>p.details.map(d=>({'Nama':p.name,'Target':d.target,
+          'Nilai':d.value??'Belum dinilai','Catatan':d.note}))),
+        filename:'laporan-kelas-caberawit-'+classId+'-'+from+'-'+to,
+      },format);
+    }
     let bytes:Uint8Array;
     if(b.template_id){
       const t=await s.from('report_templates').select('*').eq('id',b.template_id).eq('active',true).single();if(t.error)throw t.error;
