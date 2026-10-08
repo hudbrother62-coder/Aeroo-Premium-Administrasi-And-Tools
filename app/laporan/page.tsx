@@ -1,6 +1,7 @@
 'use client';
 
 import OperationalReport from '@/components/OperationalReport';
+import DetailedAttendanceReport from '@/components/DetailedAttendanceReport';
 import {reportMemberships} from '@/lib/report-scope';
 import {jakartaDate} from '@/lib/domain';
 import {FormEvent,useEffect,useMemo,useState} from 'react';
@@ -65,6 +66,7 @@ export default function ReportPage(){
   return <>
     <div className="pageHeader"><h1>Laporan</h1></div>
     <OperationalReport/>
+    <DetailedAttendanceReport/>
     <div className="sectionTitle section"><h2>Caberawit</h2></div>
     <div className="dashboardGrid">
       <section className="card">
