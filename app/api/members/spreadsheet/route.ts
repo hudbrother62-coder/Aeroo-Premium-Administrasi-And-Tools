@@ -63,7 +63,7 @@ export async function GET(req:NextRequest){
     }
     const format=req.nextUrl.searchParams.get('format')||'xlsx';
     if(!['xlsx','csv'].includes(format))return NextResponse.json({error:'Format tidak didukung.'},{status:400});
-    const extra=['Status','Dibuat','Diperbarui'];
+    const extra=['Status','Dibuat','Diperbarui','Nomor Keluarga','Urutan Dalam Keluarga','Hubungan Keluarga','Anak Ke','Status Perkawinan','Alasan Nonaktif','Sumber Data','ID Sumber','Urutan Data Sumber','Bagian','Foto URL','Sinkron Terakhir'];
     const detailColumns=['ID Anggota','Nama','Status Anggota','Program','Kelas','Jenjang','Jabatan','Bagian','Tugas','Sejak','Sampai','Berakhir','Keikutsertaan Aktif'];
     const rows:unknown[][]=viewer?[
       ['ID Anggota','Nama','Program','Jenjang','Kelas'],
@@ -86,7 +86,7 @@ export async function GET(req:NextRequest){
           programs.map((m:any)=>m.categories?.name).filter(Boolean).join(', '),
           p.notes,p.guardian_name,p.guardian_phone,
           JSON.stringify(programs.map(({categories,classes,levels,created_at,member_id,...m}:any)=>m)),
-          p.status,p.created_at,p.updated_at
+          p.status,p.created_at,p.updated_at,p.family_no,p.family_member_order,p.relationship,p.child_order,p.marital_status,p.inactive_reason,p.source,p.source_id,p.source_order,p.section,p.photo_url,p.last_synced_at
         ];
       })
     ];
