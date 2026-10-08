@@ -1,5 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
+import {learningReportExport} from '@/lib/learning-report-export';
 import {appendReportDetails,replaceReportXml,escapeXml as esc,validateOfficeTemplate,defaultPresentation} from '@/lib/report-template';
 import {reportMemberships,reportTargets,snapshotPlacements} from '@/lib/report-scope';
 import {latestProgressRows,validDate,summarizeProgress} from '@/lib/domain';
@@ -19,7 +20,7 @@ export async function POST(req:NextRequest){
     const from=String(b.period_start??'');
     const to=String(b.period_end??'');
     const format=String(b.format??'docx');
-    if(!memberId||!validDate(from)||!validDate(to)||from>to||!['docx','pptx'].includes(format))return NextResponse.json({error:'Individu dan periode wajib dipilih.'},{status:400});
+    if(!memberId||!validDate(from)||!validDate(to)||from>to||!['docx','pptx','pdf','xlsx'].includes(format))return NextResponse.json({error:'Individu dan periode wajib dipilih.'},{status:400});
 
     const s=await db();
     const {data:role}=await s.rpc('current_app_role');if(!['ADMIN','DEWAN_GURU'].includes(role??''))return NextResponse.json({error:'Cetak laporan memerlukan akses pengelola.'},{status:403});
@@ -55,6 +56,14 @@ export async function POST(req:NextRequest){
     };
 
     if(b.preview)return NextResponse.json({title:'Laporan Perkembangan Caberawit',values:vals,details:details.map(x=>({target:x.learning_targets.title,value:x.progress_value??null,note:x.progress_note||'Belum dinilai'}))});
+    if(format==='pdf'||format==='xlsx'){
+      if(b.template_id)return NextResponse.json({error:'Template unggahan khusus Word/PowerPoint; untuk PDF/Excel gunakan format standar.'},{status:400});
+      return learningReportExport({
+        title:'Laporan Perkembangan Caberawit',values:vals,
+        details:details.map(x=>({'Target':x.learning_targets?.title||'Progres','Nilai':x.progress_value??'Belum dinilai','Catatan':x.progress_note||'-'})),
+        filename:'laporan-caberawit-'+memberId+'-'+from+'-'+to,
+      },format);
+    }
     if(b.template_id){
       const t=await s.from('report_templates').select('*').eq('id',b.template_id).eq('active',true).single();
       if(t.error)throw t.error;
