@@ -35,57 +35,99 @@ export async function GET(req:NextRequest){
         ['','','Contoh Nama','L','Malang','2010-01-01','08123456789','Alamat lengkap','SD 1','','Caberawit','','','','']
       ],'template-anggota-simpul.xlsx');
     }
-
-    const s=await db();
-    const {data:role}=await s.rpc('current_app_role');
-    const viewer=!role||role==='VIEWER';
-    const result=viewer
-      ? {data:await publicRows('members'),error:null}
-      : await s.from('members')
-          .select('*,member_memberships(*,categories(name,slug),classes(name),levels(name))')
-          .eq('status','ACTIVE')
-          .order('name');
-
-    if(result.error)throw Error(result.error.message);
-
-    const rows:unknown[][]=viewer
-      ? [
-          ['ID Anggota','Nama','Program','Jenjang','Kelas'],
-          ...(result.data||[]).map((p:any)=>[
-            p.id,
-            p.name,
-            (p.member_categories||[]).map((m:any)=>m.categories?.name).filter(Boolean).join(', '),
-            (p.member_memberships||[]).filter((m:any)=>effectiveMembership(m)).map((m:any)=>m.levels?.name).filter(Boolean).join(', '),
-            (p.member_memberships||[]).filter((m:any)=>effectiveMembership(m)).map((m:any)=>m.classes?.name).filter(Boolean).join(', ')
-          ])
-        ]
-      : [
-          columns,
-          ...(result.data||[]).map((p:any)=>{
-            const mm=(p.member_memberships||[]).filter((m:any)=>effectiveMembership(m));
-            const programMemberships=mm.filter((m:any)=>['caberawit','muda-mudi','ibu-ibu'].includes(m.categories?.slug));
-            const learning=programMemberships.find((m:any)=>['caberawit','muda-mudi'].includes(m.categories?.slug));
-            return [
-              p.id,p.revision,p.name,p.gender,p.birth_place,p.birth_date,p.phone,p.address,
-              learning?.levels?.name,learning?.classes?.name,
-              programMemberships.map((m:any)=>m.categories?.name).filter(Boolean).join(', '),
-              p.notes,p.guardian_name,p.guardian_phone,
-              JSON.stringify(programMemberships.map(({categories,classes,levels,created_at,member_id,...m}:any)=>m))
-            ];
-          })
-        ];
-
-    if(req.nextUrl.searchParams.get('format')==='csv'){
-      const csv='\ufeff'+rows
-        .map(r=>r.map(v=>'"'+spreadsheetCell(v).replace(/"/g,'""')+'"').join(','))
-        .join('\r\n');
-      return new Response(csv,{headers:{
-        'Content-Type':'text/csv; charset=utf-8',
-        'Content-Disposition':'attachment; filename="anggota-simpul.csv"'
-      }});
+    const status=req.nextUrl.searchParams.get('status')||'ACTIVE';
+    if(!['ACTIVE','INACTIVE','ALL'].includes(status)){
+      return NextResponse.json({error:'Filter status tidak valid.'},{status:400});
     }
-
-    return workbook(rows,'anggota-simpul.xlsx');
+    const s=await db();
+    const {data:role,error:roleError}=await s.rpc('current_app_role');
+    if(roleError)throw Error(roleError.message);
+    const viewer=!role||role==='VIEWER';
+    if(viewer&&status!=='ACTIVE')return NextResponse.json({error:'Arsip hanya dapat diekspor pengelola.'},{status:403});
+    if(!viewer&&status!=='ACTIVE'&&role!=='ADMIN')return NextResponse.json({error:'Ekspor arsip dan seluruh database khusus admin.'},{status:403});
+    const items:any[]=[];
+    if(viewer)items.push(...await publicRows('members'));
+    else {
+      for(let offset=0;offset<100000;offset+=500){
+        let q=s.from('members')
+          .select('*,member_memberships(*,categories(name,slug),classes(name),levels(name))')
+          .order('name',{ascending:true}).order('id',{ascending:true})
+          .range(offset,offset+499);
+        if(status!=='ALL')q=q.eq('status',status);
+        const {data,error}=await q;
+        if(error)throw Error(error.message);
+        items.push(...(data||[]));
+        if((data||[]).length<500)break;
+        if(offset===99500)throw Error('Database terlalu besar. Gunakan ekspor dengan filter status atau hubungi administrator.');
+      }
+    }
+    const format=req.nextUrl.searchParams.get('format')||'xlsx';
+    if(!['xlsx','csv'].includes(format))return NextResponse.json({error:'Format tidak didukung.'},{status:400});
+    const extra=['Status','Dibuat','Diperbarui'];
+    const detailColumns=['ID Anggota','Nama','Status Anggota','Program','Kelas','Jenjang','Jabatan','Bagian','Tugas','Sejak','Sampai','Berakhir','Keikutsertaan Aktif'];
+    const rows:unknown[][]=viewer?[
+      ['ID Anggota','Nama','Program','Jenjang','Kelas'],
+      ...items.map((p:any)=>[
+        p.id,p.name,
+        (p.member_categories||[]).map((m:any)=>m.categories?.name).filter(Boolean).join(', '),
+        (p.member_memberships||[]).filter((m:any)=>effectiveMembership(m)).map((m:any)=>m.levels?.name).filter(Boolean).join(', '),
+        (p.member_memberships||[]).filter((m:any)=>effectiveMembership(m)).map((m:any)=>m.classes?.name).filter(Boolean).join(', ')
+      ])
+    ]:[
+      [...columns,...extra],
+      ...items.map((p:any)=>{
+        const all=p.member_memberships||[];
+        const mm=all.filter((m:any)=>effectiveMembership(m));
+        const programs=mm.filter((m:any)=>['caberawit','muda-mudi','ibu-ibu'].includes(m.categories?.slug));
+        const learning=programs.find((m:any)=>['caberawit','muda-mudi'].includes(m.categories?.slug));
+        return [
+          p.id,p.revision,p.name,p.gender,p.birth_place,p.birth_date,p.phone,p.address,
+          learning?.levels?.name,learning?.classes?.name,
+          programs.map((m:any)=>m.categories?.name).filter(Boolean).join(', '),
+          p.notes,p.guardian_name,p.guardian_phone,
+          JSON.stringify(programs.map(({categories,classes,levels,created_at,member_id,...m}:any)=>m)),
+          p.status,p.created_at,p.updated_at
+        ];
+      })
+    ];
+    if(format==='csv'){
+      const csv='\ufeff'+rows.map(r=>r.map(v=>'"'+spreadsheetCell(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+      return new Response(csv,{headers:{'Content-Type':'text/csv; charset=utf-8',
+        'Content-Disposition':'attachment; filename="anggota-simpul-'+status.toLowerCase()+'.csv"',
+        'Cache-Control':'private, no-store'}});
+    }
+    if(viewer)return workbook(rows,'anggota-simpul-publik.xlsx');
+    const history:unknown[][]=[
+      detailColumns,
+      ...items.flatMap((p:any)=>(p.member_memberships||[]).map((m:any)=>[
+        p.id,p.name,p.status,m.categories?.name||'',m.classes?.name||'',m.levels?.name||'',
+        m.office||'',m.section||'',m.duties||'',m.valid_from||'',m.valid_to||'',m.ended_on||'',effectiveMembership(m)?'Ya':'Tidak'
+      ]))
+    ];
+    const countBy=(key:string)=>items.filter(p=>p.status===key).length;
+    const activeMembership=items.flatMap(p=>(p.member_memberships||[]).filter((m:any)=>effectiveMembership(m)));
+    const summary:unknown[][]=[
+      ['Indikator','Jumlah'],
+      ['Total anggota diekspor',items.length],
+      ['Aktif',countBy('ACTIVE')],
+      ['Arsip',countBy('INACTIVE')],
+      ['Keikutsertaan aktif',activeMembership.length],
+      ['Total riwayat keikutsertaan',history.length-1],
+      ['Catatan','Sheet Anggota mengikuti format impor. Sheet Riwayat berisi keikutsertaan aktif dan historis.']
+    ];
+    const book=XLSX.utils.book_new();
+    for(const [name,records] of [['Anggota',rows],['Riwayat',history],['Ringkasan',summary]] as Array<[string,unknown[][]]>){
+      const safeRows=records.map((row,i)=>i===0?row:row.map(v=>typeof v==='string'?spreadsheetCell(v):v??''));
+      const sheet=XLSX.utils.aoa_to_sheet(safeRows);
+      const header=records[0]||[];
+      sheet['!cols']=header.map(v=>({wch:Math.min(40,Math.max(14,String(v).length+3))}));
+      XLSX.utils.book_append_sheet(book,sheet,name);
+    }
+    return new Response(XLSX.write(book,{type:'buffer',bookType:'xlsx'}),{
+      headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition':'attachment; filename="anggota-simpul-'+status.toLowerCase()+'.xlsx"',
+      'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}
+    });
   }catch(e){
     return NextResponse.json({error:e instanceof Error?e.message:'Export gagal'},{status:400});
   }
