@@ -2,7 +2,7 @@ import {NextRequest,NextResponse} from 'next/server';
 import {attendanceReport} from '@/lib/attendance-report';
 import {spreadsheetCell} from '@/lib/spreadsheet';
 import * as XLSX from 'xlsx';
-import {Document,Packer,Paragraph,Table,TableCell,TableRow,HeadingLevel,WidthType} from 'docx';
+import {Document,Packer,Paragraph,Table,TableCell,TableRow,HeadingLevel,WidthType,TextRun} from 'docx';
 import {jsPDF} from 'jspdf';
 
 export const runtime='nodejs';
@@ -24,7 +24,7 @@ function worksheet(records:Record<string,unknown>[],fallback:string[]){
 function table(records:Record<string,unknown>[],fallback:string[]){
   const keys=records.length?Object.keys(records[0]):fallback;
   return new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:[
-    new TableRow({tableHeader:true,children:keys.map(h=>new TableCell({children:[new Paragraph({text:h,bold:true})]}))}),
+    new TableRow({tableHeader:true,children:keys.map(h=>new TableCell({children:[new Paragraph({children:[new TextRun({text:h,bold:true})]})]}))}),
     ...(records.length?records.map(row=>new TableRow({children:keys.map(h=>new TableCell({children:[new Paragraph(asText(row[h]))]}))})):
       [new TableRow({children:keys.map((_,i)=>new TableCell({children:[new Paragraph(i===0?'Belum ada data':'')]}))})]),
   ]});
@@ -53,7 +53,7 @@ export async function GET(req:NextRequest){
       XLSX.utils.book_append_sheet(wb,worksheet(summaryRows,['Indikator','Nilai']),'Ringkasan');
       XLSX.utils.book_append_sheet(wb,worksheet(d.rows as unknown as Record<string,unknown>[],['Tanggal','Kegiatan','Kategori','Hadir','Izin','Alfa','Belum absen','Total peserta','Kehadiran (%)']),'Per Kegiatan');
       XLSX.utils.book_append_sheet(wb,worksheet(d.details as unknown as Record<string,unknown>[],['Tanggal','Kegiatan','Kategori','Kelas','Peserta','Status']),'Detail Individu');
-      XLSX.utils.book_append_sheet(wb,worksheet([{Keterangan:info}]),'Definisi Indikator');
+      XLSX.utils.book_append_sheet(wb,worksheet([{Keterangan:info}],['Keterangan']),'Definisi Indikator');
       return deliver(XLSX.write(wb,{type:'array',bookType:'xlsx'}) as ArrayBuffer,
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',name+'.xlsx');
     }
