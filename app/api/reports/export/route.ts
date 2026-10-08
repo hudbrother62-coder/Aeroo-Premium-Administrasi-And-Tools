@@ -1,158 +1,129 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/supabase-server';
+import {NextRequest,NextResponse} from 'next/server';
+import {attendanceReport} from '@/lib/attendance-report';
+import {spreadsheetCell} from '@/lib/spreadsheet';
 import * as XLSX from 'xlsx';
-import { Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun } from 'docx';
-import { jsPDF } from 'jspdf';
+import {Document,Packer,Paragraph,Table,TableCell,TableRow,HeadingLevel,WidthType} from 'docx';
+import {jsPDF} from 'jspdf';
 
-export const runtime = 'nodejs';
-
-type AttendanceRecord = { status: 'H' | 'I' | 'A' | string };
-type AttendanceEvent = {
-  title: string;
-  event_date: string;
-  audience: string;
-  attendance_records: AttendanceRecord[] | null;
-};
-
-async function dataset(req: NextRequest) {
-  const from = req.nextUrl.searchParams.get('from');
-  const to = req.nextUrl.searchParams.get('to');
-  const audience = req.nextUrl.searchParams.get('audience');
-
-  if (!from || !to) throw new Error('from dan to wajib diisi');
-
-  const s=await db();
-  let q = s
-    .from('attendance_events')
-    .select('title,event_date,audience,attendance_records(status)')
-    .neq('state','CANCELLED')
-    .gte('event_date', from)
-    .lte('event_date', to)
-    .order('event_date');
-
-  if (audience) q = q.eq('audience', audience);
-
-  const { data, error } = await q;
-  if (error) throw error;
-
-  return {
-    from,
-    to,
-    audience: audience || 'Semua',
-    events: (data || []) as AttendanceEvent[],
-  };
+export const runtime='nodejs';
+function deliver(bytes:Uint8Array|ArrayBuffer,mime:string,name:string){
+  return new Response(bytes as BodyInit,{headers:{
+    'Content-Type':mime,'Content-Disposition':'attachment; filename="'+name+'"',
+    'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff',
+  }});
 }
-
-function binaryResponse(body: Uint8Array | ArrayBuffer, contentType: string, filename: string) {
-  const responseBody = body as unknown as BodyInit;
-  return new Response(responseBody, {
-    headers: {
-      'Content-Type': contentType,
-      'Content-Disposition': `attachment; filename="${filename}"`,
-      'Cache-Control': 'no-store',
-    },
-  });
+function asText(v:unknown){return v===null||v===undefined?'':String(v);}
+function worksheet(records:Record<string,unknown>[],fallback:string[]){
+  const headers=records.length?Object.keys(records[0]):fallback;
+  const body=[headers,...records.map(r=>headers.map(h=>typeof r[h]==='string'?spreadsheetCell(r[h]):r[h]??''))];
+  const ws=XLSX.utils.aoa_to_sheet(body);
+  ws['!cols']=headers.map(h=>({wch:Math.min(52,Math.max(14,h.length+4))}));
+  ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(0,body.length-1),c:headers.length-1}})};
+  return ws;
 }
-
-export async function GET(req: NextRequest) {
-  try {
-    const d = await dataset(req);
-    const format = req.nextUrl.searchParams.get('format') || 'xlsx';
-
-    const rows = d.events.map((event) => {
-      const records = event.attendance_records ?? [];
-      return {
-        Tanggal: event.event_date,
-        Kegiatan: event.title,
-        Kategori: event.audience,
-        Hadir: records.filter((r) => r.status === 'H').length,
-        Izin: records.filter((r) => r.status === 'I').length,
-        Alfa: records.filter((r) => r.status === 'A').length,
+function table(records:Record<string,unknown>[],fallback:string[]){
+  const keys=records.length?Object.keys(records[0]):fallback;
+  return new Table({width:{size:100,type:WidthType.PERCENTAGE},rows:[
+    new TableRow({tableHeader:true,children:keys.map(h=>new TableCell({children:[new Paragraph({text:h,bold:true})]}))}),
+    ...(records.length?records.map(row=>new TableRow({children:keys.map(h=>new TableCell({children:[new Paragraph(asText(row[h]))]}))})):
+      [new TableRow({children:keys.map((_,i)=>new TableCell({children:[new Paragraph(i===0?'Belum ada data':'')]}))})]),
+  ]});
+}
+export async function GET(req:NextRequest){
+  try{
+    const format=req.nextUrl.searchParams.get('format')||'xlsx';
+    if(!['xlsx','docx','pdf'].includes(format))return NextResponse.json({error:'Format laporan tidak didukung.'},{status:400});
+    const d=await attendanceReport(req);
+    const name='simpul-presensi-'+d.period.from+'-'+d.period.to;
+    const summaryRows:Record<string,unknown>[]=[
+      {Indikator:'Periode mulai',Nilai:d.period.from},
+      {Indikator:'Periode akhir',Nilai:d.period.to},
+      {Indikator:'Kategori',Nilai:d.audience},
+      {Indikator:'Jumlah kegiatan',Nilai:d.summary.meetings},
+      {Indikator:'Hadir',Nilai:d.summary.H},
+      {Indikator:'Izin',Nilai:d.summary.I},
+      {Indikator:'Alfa',Nilai:d.summary.A},
+      {Indikator:'Belum absen',Nilai:d.summary.pending},
+      {Indikator:'Total catatan',Nilai:d.summary.total},
+      {Indikator:'Kehadiran dari catatan terisi (%)',Nilai:d.summary.percentage??'Belum diisi'},
+    ];
+    const info='Kehadiran dihitung H/(H+I+A). Belum absen tidak dianggap Alfa dan tidak masuk penyebut.';
+    if(format==='xlsx'){
+      const wb=XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb,worksheet(summaryRows,['Indikator','Nilai']),'Ringkasan');
+      XLSX.utils.book_append_sheet(wb,worksheet(d.rows as unknown as Record<string,unknown>[],['Tanggal','Kegiatan','Kategori','Hadir','Izin','Alfa','Belum absen','Total peserta','Kehadiran (%)']),'Per Kegiatan');
+      XLSX.utils.book_append_sheet(wb,worksheet(d.details as unknown as Record<string,unknown>[],['Tanggal','Kegiatan','Kategori','Kelas','Peserta','Status']),'Detail Individu');
+      XLSX.utils.book_append_sheet(wb,worksheet([{Keterangan:info}]),'Definisi Indikator');
+      return deliver(XLSX.write(wb,{type:'array',bookType:'xlsx'}) as ArrayBuffer,
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',name+'.xlsx');
+    }
+    if(d.details.length>10000)return NextResponse.json({error:'Laporan Word/PDF lebih dari 10.000 catatan. Gunakan Excel atau persempit periode.'},{status:413});
+    if(format==='docx'){
+      const children=[
+        new Paragraph({text:'SIMPUL — LAPORAN PRESENSI',heading:HeadingLevel.TITLE}),
+        new Paragraph('Periode: '+d.period.from+' s.d. '+d.period.to+' | Kategori: '+d.audience),
+        new Paragraph({text:'Ringkasan',heading:HeadingLevel.HEADING_2}),
+        table(summaryRows,['Indikator','Nilai']),
+        new Paragraph(info),
+        new Paragraph({text:'Rekap per kegiatan',heading:HeadingLevel.HEADING_2}),
+        table(d.rows as unknown as Record<string,unknown>[],['Tanggal','Kegiatan','Kategori','Hadir','Izin','Alfa','Belum absen','Total peserta','Kehadiran (%)']),
+        new Paragraph({text:'Detail kehadiran individu',heading:HeadingLevel.HEADING_2}),
+        table(d.details as unknown as Record<string,unknown>[],['Tanggal','Kegiatan','Kategori','Kelas','Peserta','Status']),
+        new Paragraph('Sumber: catatan presensi Simpul sesuai hak akses pengguna.'),
+      ];
+      const bytes=new Uint8Array(await Packer.toBuffer(new Document({sections:[{children}]})));
+      return deliver(bytes,'application/vnd.openxmlformats-officedocument.wordprocessingml.document',name+'.docx');
+    }
+    const pdf=new jsPDF({orientation:'landscape',format:'a4'});
+    const pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight(),margin=13;
+    let y=17;
+    function page(){pdf.addPage();y=17;}
+    function line(value:string,size=9){
+      pdf.setFontSize(size);
+      const lines=pdf.splitTextToSize(value,pw-margin*2);
+      for(const text of lines){if(y>ph-17)page();pdf.text(text,margin,y);y+=size>=13?9:5.5;}
+    }
+    function heading(label:string){if(y>ph-35)page();y+=4;line(label,13);y+=1;}
+    function reportTable(records:Record<string,unknown>[],keys:string[],widths:number[]){
+      const usable=pw-2*margin;const sizes=widths.map(n=>n*usable);
+      const renderRow=(cells:string[],header=false)=>{
+        pdf.setFontSize(header?8.2:7.5);
+        const blocks=cells.map((x,i)=>pdf.splitTextToSize(x||'-',sizes[i]-3));
+        const h=Math.max(7,...blocks.map(x=>x.length*4+3));
+        if(y+h>ph-14){page();if(!header)renderRow(keys,true);}
+        let x=margin;
+        pdf.setDrawColor(175);
+        cells.forEach((_,i)=>{
+          pdf.rect(x,y,sizes[i],h);
+          pdf.text(blocks[i],x+1.5,y+4.3);
+          x+=sizes[i];
+        });y+=h;
       };
-    });
-
-    const name = `simpul-presensi-${d.from}-${d.to}`;
-
-    if (format === 'xlsx') {
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(rows);
-      XLSX.utils.book_append_sheet(wb, ws, 'Rekap Presensi');
-      const out = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
-      return binaryResponse(
-        out,
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        `${name}.xlsx`,
-      );
+      renderRow(keys,true);
+      if(!records.length)line('Tidak ada catatan untuk periode ini.');
+      for(const row of records)renderRow(keys.map(k=>asText(row[k])));
     }
-
-    if (format === 'docx') {
-      const table = new Table({
-        rows: [
-          new TableRow({
-            children: ['Tanggal', 'Kegiatan', 'Kategori', 'Hadir', 'Izin', 'Alfa'].map(
-              (x) => new TableCell({ children: [new Paragraph(x)] }),
-            ),
-          }),
-          ...rows.map(
-            (r) =>
-              new TableRow({
-                children: Object.values(r).map(
-                  (x) => new TableCell({ children: [new Paragraph(String(x))] }),
-                ),
-              }),
-          ),
-        ],
-      });
-
-      const doc = new Document({
-        sections: [
-          {
-            children: [
-              new Paragraph({
-                children: [new TextRun({ text: 'SIMPUL', bold: true })],
-              }),
-              new Paragraph(`Laporan Rekap Presensi ${d.from} — ${d.to}`),
-              table,
-            ],
-          },
-        ],
-      });
-
-      const out = await Packer.toBuffer(doc);
-      return binaryResponse(
-        new Uint8Array(out),
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        `${name}.docx`,
-      );
+    pdf.setFontSize(16);line('SIMPUL - LAPORAN PRESENSI',16);
+    line('Periode: '+d.period.from+' s.d. '+d.period.to+' | Kategori: '+d.audience);
+    heading('Ringkasan');
+    reportTable(summaryRows,['Indikator','Nilai'],[0.55,0.45]);
+    y+=3;line(info,8);
+    heading('Rekap per kegiatan');
+    reportTable(d.rows as unknown as Record<string,unknown>[],
+      ['Tanggal','Kegiatan','Kategori','Hadir','Izin','Alfa','Belum absen','Total peserta','Kehadiran (%)'],
+      [0.11,0.25,0.14,0.06,0.06,0.06,0.10,0.10,0.12]);
+    heading('Detail kehadiran individu');
+    reportTable(d.details as unknown as Record<string,unknown>[],
+      ['Tanggal','Kegiatan','Kategori','Kelas','Peserta','Status'],
+      [0.12,0.28,0.14,0.15,0.20,0.11]);
+    const total=pdf.getNumberOfPages();
+    for(let p=1;p<=total;p++){
+      pdf.setPage(p);pdf.setFontSize(8);pdf.text('Simpul | '+d.period.from+' - '+d.period.to,margin,ph-6);
+      pdf.text('Halaman '+p+' / '+total,pw-margin,ph-6,{align:'right'});
     }
-
-    if (format !== 'pdf') {
-      return NextResponse.json({ error: 'Format laporan tidak didukung' }, { status: 400 });
-    }
-
-    const pdf = new jsPDF();
-    pdf.setFontSize(15);
-    pdf.text('SIMPUL', 14, 18);
-    pdf.setFontSize(11);
-    pdf.text(`Laporan Rekap Presensi ${d.from} - ${d.to}`, 14, 26);
-
-    let y = 36;
-    for (const r of rows) {
-      if (y > 280) {
-        pdf.addPage();
-        y = 18;
-      }
-      pdf.text(
-        `${r.Tanggal} | ${r.Kegiatan} | H:${r.Hadir} I:${r.Izin} A:${r.Alfa}`,
-        14,
-        y,
-      );
-      y += 7;
-    }
-
-    return binaryResponse(pdf.output('arraybuffer'), 'application/pdf', `${name}.pdf`);
-  } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Gagal membuat laporan';
-    return NextResponse.json({ error: message }, { status: 400 });
+    return deliver(pdf.output('arraybuffer'),'application/pdf',name+'.pdf');
+  }catch(e){
+    const error=e as Error & {status?:number};
+    return NextResponse.json({error:error.message||'Gagal membuat laporan.'},{status:error.status||400});
   }
 }
