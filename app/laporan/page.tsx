@@ -19,7 +19,7 @@ export default function ReportPage(){
   const[mode,setMode]=useState<'individual'|'class'>('individual');
   const[from,setFrom]=useState(first);
   const[to,setTo]=useState(today);
-  const[format,setFormat]=useState<'docx'|'pptx'>('docx');
+  const[format,setFormat]=useState<'docx'|'pptx'|'pdf'|'xlsx'>('docx');
   const[templateId,setTemplateId]=useState('');
   const[classFilter,setClassFilter]=useState('');
   const[aiNote,setAiNote]=useState(false),[aiInstruction,setAiInstruction]=useState('');
@@ -57,7 +57,7 @@ export default function ReportPage(){
       const blob=await r.blob();
       const url=URL.createObjectURL(blob);
       const a=document.createElement('a');a.href=url;a.download=`laporan-caberawit-${from}-${to}.${format}`;a.click();URL.revokeObjectURL(url);
-      setMessage('Laporan berhasil dibuat.');
+      setMessage('Laporan berhasil dibuat dalam format '+format.toUpperCase()+'.');
     }catch(e){setError(e instanceof Error?e.message:'Gagal membuat laporan.')}
     finally{setLoading(false)}
   }
@@ -76,10 +76,10 @@ export default function ReportPage(){
           <label>Kelas<select className="select" value={classFilter} onChange={e=>{setClassFilter(e.target.value);setMemberId('')}}><option value="">Semua kelas</option>{classOptions.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
           {mode==='individual'&&<label>Individu<select className="select" value={memberId} onChange={e=>setMemberId(e.target.value)}><option value="">Pilih</option>{visibleMembers.map(m=><option key={m.id} value={m.id}>{m.name}</option>)}</select></label>}
 <label>Versi target<select className="select" value={versionId} onChange={e=>setVersionId(e.target.value)}><option value="">Pilih versi target</option><option value="__unversioned__">Target manual tanpa versi</option>{versions.map(v=><option key={v.id} value={v.id}>{v.title} · v{v.version}</option>)}</select></label>
-          <label>Format<select className="select" value={format} onChange={e=>{setFormat(e.target.value as 'docx'|'pptx');setTemplateId('')}}><option value="docx">Word (.docx)</option><option value="pptx">PowerPoint (.pptx)</option></select></label>
+          <label>Format<select className="select" value={format} onChange={e=>{setFormat(e.target.value as 'docx'|'pptx'|'pdf'|'xlsx');setTemplateId('')}}><option value="docx">Word (.docx)</option><option value="pptx">PowerPoint (.pptx)</option><option value="pdf">PDF (.pdf)</option><option value="xlsx">Excel (.xlsx)</option></select></label>
           <label>Mulai<input className="input" type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label>
           <label>Sampai<input className="input" type="date" value={to} onChange={e=>setTo(e.target.value)}/></label>
-          <label className="span2">Template<select className="select" value={templateId} onChange={e=>setTemplateId(e.target.value)}><option value="">{format==='docx'?'Gunakan format Word profesional bawaan':'Gunakan PowerPoint bawaan'}</option>{matching.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label>
+          <label className="span2">Template<select className="select" value={templateId} onChange={e=>setTemplateId(e.target.value)}><option value="">{format==='docx'?'Gunakan format Word profesional bawaan':format==='pptx'?'Gunakan PowerPoint bawaan':'PDF/Excel menggunakan format laporan standar'}</option>{matching.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select></label>
         </div>
         <label className="reportOption"><input type="checkbox" checked={aiNote} onChange={e=>setAiNote(e.target.checked)}/> Catatan otomatis</label>
         {aiNote&&<label>Petunjuk catatan tambahan<textarea className="textarea" maxLength={500} value={aiInstruction} onChange={e=>setAiInstruction(e.target.value)} placeholder="Soroti hal yang ingin diperhatikan, tanpa menambah fakta baru."/></label>}
