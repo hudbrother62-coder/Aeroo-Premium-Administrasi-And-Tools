@@ -20,7 +20,7 @@ export default function RekapPage(){
   const person=data?.individuals.find(x=>x.id===selected)||data?.individuals[0];
 
   return <>
-    <div className="pageHeader"><h1>Rekap</h1><a className="btn secondary" href={"/api/reports/summary?"+new URLSearchParams({month,span:String(span),format:"xlsx"})}>Export Excel</a></div>
+    <div className="pageHeader"><h1>Rekap</h1><div className="taskLinks">{(["xlsx","docx","pdf"] as const).map(format=><a key={format} className="btn secondary" href={"/api/reports/summary?"+new URLSearchParams({month,span:String(span),format})}>Ekspor {format==="xlsx"?"Excel":format==="docx"?"Word":"PDF"}</a>)}</div></div>
     <div className="toolbar card"><input className="input" type="month" value={month} onChange={e=>setMonth(e.target.value)}/><select className="select" value={span} onChange={e=>setSpan(Number(e.target.value) as 1|6)}><option value={1}>Satu bulan</option><option value={6}>Enam bulan terakhir</option></select><div className="tabBar" style={{margin:0}}><button className={mode==='ALL'?'tab active':'tab'} onClick={()=>setMode('ALL')}>Keseluruhan</button><button className={mode==='PERSON'?'tab active':'tab'} onClick={()=>setMode('PERSON')}>1 Individu</button></div></div>
     {error&&<div className="notice error section">{error}</div>}
     {mode==='ALL'&&data&&<>
