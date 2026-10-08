@@ -16,4 +16,30 @@ export function noteInput(input:any){
  return {title:title||'Tanpa judul',content,status,is_pinned:input.is_pinned===true,revision,context_type,visibility,
   audience:id(input.audience),class_id:id(input.class_id),member_id:id(input.member_id),attendance_event_id:id(input.attendance_event_id),agenda_id:id(input.agenda_id),journal_id:id(input.journal_id)};
 }
-export function reportRows(d:any){return {summary:[{Indikator:'Anggota',Jumlah:d.counts.total},{Indikator:'Pertemuan',Jumlah:d.attendance.meetings??0},{Indikator:'Hadir',Jumlah:d.attendance.H},{Indikator:'Izin',Jumlah:d.attendance.I},{Indikator:'Alfa',Jumlah:d.attendance.A},{Indikator:'Belum absen',Jumlah:d.attendance.pending??0},{Indikator:'Jurnal selesai',Jumlah:d.journals}],individuals:(d.individuals||[]).map((p:any)=>({Nama:p.name,Kelas:p.class_name||'',Jenjang:p.level_name||'',Hadir:p.H,Izin:p.I,Alfa:p.A,'Belum absen':p.pending??0,'Hadir (%)':p.percentage??'Belum diisi',Jurnal:p.journals??0}))}}
+export function reportRows(d:any){
+  const H=Number(d.attendance?.H??0),I=Number(d.attendance?.I??0),A=Number(d.attendance?.A??0);
+  const percentage=H+I+A?Math.round(H/(H+I+A)*1000)/10:'Belum diisi';
+  return {
+    summary:[
+      {Indikator:'Bulan acuan',Jumlah:d.month??'-'},
+      {Indikator:'Rentang (bulan)',Jumlah:d.span??1},
+      {Indikator:'Anggota aktif saat laporan dibuat',Jumlah:d.counts?.total??0},
+      {Indikator:'Caberawit aktif',Jumlah:d.counts?.caberawit??0},
+      {Indikator:'Muda-Mudi aktif',Jumlah:d.counts?.muda_mudi??0},
+      {Indikator:'Ibu-Ibu aktif',Jumlah:d.counts?.ibu_ibu??0},
+      {Indikator:'Pengurus aktif',Jumlah:d.counts?.pengurus??0},
+      {Indikator:'Pertemuan',Jumlah:d.attendance?.meetings??0},
+      {Indikator:'Hadir',Jumlah:H},
+      {Indikator:'Izin',Jumlah:I},
+      {Indikator:'Alfa',Jumlah:A},
+      {Indikator:'Belum absen',Jumlah:d.attendance?.pending??0},
+      {Indikator:'Kehadiran dari catatan terisi (%)',Jumlah:percentage},
+      {Indikator:'Jurnal selesai',Jumlah:d.journals??0},
+      {Indikator:'Metode perhitungan',Jumlah:'H / (H + I + A); catatan kosong tidak dihitung sebagai Alfa'},
+    ],
+    individuals:(d.individuals||[]).map((p:any)=>({
+      Nama:p.name,Kelas:p.class_name||'',Jenjang:p.level_name||'',Hadir:p.H,Izin:p.I,Alfa:p.A,
+      'Belum absen':p.pending??0,'Hadir (%)':p.percentage??'Belum diisi',Jurnal:p.journals??0
+    }))
+  };
+}
