@@ -10,7 +10,7 @@ export default function CompletenessPage(){
   async function load(){setLoading(true);const r=await fetch('/api/completeness',{cache:'no-store'});const j=await r.json();if(!r.ok)setError(j.error||'Data tidak dapat dimuat.');else{setData(j);setError('')}setLoading(false)}
   useEffect(()=>{void load()},[]);
   const cards=data?[['Data Anggota',data.summary.members],['Presensi',data.summary.attendance],['Jurnal',data.summary.journals],['Dokumentasi',data.summary.documentation],['Target',data.summary.targets],['Tindak Lanjut',data.summary.followups],['Import',data.summary.imports]]:[];
-  return <><div className="pageHeader"><h1>Kelengkapan</h1><button className="btn ghost" onClick={()=>void load()}>Muat Ulang</button></div>
+  return <><div className="pageHeader"><div><h1>Kelengkapan</h1><p>Daftar pemeriksaan administrasi yang perlu dilengkapi: anggota, presensi, jurnal, target, dokumentasi, dan tindak lanjut. Inventaris barang dicatat di <Link href="/sarpras">Sarana &amp; Prasarana</Link>.</p></div><button className="btn ghost" onClick={()=>void load()}>Muat Ulang</button></div>
     {error&&<div className="notice error">{error}</div>}
     {loading?<div className="card"><div className="skeleton" style={{height:100}}/></div>:data?.summary.total===0?<div className="card completenessClear"><CheckCircle2 size={26}/><strong>Semua beres</strong></div>:<>
       <div className="metricGrid">{cards.map(([label,value])=><div className="metricCard" key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}</div>
