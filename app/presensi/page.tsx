@@ -19,7 +19,7 @@ type Tab='baru'|'riwayat'|'rekap';
 const labelDate=(s:string)=>new Date(s+'T12:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 const statusCount=(e:EventRow,s:'H'|'I'|'A')=>(e.attendance_records||[]).filter(r=>r.status===s).length;
 
-function HistoryView({onRecap}:{onRecap:(id:string)=>void}){
+function HistoryView({onRecap}:{onRecap:(id:string,date:string)=>void}){
  const [month,setMonth]=useState(jakartaDate().slice(0,7));
  const [selected,setSelected]=useState(jakartaDate());
  const [audience,setAudience]=useState('');
@@ -78,7 +78,7 @@ function HistoryView({onRecap}:{onRecap:(id:string)=>void}){
    </section>
    <section className="attendancePanel">
      <div className="attendancePanelHead"><div><h2>{labelDate(selected)}</h2><p>{selectedEvents.length} pertemuan tercatat pada tanggal ini</p></div><CalendarDays size={19}/></div>
-     {loading?<div className="skeleton" style={{height:100}}/>:selectedEvents.length?<div className="attendanceMeetingList">{selectedEvents.map(e=><article className="attendanceMeeting" key={e.id}><div className="attendanceMeetingBody"><h3>{e.title}</h3><p>{audienceLabels[e.audience as Audience]||e.audience}{e.classes?.name?' · '+e.classes.name:''}{e.activity_types?.name?' · '+e.activity_types.name:''}</p><div className="attendanceMeetingStats"><span>{statusCount(e,'H')} Hadir</span><span>{statusCount(e,'I')} Izin</span><span>{statusCount(e,'A')} Alfa</span><span>{(e.attendance_records||[]).filter(r=>r.status==null).length} Belum</span></div></div><div className="attendanceMeetingActions"><button type="button" className="btn ghost" onClick={()=>onRecap(e.id)}>Detail <ArrowRight size={15}/></button>{writable.includes(e.audience as Audience)&&<Link className="btn secondary" href={'/presensi/buat?event_id='+e.id}>Edit absensi</Link>}</div></article>)}</div>:<div className="attendanceEmpty"><CalendarDays size={27}/><strong>Belum ada presensi di tanggal ini</strong><span>Pilih tanggal bertanda untuk melihat pertemuan yang sudah dicatat.</span></div>}
+     {loading?<div className="skeleton" style={{height:100}}/>:selectedEvents.length?<div className="attendanceMeetingList">{selectedEvents.map(e=><article className="attendanceMeeting" key={e.id}><div className="attendanceMeetingBody"><h3>{e.title}</h3><p>{audienceLabels[e.audience as Audience]||e.audience}{e.classes?.name?' · '+e.classes.name:''}{e.activity_types?.name?' · '+e.activity_types.name:''}</p><div className="attendanceMeetingStats"><span>{statusCount(e,'H')} Hadir</span><span>{statusCount(e,'I')} Izin</span><span>{statusCount(e,'A')} Alfa</span><span>{(e.attendance_records||[]).filter(r=>r.status==null).length} Belum</span></div></div><div className="attendanceMeetingActions"><button type="button" className="btn ghost" onClick={()=>onRecap(e.id,e.event_date)}>Detail <ArrowRight size={15}/></button>{writable.includes(e.audience as Audience)&&<Link className="btn secondary" href={'/presensi/buat?event_id='+e.id}>Edit absensi</Link>}</div></article>)}</div>:<div className="attendanceEmpty"><CalendarDays size={27}/><strong>Belum ada presensi di tanggal ini</strong><span>Pilih tanggal bertanda untuk melihat pertemuan yang sudah dicatat.</span></div>}
    </section>
  </div>;
 }
@@ -86,7 +86,7 @@ export default function PresensiPage(){
  const [tab,setTab]=useState<Tab>('baru');
  const [focusEvent,setFocusEvent]=useState('');
  useEffect(()=>{const read=()=>{const p=new URLSearchParams(window.location.search);const current=p.get('tab');setTab(current==='riwayat'||current==='rekap'?current:'baru');setFocusEvent(p.get('event_id')||'');};read();window.addEventListener('popstate',read);return()=>window.removeEventListener('popstate',read);},[]);
- function select(next:Tab,event=''){setTab(next);setFocusEvent(event);const p=new URLSearchParams();if(next!=='baru')p.set('tab',next);if(event)p.set('event_id',event);window.history.pushState(null,'','/presensi'+(p.size?'?'+p.toString():''));}
+ function select(next:Tab,event='',date=''){setTab(next);setFocusEvent(event);const p=new URLSearchParams();if(next!=='baru')p.set('tab',next);if(event)p.set('event_id',event);if(date)p.set('month',date.slice(0,7));window.history.pushState(null,'','/presensi'+(p.size?'?'+p.toString():''));}
  return <div className="attendancePage">
   <div className="pageHeader"><div><h1>Presensi</h1><p>Mulai absensi, perbaiki riwayat, atau lihat rekap dari data yang sama.</p></div></div>
   <nav className="attendanceNav" aria-label="Subnavigasi presensi">
@@ -94,6 +94,6 @@ export default function PresensiPage(){
    <button type="button" onClick={()=>select('riwayat')} className={tab==='riwayat'?'active':''} aria-current={tab==='riwayat'?'page':undefined}><History size={18}/><span>Riwayat</span></button>
    <button type="button" onClick={()=>select('rekap')} className={tab==='rekap'?'active':''} aria-current={tab==='rekap'?'page':undefined}><BarChart3 size={18}/><span>Rekap</span></button>
   </nav>
-  {tab==='baru'?<CreateAttendance embedded/>:tab==='riwayat'?<HistoryView onRecap={id=>select('rekap',id)}/>:<AttendanceRecap embedded focusEventId={focusEvent}/>}
+  {tab==='baru'?<CreateAttendance embedded/>:tab==='riwayat'?<HistoryView onRecap={(id,date)=>select('rekap',id,date)}/>:<AttendanceRecap embedded focusEventId={focusEvent}/>}
  </div>;
 }
