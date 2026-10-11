@@ -7,7 +7,7 @@ import {ArrowLeft,History} from 'lucide-react';
 import {readScopesForRole,writeScopesForRole,type Audience} from '@/lib/access';
 import {useEffect,useState} from 'react';
 
-type Journal={id:string;class_id?:string;journal_date:string;journal_kind:string;title:string;state?:string;revision?:number;started_at?:string;ended_at?:string;material?:string;summary?:string;decisions?:string;assessment?:{presenter?:string;presenter_id?:string;materials?:Array<{topic:string;page:string;status?:string}>;meeting_type?:string;absence?:string};classes?:{id?:string;name?:string;level_id?:string};members?:{name?:string}};
+type Journal={id:string;class_id?:string;journal_date:string;journal_kind:string;title:string;state?:string;revision?:number;started_at?:string;ended_at?:string;material?:string;summary?:string;decisions?:string;assessment?:{class_assessment?:{level_id?:string};presenter?:string;presenter_id?:string;materials?:Array<{topic:string;page:string;status?:string}>;meeting_type?:string;absence?:string};classes?:{id?:string;name?:string;level_id?:string};members?:{name?:string}};
 const tabs=[['','Semua'],['PENGKAJIAN','Pengkajian'],['KELOMPOK','Kelompok'],['IBU_IBU','Ibu-Ibu'],['PENGURUS','Musyawarah'],['CABERAWIT_CLASS','Caberawit Kelas'],['CABERAWIT_INDIVIDUAL','Caberawit Individu'],['MUDA_MUDI_CLASS','Muda-Mudi Kelas'],['MUDA_MUDI_INDIVIDUAL','Muda-Mudi Individu']] as const;
 const labels:Record<string,string>={PENGKAJIAN:'Pengkajian',KELOMPOK:'Kelompok',IBU_IBU:'Ibu-Ibu',PENGURUS:'Musyawarah',CABERAWIT_CLASS:'Caberawit Kelas',CABERAWIT_INDIVIDUAL:'Caberawit Individu',MUDA_MUDI_CLASS:'Muda-Mudi Kelas',MUDA_MUDI_INDIVIDUAL:'Muda-Mudi Individu'};
 
@@ -31,7 +31,7 @@ export default function Page(){
   };
   useEffect(()=>{void load()},[kind,month,status]);
 
-  const filtered=data.filter(j=>(!status||(j.state||'DRAFT')===status)&&(!levelId||(j.classes?.level_id||classes.find(c=>c.id===(j.classes?.id||j.class_id))?.level_id)===levelId));
+  const filtered=data.filter(j=>(!status||(j.state||'DRAFT')===status)&&(!levelId||(j.assessment?.class_assessment?.level_id||j.classes?.level_id||classes.find(c=>c.id===(j.classes?.id||j.class_id))?.level_id)===levelId));
   return <div className="journalWorkspace">
     <div className="pageHeader"><div><Link className="journalBack" href="/jurnal"><ArrowLeft size={16}/> Dashboard Jurnal</Link><h1>Riwayat Jurnal</h1><p>Temukan, periksa, dan perbarui jurnal yang sudah tersimpan.</p></div><Link className="btn writeOnly" href="/jurnal/buat">+ Tambah Jurnal</Link></div>
     <nav className="journalSubnav" aria-label="Navigasi jurnal"><Link href="/jurnal">Dashboard</Link><Link href="/jurnal/buat">Isi Jurnal</Link><Link href="/jurnal/riwayat" className="journalNavActive"><History size={15}/> Riwayat Jurnal</Link></nav>

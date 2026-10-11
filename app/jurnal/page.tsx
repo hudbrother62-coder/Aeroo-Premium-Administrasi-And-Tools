@@ -6,7 +6,7 @@ import {BookOpenText,ArrowRight,ClipboardList,Target,CheckCheck,UsersRound,Calen
 import {jakartaDate} from '@/lib/domain';
 import {readScopesForRole,writeScopesForRole,type Audience} from '@/lib/access';
 
-type Journal={id:string;class_id?:string;journal_date:string;journal_kind:string;title:string;state?:string;follow_up?:string;classes?:{id?:string;name?:string;level_id?:string};journal_progress?:Array<{member_id?:string;participant_key?:string;target_id?:string;progress_value?:number|null}>};
+type Journal={id:string;class_id?:string;journal_date:string;journal_kind:string;title:string;state?:string;follow_up?:string;classes?:{id?:string;name?:string;level_id?:string};assessment?:{class_assessment?:{level_id?:string}};journal_progress?:Array<{member_id?:string;participant_key?:string;target_id?:string;progress_value?:number|null}>};
 type Level={id:string;name:string};
 type ClassRow={id:string;name:string;level_id?:string;audience:string};
 const kindLabels:Record<string,string>={PENGKAJIAN:'Pengkajian',KELOMPOK:'Kelompok',IBU_IBU:'Ibu-Ibu',PENGURUS:'Musyawarah',CABERAWIT_CLASS:'Caberawit Kelas',CABERAWIT_INDIVIDUAL:'Caberawit Individu',MUDA_MUDI_CLASS:'Muda-Mudi Kelas',MUDA_MUDI_INDIVIDUAL:'Muda-Mudi Individu'};
@@ -61,7 +61,7 @@ export default function JournalDashboard(){
     if(kind&&j.journal_kind!==kind)return false;
     if(classId&&(j.classes?.id||j.class_id)!==classId)return false;
     if(levelId){
-      const journalLevel=j.classes?.level_id||classes.find(c=>c.id===(j.classes?.id||j.class_id))?.level_id;
+      const journalLevel=j.assessment?.class_assessment?.level_id||j.classes?.level_id||classes.find(c=>c.id===(j.classes?.id||j.class_id))?.level_id;
       if(journalLevel!==levelId)return false;
     }
     return true;
