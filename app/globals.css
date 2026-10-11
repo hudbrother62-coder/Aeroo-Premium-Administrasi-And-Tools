@@ -1473,3 +1473,146 @@ html[data-theme="dark"] .textarea{background:#0f1728}
 .attendanceCorrectionRow label{display:grid;gap:6px;color:var(--muted);font-size:12px;font-weight:750}
 .attendanceCorrectionRow .btn{min-width:90px}
 @media(max-width:700px){.attendanceHistoryItem{flex-direction:column;align-items:stretch}.attendanceHistoryActions{justify-content:space-between}.attendanceHistoryActions .btn{flex:1}.attendanceCorrectionRow{grid-template-columns:1fr}.attendanceHistoryDialog{padding:14px;max-height:88vh}}
+
+/* Presensi Simpul — guided entry, calendar history, analytical drill-down */
+.attendancePage,.attendanceRecap{min-width:0}
+.attendanceNav,.attendanceDetailTabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 20px}
+.attendanceNav button,.attendanceDetailTabs button{appearance:none;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--muted);font:inherit;font-size:13px;font-weight:620;display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:12px 19px;min-height:46px;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.attendanceNav button.active,.attendanceDetailTabs button.active{border-color:var(--primary);background:var(--primary-soft);color:var(--primary)}
+.attendanceNav button:focus-visible,.attendanceDetailTabs button:focus-visible,.attendanceDay:focus-visible,.attendanceMeetingPick:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.attendanceWorkspace{display:grid;grid-template-columns:minmax(330px,.9fr) minmax(0,1.1fr);gap:17px;align-items:start}
+.attendancePanel{min-width:0;border:1px solid var(--border);background:var(--surface);border-radius:16px;padding:20px}
+.attendancePanelHead{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:17px}
+.attendancePanelHead h2{font-size:17px;line-height:1.35;margin:0 0 4px;font-weight:690}
+.attendancePanelHead p{margin:0;color:var(--muted);font-size:12px;line-height:1.55}
+.attendancePanelHead>svg{color:var(--primary);flex:none}
+.attendanceSubtle{padding:6px 9px;background:var(--surface-2);color:var(--muted);border-radius:8px;font-size:11px;white-space:nowrap}
+.attendanceFilters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 20px}
+.attendanceFilters>label{min-width:0;display:grid;gap:6px;color:var(--muted);font-size:11px;font-weight:610}
+.attendanceFilters .input,.attendanceFilters .select{width:100%;min-width:0;max-width:100%;font-size:12px}
+.attendanceMonthHead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}
+.attendanceMonthHead strong{font-size:14px;text-transform:capitalize}
+.attendanceMonthHead .smallAction{width:36px;height:36px;display:grid;place-items:center}
+.attendanceCalendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.attendanceWeekName{display:grid;place-items:center;min-height:30px;color:var(--muted);font-size:10px;font-weight:650}
+.attendanceDay,.attendanceDayEmpty{min-width:0;min-height:68px;border-radius:10px}
+.attendanceDay{appearance:none;border:1px solid var(--border);background:var(--surface-2);color:var(--text);display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;padding:9px 8px;cursor:pointer}
+.attendanceDay strong{font-size:13px;font-weight:600}
+.attendanceDay small{font-size:9px;color:var(--primary);display:flex;align-items:center;gap:4px;white-space:nowrap}
+.attendanceDay.selected{background:var(--primary-soft);border-color:var(--primary)}
+.attendanceDay.today strong{color:var(--primary)}
+.attendanceDateDot{display:inline-block;width:5px;height:5px;background:var(--primary);border-radius:50%}
+.attendanceMeetingList{display:grid;gap:11px}
+.attendanceMeeting{border:1px solid var(--border);background:var(--surface-2);border-radius:13px;padding:15px;display:flex;justify-content:space-between;align-items:center;gap:14px;min-width:0}
+.attendanceMeetingBody{min-width:0}
+.attendanceMeeting h3{margin:0;font-size:14px;font-weight:660}
+.attendanceMeeting p{margin:5px 0 9px;font-size:11px;color:var(--muted)}
+.attendanceMeetingStats{display:flex;gap:6px;flex-wrap:wrap}
+.attendanceMeetingStats span{background:var(--surface);border:1px solid var(--border);padding:5px 8px;border-radius:7px;font-size:10px;color:var(--muted)}
+.attendanceMeetingActions{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}
+.attendanceMeetingActions .btn{min-height:34px;font-size:11px;padding:7px 11px;white-space:nowrap}
+.attendanceEmpty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;min-height:170px;padding:24px 14px;color:var(--muted)}
+.attendanceEmpty svg{color:var(--primary)}
+.attendanceEmpty strong{color:var(--text);font-size:14px}
+.attendanceEmpty span{font-size:11px;max-width:330px;line-height:1.6}
+.attendanceStartIntro{display:flex;align-items:center;gap:14px;margin:0 0 13px}
+.attendanceStartIcon{height:45px;width:45px;display:grid;place-items:center;border-radius:13px;background:var(--primary-soft);color:var(--primary);font-weight:700}
+.attendanceStartIntro h2{margin:0;font-size:19px}
+.attendanceStartIntro p{margin:4px 0 0;font-size:12px;color:var(--muted)}
+.attendanceStartCard{padding:24px!important;border-radius:16px!important;max-width:100%}
+.attendanceSteps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-bottom:23px}
+.attendanceSteps span{border:1px solid var(--border);border-radius:9px;padding:9px 5px;text-align:center;font-size:11px;font-weight:620;color:var(--muted);background:var(--surface-2)}
+.attendanceSteps span:first-child{background:var(--primary-soft);color:var(--primary);border-color:var(--primary)}
+.attendanceFormGrid{gap:17px!important}
+.attendanceFormGrid>label{display:grid;gap:7px;font-size:12px;font-weight:620}
+.attendanceFormGrid>label>.input,.attendanceFormGrid>label>.select{min-height:44px}
+.attendanceSelectedAgenda{display:flex;gap:12px;align-items:start;margin:18px 0 0;background:var(--primary-soft);border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border));padding:13px;border-radius:11px;color:var(--primary)}
+.attendanceSelectedAgenda>div{display:grid;gap:4px}
+.attendanceSelectedAgenda strong{font-size:13px}
+.attendanceSelectedAgenda span{font-size:11px;line-height:1.5;color:var(--muted)}
+.attendanceAgendaHint{display:flex;align-items:start;flex-direction:column;gap:5px;margin-top:18px;padding:13px;border:1px dashed var(--border);border-radius:11px;color:var(--muted);font-size:11px}
+.attendanceAgendaHint strong{color:var(--text);font-size:12px}
+.attendanceAgendaHint a{color:var(--primary);font-size:12px;font-weight:650;text-decoration:none;margin-top:4px}
+.attendanceStartActions{display:flex;justify-content:flex-end;border-top:1px solid var(--border);margin-top:20px;padding-top:19px}
+.attendanceStartActions .btn{min-height:44px;display:inline-flex;gap:9px}
+.attendanceActiveHeader{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:17px!important}
+.attendanceActiveHeader h2{margin:5px 0;font-size:17px}
+.attendanceActiveHeader p{color:var(--muted);margin:4px 0;font-size:11px}
+.attendanceEyebrow{text-transform:uppercase;letter-spacing:.08em;font-size:10px;font-weight:680;color:var(--primary)}
+.attendanceRecapHead{margin:4px 0 16px}
+.attendanceRecapFilters{grid-template-columns:repeat(4,minmax(0,1fr));padding:14px;border:1px solid var(--border);border-radius:13px;background:var(--surface)}
+.attendanceKpiGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.attendanceKpi{display:grid;gap:5px;padding:17px;border:1px solid var(--border);border-radius:14px;background:var(--surface);min-width:0}
+.attendanceKpi span{font-size:11px;color:var(--muted)}
+.attendanceKpi strong{font-size:28px;letter-spacing:-.045em;font-weight:720;color:var(--text)}
+.attendanceKpi small{font-size:10px;line-height:1.4;color:var(--muted)}
+.attendanceDetailTabs{margin:0 0 16px}
+.attendanceDetailTabs button{font-size:12px;min-height:40px;padding:9px 14px}
+.attendanceOverviewGrid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}
+.attendanceStackedTrack{height:14px;border-radius:999px;display:flex;overflow:hidden;background:var(--surface-2);margin:23px 0}
+.attendanceStack{height:100%;min-width:0}
+.attendanceStack.H,.attendanceBarFill.H,.attendanceStatusDot.H{background:#16a58d}
+.attendanceStack.I,.attendanceBarFill.I,.attendanceStatusDot.I{background:#c79537}
+.attendanceStack.A,.attendanceBarFill.A,.attendanceStatusDot.A{background:#df6b6b}
+.attendanceStack.pending,.attendanceBarFill.pending,.attendanceStatusDot.pending{background:#76849d}
+.attendanceStatusBars{display:grid;gap:17px}
+.attendanceStatusBar{display:grid;grid-template-columns:100px minmax(0,1fr) 38px;align-items:center;gap:9px;font-size:11px}
+.attendanceStatusBar>span{display:flex;align-items:center;gap:7px;color:var(--muted)}
+.attendanceStatusBar strong{font-size:12px;text-align:right}
+.attendanceStatusDot{width:9px;height:9px;border-radius:100%;display:inline-block}
+.attendanceBarTrack{height:9px;background:var(--surface-2);border-radius:30px;overflow:hidden}
+.attendanceBarFill{height:100%;border-radius:30px}
+.attendanceOverviewNumbers{display:grid;gap:0}
+.attendanceOverviewNumbers>div{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);padding:13px 0;gap:10px}
+.attendanceOverviewNumbers span{color:var(--muted);font-size:12px}
+.attendanceOverviewNumbers strong{font-size:20px}
+.attendanceFullButton{margin-top:18px}
+.attendanceMeetingExplorer{display:grid;grid-template-columns:minmax(235px,.36fr) minmax(0,.64fr);gap:14px;align-items:start}
+.attendanceMeetingPicker,.attendanceMeetingDetails{max-height:none}
+.attendanceMeetingPickList{display:grid;gap:7px;max-height:580px;overflow-y:auto}
+.attendanceMeetingPick{display:grid;gap:5px;text-align:left;border:1px solid var(--border);background:var(--surface-2);border-radius:10px;padding:12px 13px;color:var(--text);cursor:pointer}
+.attendanceMeetingPick.selected{border-color:var(--primary);background:var(--primary-soft)}
+.attendanceMeetingPick strong{font-size:12px;line-height:1.4}
+.attendanceMeetingPick span,.attendanceMeetingPick small{font-size:10px;color:var(--muted);line-height:1.4}
+.attendanceSmallMetrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:0 0 17px}
+.attendanceSmallMetrics span{padding:10px 5px;text-align:center;border:1px solid var(--border);background:var(--surface-2);border-radius:9px;font-size:11px;color:var(--text);font-weight:630}
+.attendanceDetailFilters{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 14px}
+.attendanceDetailFilters .attendanceSearch{flex:1}
+.attendanceDetailFilters .select{max-width:180px}
+.attendanceSearch{position:relative;display:flex;align-items:center;min-width:180px}
+.attendanceSearch svg{position:absolute;left:12px;pointer-events:none;color:var(--muted)}
+.attendanceSearch input{width:100%;padding-left:36px}
+.attendanceStatusChip{display:inline-flex;border-radius:6px;padding:5px 8px;font-size:10px;font-weight:650;white-space:nowrap}
+.attendanceStatusChip.hadir{background:rgba(22,165,141,.13);color:#18a58d}
+.attendanceStatusChip.izin{background:rgba(199,149,55,.13);color:#c79537}
+.attendanceStatusChip.alfa{background:rgba(223,107,107,.13);color:#db7474}
+.attendanceStatusChip.pending{background:var(--surface-2);color:var(--muted)}
+.attendancePeopleSearch{max-width:410px;margin-bottom:14px}
+.attendancePersonDates{margin-top:9px;border-left:2px solid var(--primary);padding:4px 0 4px 10px;color:var(--muted)}
+.attendancePersonDates p{font-size:11px;margin:4px 0;line-height:1.5}
+@media(max-width:1100px){
+ .attendanceWorkspace,.attendanceOverviewGrid,.attendanceMeetingExplorer{grid-template-columns:1fr}
+ .attendanceMeetingPickList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-height:360px}
+}
+@media(max-width:700px){
+ .attendanceNav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+ .attendanceNav button{padding:10px 5px;font-size:10px;gap:5px;flex-direction:column;min-height:58px}
+ .attendancePanel{padding:14px}
+ .attendanceFilters,.attendanceRecapFilters{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .attendanceRecapHead{align-items:flex-start;flex-wrap:wrap}
+ .attendanceKpiGrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .attendanceKpi{padding:13px}
+ .attendanceKpi strong{font-size:24px}
+ .attendanceStartCard{padding:15px!important}
+ .attendanceSteps{grid-template-columns:repeat(2,minmax(0,1fr));margin-bottom:15px}
+ .attendanceDay,.attendanceDayEmpty{min-height:53px;padding:7px 5px}
+ .attendanceDay small{font-size:9px}
+ .attendanceMeeting{flex-direction:column;align-items:stretch}
+ .attendanceMeetingActions{flex-direction:row}
+ .attendanceMeetingActions .btn{flex:1}
+ .attendanceMeetingPickList{grid-template-columns:1fr;max-height:320px}
+ .attendanceSmallMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .attendanceActiveHeader{align-items:flex-start;flex-direction:column}
+ .attendanceDetailTabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+ .attendanceDetailTabs button{font-size:10px;padding:10px 4px;gap:4px;flex-direction:column}
+}
