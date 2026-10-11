@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import GlobalTools from '@/components/GlobalTools';
+import NavigationReturn from '@/components/NavigationReturn';
 import {usePathname} from 'next/navigation';
 import {useEffect,useMemo,useState} from 'react';
 import {
@@ -76,6 +77,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
   },[isLogin]);
 
   useEffect(()=>{setDrawer(false);setMoreOpen(false);setQuickOpen(false)},[path]);
+  useEffect(()=>{const close=()=>{setDrawer(false);setMoreOpen(false);setQuickOpen(false)};window.addEventListener('simpul:close-overlays',close);return()=>window.removeEventListener('simpul:close-overlays',close)},[]);
   const visible=useMemo(()=>user?nav.filter(x=>x.roles.includes(user.role)&&(navPermission[x.href]?user.permissions?.[navPermission[x.href]]!==false:true)):nav.filter(x=>x.publicRead),[user]);
   const primaryMobile=['/','/agenda','/presensi','/jurnal'];
   const mobilePrimary=primaryMobile.flatMap(href=>visible.filter(x=>x.href===href));
@@ -101,6 +103,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
   },[canWriteFormal,user]);
 
   async function logout(){
+    sessionStorage.removeItem('simpul-navigation-history');
     await fetch('/api/auth/logout',{method:'POST'});
     window.location.href='/login';
   }
@@ -140,6 +143,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
           <button className="iconOnly headerTheme" onClick={()=>setDark(v=>!v)} aria-label="Tema">{dark?<Sun size={19}/>:<Moon size={19}/>}</button>
         </div>
       </header>
+      <NavigationReturn/>
       <div className="pageContent" key={path}>{children}</div>
       {user&&quickItems.length>0&&<><button className="mobileQuickFab" onClick={()=>{setQuickOpen(v=>!v);setMoreOpen(false)}} aria-label="Tambah data" aria-expanded={quickOpen}><Plus size={22}/></button>{quickOpen&&<div className="mobileQuickPanel"><div className="quickAddGrid">{quickItems.map(item=>{const Icon=item.icon;return <Link key={item.href} href={item.href} className="quickAddItem"><Icon size={18}/><span>{item.label}</span></Link>})}</div></div>}</>}
       <nav className="mobileBottomNav" aria-label="Navigasi utama">
