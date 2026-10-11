@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import {useEffect,useState} from 'react';
+import {useEffect,useState,type ReactNode} from 'react';
 import {Activity,ArrowRight,BarChart3,BookOpen,CalendarDays,CheckCircle2,ChevronRight,ClipboardCheck,Clock3,Download,Eye,GraduationCap,LogIn,RefreshCw,Target,Users,AlertCircle} from 'lucide-react';
 import type {DashboardAnalytics,DashboardBucket,DashboardGroup} from '@/lib/dashboard-analytics';
 import './dashboard.css';
@@ -37,12 +37,12 @@ function chartLine(bucket:DashboardBucket[],color='var(--sim-blue)'){
     {!bucket.some(b=>b.percentage!==null)&&<div className="simChartEmpty">Belum ada hasil presensi pada periode ini.</div>}
   </div>;
 }
-function HorizontalStats({items,mode}:{items:DashboardGroup[];mode:'attendance'|'count'}){
+function HorizontalStats({items,mode}:{items:DashboardGroup[];mode:'attendance'|'count'|'progress'}){
   const list=items.slice(0,7),max=Math.max(1,...list.map(x=>x.count));
   if(!list.length)return <p className="simMuted simEmptyMini">Belum ada data untuk ditampilkan.</p>;
   return <div className="simHorizontal">{list.map((x,i)=><div className="simHorizontalItem" key={x.id}>
-    <div className="simHorizontalHead"><strong title={x.name}>{x.name}</strong><b>{mode==='attendance'?pct(x.percentage):number.format(x.count)}</b></div>
-    <div className="simTrack"><span style={{width:(mode==='attendance'?(x.percentage??0):(x.count/max*100))+'%',background:['var(--sim-blue)','var(--sim-purple)','var(--sim-green)','var(--sim-amber)','var(--sim-sky)'][i%5]}}/></div>
+    <div className="simHorizontalHead"><strong title={x.name}>{x.name}</strong><b>{mode==='count'?number.format(x.count):pct(x.percentage)}</b></div>
+    <div className="simTrack"><span style={{width:(mode==='count'?(x.count/max*100):(x.percentage??0))+'%',background:['var(--sim-blue)','var(--sim-purple)','var(--sim-green)','var(--sim-amber)','var(--sim-sky)'][i%5]}}/></div>
     <small>{mode==='attendance'?(x.total?number.format(x.present)+' hadir dari '+number.format(x.total)+' tercatat':'Belum ada presensi'):(x.count===1?'1 anggota':number.format(x.count)+' anggota')}</small>
   </div>)}</div>;
 }
@@ -55,10 +55,10 @@ function VerticalStats({items,format}:{items:Array<{label:string;value:number}>;
     <span title={x.label}>{x.label}</span>
   </div>)}</div>;
 }
-function StatCard({href,icon,label,value,detail,tone}:{href:string;icon:React.ReactNode;label:string;value:string;detail:string;tone:string}){
+function StatCard({href,icon,label,value,detail,tone}:{href:string;icon:ReactNode;label:string;value:string;detail:string;tone:string}){
   return <Link className={'simStat simStat-'+tone} href={href}><div className="simStatTop"><span className="simStatIcon">{icon}</span><ArrowRight size={17}/></div><span className="simStatLabel">{label}</span><strong className="simStatValue">{value}</strong><small>{detail}</small></Link>;
 }
-function ChartCard({title,subtitle,children,action}:{title:string;subtitle?:string;children:React.ReactNode;action?:React.ReactNode}){
+function ChartCard({title,subtitle,children,action}:{title:string;subtitle?:string;children:ReactNode;action?:ReactNode}){
   return <section className="simPanel"><div className="simPanelTitle"><div><h2>{title}</h2>{subtitle&&<p>{subtitle}</p>}</div>{action}</div>{children}</section>;
 }
 function monthLabel(month:string){
@@ -158,7 +158,7 @@ export default function Home(){
       </div>
       <div className="simTriple">
         <ChartCard title="Progres Pembelajaran" subtitle="Nilai progres terbaru dari jurnal yang dinilai">
-          {data.targets.assessed?<HorizontalStats mode="attendance" items={data.targetByLevel.filter(x=>x.assessed>0).map(x=>({id:x.id,name:x.name,count:x.assessed,present:0,total:0,percentage:x.percentage}))}/>:<div className="simSpecialEmpty"><Target size={24}/><strong>Belum ada progres dinilai</strong><p>Grafik akan muncul setelah target dan penilaian jurnal tercatat.</p></div>}
+          {data.targets.assessed?<HorizontalStats mode="progress" items={data.targetByLevel.filter(x=>x.assessed>0).map(x=>({id:x.id,name:x.name,count:x.assessed,present:0,total:0,percentage:x.percentage}))}/>:<div className="simSpecialEmpty"><Target size={24}/><strong>Belum ada progres dinilai</strong><p>Grafik akan muncul setelah target dan penilaian jurnal tercatat.</p></div>}
           <Link href="/target" className="simTextLink simBottomLink">Lihat Target & Progres <ChevronRight size={15}/></Link>
         </ChartCard>
         <ChartCard title={span===1?'Pertemuan per Pekan':'Pertemuan per Bulan'} subtitle="Jumlah sesi presensi yang terdaftar">
