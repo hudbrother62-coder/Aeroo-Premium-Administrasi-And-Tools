@@ -8,7 +8,7 @@ import {usePathname} from 'next/navigation';
 import {useEffect,useMemo,useState} from 'react';
 import {
   LayoutDashboard,Database,ClipboardCheck,BookOpen,Target,
-  CalendarDays,ChartNoAxesCombined,FileText,Settings,Moon,Sun,Menu,X,LogOut,LogIn,MoreHorizontal,NotebookPen,Network,Archive,Upload,PanelLeftClose,PanelLeftOpen,Plus,UserPlus,Users,FileSearch,Eye
+  CalendarDays,Warehouse,ChartNoAxesCombined,FileText,Settings,Moon,Sun,Menu,X,LogOut,LogIn,MoreHorizontal,NotebookPen,Network,Archive,Upload,PanelLeftClose,PanelLeftOpen,Plus,UserPlus,Users,FileSearch,Eye
 } from 'lucide-react';
 
 type Role='ADMIN'|'DEWAN_GURU'|'KELOMPOK'|'VIEWER';
@@ -22,6 +22,7 @@ const nav=[
   {href:'/target',label:'Target & Progres',icon:Target,roles:['ADMIN','DEWAN_GURU','VIEWER'] as Role[],publicRead:true},
   {href:'/agenda',label:'Agenda',icon:CalendarDays,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
   {href:'/rekap',label:'Rekap',icon:ChartNoAxesCombined,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
+  {href:'/sarpras',label:'Sarana & Prasarana',icon:Warehouse,roles:['ADMIN','DEWAN_GURU','KELOMPOK'] as Role[]},
   {href:'/kelengkapan',label:'Kelengkapan',icon:ClipboardCheck,roles:['ADMIN','DEWAN_GURU','KELOMPOK'] as Role[]},
   {href:'/laporan',label:'Laporan',icon:FileText,roles:['ADMIN','DEWAN_GURU','VIEWER'] as Role[],publicRead:true},
   {href:'/struktur',label:'Dapukan & Pengurus',icon:Network,roles:['ADMIN','KELOMPOK'] as Role[]},
@@ -33,7 +34,7 @@ const nav=[
   {href:'/pengaturan',label:'Pengaturan',icon:Settings,roles:['ADMIN'] as Role[]},
 ];
 
-const sections=[['BERANDA',['/']],['OPERASIONAL',['/agenda','/presensi','/jurnal']],['PEMBINAAN',['/target']],['DATA',['/database','/struktur']],['PRIBADI',['/catatan']],['ANALISIS',['/rekap','/kelengkapan','/laporan']],['SISTEM',['/arsip','/impor','/tim-akses','/audit','/pengaturan']]] as const;
+const sections=[['BERANDA',['/']],['OPERASIONAL',['/agenda','/presensi','/jurnal']],['PEMBINAAN',['/target']],['DATA',['/database','/struktur','/sarpras']],['PRIBADI',['/catatan']],['ANALISIS',['/rekap','/kelengkapan','/laporan']],['SISTEM',['/arsip','/impor','/tim-akses','/audit','/pengaturan']]] as const;
 const navPermission:Record<string,string>={'/database':'person.read','/agenda':'agenda.read','/presensi':'attendance.read','/jurnal':'journal.read','/target':'target.read','/struktur':'position.read','/rekap':'report.read','/laporan':'report.read','/arsip':'archive.manage','/impor':'import.manage','/tim-akses':'user.manage','/pengaturan':'settings.manage'};
 const roleLabel:Record<Role,string>={ADMIN:'Admin',DEWAN_GURU:'Dewan Guru',KELOMPOK:'Operator',VIEWER:'Viewer'};
 
