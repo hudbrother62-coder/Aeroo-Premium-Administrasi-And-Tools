@@ -48,7 +48,7 @@ export default function AttendanceRecap({embedded=false,focusEventId=''}:{embedd
   }).catch(()=>{if(live)setError('Filter kelas belum dapat dimuat.');});
   return()=>{live=false};
  },[]);
- useEffect(()=>{const controller=new AbortController();let live=true;setLoading(true);setError('');setData(null);setMeetingId('');setParticipants([]);
+ useEffect(()=>{const controller=new AbortController();let live=true;setLoading(true);setError('');setData(null);setParticipants([]);
    const params=new URLSearchParams({month});if(audience)params.set('audience',audience);if(levelId)params.set('level_id',levelId);if(classId)params.set('class_id',classId);
    fetch('/api/attendance/recap?'+params.toString(),{signal:controller.signal}).then(async r=>{const j=await r.json();if(!r.ok)throw Error(j.error||'Rekap gagal dimuat.');return j;})
     .then(j=>{if(live)setData(j);}).catch(e=>{if(live){setError(e.message);setData(null);}}).finally(()=>{if(live)setLoading(false);});
@@ -91,7 +91,7 @@ export default function AttendanceRecap({embedded=false,focusEventId=''}:{embedd
     <label>Kelas<select className="select" value={classId} onChange={e=>{setClassId(e.target.value);setMeetingId('');}}><option value="">Semua kelas</option>{availableClasses.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
    </section>
    {error&&<div className="notice error" role="alert">{error} Silakan coba filter yang lebih spesifik atau muat ulang.</div>}
-   {loading?<div className="card"><div className="skeleton" style={{height:160}}/></div>:<>
+   {loading?<div className="card"><div className="skeleton" style={{height:160}}/></div>:!data?<div className="attendanceEmpty card" role="status"><strong>Rekap belum bisa ditampilkan</strong><span>Data tidak diubah. Coba muat ulang atau pilih periode lain.</span></div>:<>
    <div className="attendanceKpiGrid">
      <div className="attendanceKpi"><span>Total pertemuan</span><strong>{data?.summary.meetings||0}</strong><small>Dalam filter yang dipilih</small></div>
      <div className="attendanceKpi"><span>Persentase hadir</span><strong>{overallRate===null?'—':overallRate+'%'}</strong><small>Dari status yang sudah dicatat</small></div>
@@ -112,7 +112,7 @@ export default function AttendanceRecap({embedded=false,focusEventId=''}:{embedd
    </div>}
    {detail==='meetings'&&<div className="attendanceMeetingExplorer">
      <section className="attendancePanel attendanceMeetingPicker"><div className="attendancePanelHead"><div><h2>Daftar Pertemuan</h2><p>{meetings.length} kegiatan pada bulan ini</p></div></div>
-       <div className="attendanceMeetingPickList">{meetings.map(m=><button type="button" key={m.id} className={'attendanceMeetingPick'+(m.id===meetingId?' selected':'')} onClick={()=>{setMeetingId(m.id);setSearch('');setStatusFilter('all');}}><strong>{m.title}</strong><span>{dayLabel(m.date)} · {m.class_name||audienceLabels[m.audience as Audience]||m.audience}</span><small>{m.total} peserta · {m.summary.H} hadir</small></button>)}</div>
+       <div className="attendanceMeetingPickList">{meetings.map(m=><button type="button" key={m.id} className={'attendanceMeetingPick'+(m.id===meetingId?' selected':'')} onClick={()=>{setMeetingId(m.id);setParticipants([]);setParticipantsLoading(true);setSearch('');setStatusFilter('all');}}><strong>{m.title}</strong><span>{dayLabel(m.date)} · {m.class_name||audienceLabels[m.audience as Audience]||m.audience}</span><small>{m.total} peserta · {m.summary.H} hadir</small></button>)}</div>
        {!meetings.length&&<div className="attendanceEmpty"><CalendarDays/><strong>Belum ada pertemuan</strong><span>Coba periode atau filter lainnya.</span></div>}
      </section>
      <section className="attendancePanel attendanceMeetingDetails">
