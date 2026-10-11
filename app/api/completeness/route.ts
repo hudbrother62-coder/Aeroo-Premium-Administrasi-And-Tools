@@ -1,59 +1,159 @@
-import {NextResponse} from 'next/server';
+import {NextRequest,NextResponse} from 'next/server';
 import {db} from '@/lib/supabase-server';
 import {targetGaps} from '@/lib/target-gaps';
-
 import {jakartaDate,effectiveMembership} from '@/lib/domain';
 
-export async function GET(){
-  const s=await db();
-  const {data:user}=await s.rpc('get_current_app_user');
-  if(!user?.length)return NextResponse.json({error:'Masuk untuk melihat kelengkapan.'},{status:401});
-  const today=jakartaDate();
-  const {data:canTarget}=await s.rpc('has_app_permission',{p_permission:'target.read'});
-  const [members,events,journals,agenda,decisions,imports]=await Promise.all([
-    s.from('members').select('id,name,status,member_memberships(id,active,valid_from,valid_to,ended_on,level_id,class_id,categories(slug,name))').eq('status','ACTIVE').order('name'),
-    s.from('attendance_events').select('id,title,event_date,audience,state,attendance_records(status)').lte('event_date',today).neq('state','CANCELLED').order('event_date',{ascending:false}).limit(100),
-    s.from('journals').select('id,title,journal_date,journal_kind,state,agenda_id,journal_attachments(id)').in('state',['DRAFT']).order('journal_date',{ascending:false}).limit(100),
-    s.from('agenda').select('id,title,starts_at,status,journal_required,documentation_required,target_tracking_enabled,journals(id,state,assessment,journal_attachments(id))').lte('starts_at',new Date().toISOString()).neq('status','CANCELLED').order('starts_at',{ascending:false}).limit(100),
-    s.from('meeting_decisions').select('id,decision,deadline,status,journal_id').lt('deadline',today).neq('status','COMPLETED').neq('status','CANCELLED').order('deadline').limit(100),
-    s.from('import_jobs').select('id,resource_type,file_name,status,error_rows,created_at').in('status',['FAILED','PARTIAL']).order('created_at',{ascending:false}).limit(100)
-  ]);
-  const err=[members,events,journals,agenda,decisions,imports].find(x=>x.error)?.error;
-  if(err)return NextResponse.json({error:err.message},{status:400});
-
-  const memberIssues:any[]=[];
-  for(const m of members.data||[]){
-    const active=(m as any).member_memberships?.filter((x:any)=>effectiveMembership(x,today))||[];
-    for(const x of active){
-      const slug=(x.categories as any)?.slug;
-      if(['caberawit','muda-mudi'].includes(slug)&&(!x.level_id||!x.class_id)){
-        memberIssues.push({id:m.id+':'+x.id,title:m.name,detail:(x.categories as any)?.name+' belum lengkap jenjang/kelas',href:'/database/tambah?id='+m.id});
+type Key='members'|'attendance'|'journals'|'documentation'|'targets'|'followups'|'imports';
+type Issue={id:string;title:string;detail:string;href:string};
+type Result={key:Key;title:string;items:Issue[];partial:boolean;unavailable:boolean;error?:string};
+const sections:{key:Key;title:string;permission:string}[]=[
+  {key:'members',title:'Data Anggota',permission:'person.read'},
+  {key:'attendance',title:'Presensi',permission:'attendance.read'},
+  {key:'journals',title:'Jurnal',permission:'journal.read'},
+  {key:'documentation',title:'Dokumentasi',permission:'agenda.read'},
+  {key:'targets',title:'Target & Progres',permission:'target.read'},
+  {key:'followups',title:'Tindak Lanjut',permission:'decision.write'},
+  {key:'imports',title:'Import',permission:'import.manage'}
+];
+const issue=(id:string,title:string,detail:string,href:string):Issue=>({id,title,detail,href});
+function fail(message:string,status:number){return NextResponse.json({error:message},{status,headers:{'Cache-Control':'private, no-store'}})}
+const MAX_EVENTS=700;
+async function readSection(s:any,key:Key,today:string):Promise<Result>{
+  const section=sections.find(x=>x.key===key)!;
+  const {data:allowed,error:permissionError}=await s.rpc('has_app_permission',{p_permission:section.permission});
+  if(permissionError)throw Error(permissionError.message);
+  if(!allowed)return {key,title:section.title,items:[],partial:false,unavailable:true};
+  let items:Issue[]=[];let partial=false;
+  switch(key){
+    case 'members':{
+      const cap=900;
+      const {data,error}=await s.from('members')
+        .select('id,name,member_memberships(id,active,valid_from,valid_to,ended_on,level_id,class_id,categories(slug,name))')
+        .eq('status','ACTIVE').order('name').limit(cap);
+      if(error)throw Error(error.message);
+      partial=(data?.length||0)===cap;
+      for(const member of data||[]){
+        for(const membership of member.member_memberships||[]){
+          if(!effectiveMembership(membership,today))continue;
+          const category=Array.isArray(membership.categories)?membership.categories[0]:membership.categories;
+          if(!['caberawit','muda-mudi'].includes(category?.slug)||membership.level_id&&membership.class_id)continue;
+          const missing=[!membership.level_id?'jenjang':null,!membership.class_id?'kelas':null].filter(Boolean).join(' dan ');
+          items.push(issue(String(member.id)+':'+String(membership.id),member.name,
+            (category?.name||'Anggota')+' · '+missing+' belum ditentukan','/database/'+encodeURIComponent(member.id)));
+        }
       }
+      break;
+    }
+    case 'attendance':{
+      const cap=1200;
+      // Read only unfinished records; do not load every participant in every meeting.
+      const {data,error}=await s.from('attendance_records')
+        .select('event_id,attendance_events!inner(id,title,event_date,state)')
+        .is('status',null)
+        .lte('attendance_events.event_date',today)
+        .neq('attendance_events.state','CANCELLED')
+        .order('created_at',{ascending:false}).limit(cap);
+      if(error)throw Error(error.message);
+      partial=(data?.length||0)===cap;
+      const events=new Map<string,{id:string;title:string;date:string;count:number}>();
+      for(const r of data||[]){
+        const event=Array.isArray(r.attendance_events)?r.attendance_events[0]:r.attendance_events;
+        if(!event?.id)continue;
+        const existing=events.get(event.id);
+        if(existing)existing.count++;
+        else events.set(event.id,{id:event.id,title:event.title||'Pertemuan',date:event.event_date||'',count:1});
+      }
+      items=Array.from(events.values()).sort((a,b)=>b.date.localeCompare(a.date)).map(x=>issue(x.id,x.title,
+        x.date+' · '+x.count+' peserta belum diabsen','/presensi/buat?event_id='+encodeURIComponent(x.id)));
+      break;
+    }
+    case 'journals':{
+      const cap=200;
+      const [draft,agendas]=await Promise.all([
+        s.from('journals').select('id,title,journal_date').eq('state','DRAFT').order('journal_date',{ascending:false}).limit(cap),
+        s.from('agenda').select('id,title,starts_at,journals(id,state)')
+          .eq('journal_required',true).lte('starts_at',new Date().toISOString()).neq('status','CANCELLED')
+          .order('starts_at',{ascending:false}).limit(cap)
+      ]);
+      if(draft.error||agendas.error)throw Error((draft.error||agendas.error).message);
+      partial=(draft.data?.length||0)===cap||(agendas.data?.length||0)===cap;
+      const missing=(agendas.data||[]).filter((x:any)=>!x.journals?.some((j:any)=>j.state!=='ARCHIVED'));
+      items=[
+        ...missing.map((a:any)=>issue('agenda:'+a.id,a.title,'Jurnal kegiatan wajib belum dibuat',
+          '/jurnal/buat?agenda_id='+encodeURIComponent(a.id))),
+        ...(draft.data||[]).map((j:any)=>issue(j.id,j.title,j.journal_date+' · jurnal masih draft',
+          '/jurnal/buat?journal_id='+encodeURIComponent(j.id)))
+      ];
+      break;
+    }
+    case 'documentation':{
+      const cap=200;
+      const {data,error}=await s.from('agenda')
+        .select('id,title,starts_at,journals(id,state,assessment,journal_attachments(id))')
+        .eq('documentation_required',true).lte('starts_at',new Date().toISOString()).neq('status','CANCELLED')
+        .order('starts_at',{ascending:false}).limit(cap);
+      if(error)throw Error(error.message);
+      partial=(data?.length||0)===cap;
+      items=(data||[]).filter((a:any)=>!(a.journals||[]).some((j:any)=>j.state!=='ARCHIVED'&&
+        ((j.journal_attachments||[]).length>0||Boolean(String(j.assessment?.documentation||'').trim()))))
+        .map((a:any)=>issue(a.id,a.title,'Dokumentasi kegiatan wajib belum dilengkapi',
+          '/jurnal/buat?'+((a.journals||[]).some((j:any)=>j.state!=='ARCHIVED')
+            ?'journal_id='+encodeURIComponent(a.journals.find((j:any)=>j.state!=='ARCHIVED').id)
+            :'agenda_id='+encodeURIComponent(a.id))));
+      break;
+    }
+    case 'targets':{
+      const gaps=await targetGaps(s,today);
+      items=gaps.map(x=>issue(x.id,x.title,x.missing+' dari '+x.eligible+' peserta belum dinilai',x.href));
+      break;
+    }
+    case 'followups':{
+      const cap=150;
+      const {data,error}=await s.from('meeting_decisions')
+        .select('id,decision,deadline,journal_id').lt('deadline',today)
+        .neq('status','COMPLETED').neq('status','CANCELLED').order('deadline').limit(cap);
+      if(error)throw Error(error.message);
+      partial=(data?.length||0)===cap;
+      items=(data||[]).map((x:any)=>issue(x.id,x.decision,
+        'Lewat tenggat '+x.deadline,x.journal_id
+          ?'/jurnal/buat?journal_id='+encodeURIComponent(x.journal_id):'/jurnal'));
+      break;
+    }
+    case 'imports':{
+      const cap=150;
+      const {data,error}=await s.from('import_jobs')
+        .select('id,file_name,resource_type,status,error_rows,created_at')
+        .in('status',['FAILED','PARTIAL']).order('created_at',{ascending:false}).limit(cap);
+      if(error)throw Error(error.message);
+      partial=(data?.length||0)===cap;
+      items=(data||[]).map((x:any)=>issue(x.id,x.file_name||x.resource_type,
+        x.status+' · '+Number(x.error_rows||0)+' baris bermasalah','/impor'));
+      break;
     }
   }
-
-  const attendance=(events.data||[]).filter((e:any)=>((e.attendance_records||[]) as any[]).some(r=>r.status==null)).map((e:any)=>({
-    id:e.id,title:e.title,detail:e.event_date+' · presensi belum lengkap',href:'/presensi/buat?event_id='+e.id
-  }));
-  const journalDraft=(journals.data||[]).map((j:any)=>({id:j.id,title:j.title,detail:j.journal_date+' · draft',href:'/jurnal/buat?journal_id='+j.id}));
-  const journalMissing=(agenda.data||[]).filter((a:any)=>a.journal_required&&!(a.journals||[]).some((j:any)=>j.state!=='ARCHIVED')).map((a:any)=>({id:'agenda:'+a.id,title:a.title,detail:'Jurnal wajib belum dibuat',href:'/jurnal/buat?agenda_id='+a.id}));
-  const journal=[...journalMissing,...journalDraft.filter((j:any)=>!journalMissing.some((m:any)=>m.href.includes(j.id)))];
-  const documentation=(agenda.data||[]).filter((a:any)=>a.documentation_required&&!(a.journals||[]).some((j:any)=>(j.journal_attachments||[]).length>0||String(j.assessment?.documentation||'').trim().length>0)).map((a:any)=>({id:a.id,title:a.title,detail:'Dokumentasi wajib belum tersedia',href:'/jurnal/buat?agenda_id='+a.id}));
-  const overdue=(decisions.data||[]).map((d:any)=>({id:d.id,title:d.decision,detail:'Deadline '+d.deadline,href:'/jurnal/buat?journal_id='+d.journal_id}));
-  const importProblems=(imports.data||[]).map((j:any)=>({id:j.id,title:j.file_name||j.resource_type,detail:j.status+' · '+j.error_rows+' error',href:'/impor'}));
-  const targetIssues=canTarget?await targetGaps(s,today):[];
-  const targets=targetIssues.map(t=>({id:t.id,title:t.title,detail:t.missing+' dari '+t.eligible+' anggota belum dinilai',href:t.href}));
-
-  return NextResponse.json({
-    summary:{members:memberIssues.length,attendance:attendance.length,journals:journal.length,documentation:documentation.length,targets:targets.length,followups:overdue.length,imports:importProblems.length,total:memberIssues.length+attendance.length+journal.length+documentation.length+targets.length+overdue.length+importProblems.length},
-    groups:[
-      {key:'members',title:'Data Anggota',items:memberIssues},
-      {key:'attendance',title:'Presensi',items:attendance},
-      {key:'journals',title:'Jurnal',items:journal},
-      {key:'documentation',title:'Dokumentasi',items:documentation},
-      {key:'targets',title:'Target & Progres',items:targets},
-      {key:'followups',title:'Tindak Lanjut',items:overdue},
-      {key:'imports',title:'Import',items:importProblems}
-    ]
-  });
+  return {key,title:section.title,items,partial,unavailable:false};
+}
+export async function GET(req:NextRequest){
+  try{
+    const s=await db();
+    const {data:user,error:authError}=await s.rpc('get_current_app_user');
+    if(authError||!user?.length)return fail('Masuk ke akun Simpul untuk memeriksa kelengkapan.',401);
+    const group=req.nextUrl.searchParams.get('group');
+    if(group&&!sections.some(x=>x.key===group))return fail('Jenis pemeriksaan tidak tersedia.',400);
+    const today=jakartaDate();
+    if(group){
+      try{return NextResponse.json(await readSection(s,group as Key,today),{headers:{'Cache-Control':'private, no-store'}});}
+      catch(error){return fail(error instanceof Error?error.message:'Pemeriksaan gagal dimuat.',500);}
+    }
+    // Backwards-compatible aggregate response, isolating failed sections.
+    const results=await Promise.all(sections.map(async section=>{
+      try{return await readSection(s,section.key,today);}
+      catch(error):Promise<Result>{return {key:section.key,title:section.title,items:[],partial:false,unavailable:false,
+        error:error instanceof Error?error.message:'Pemeriksaan gagal dimuat.'};}
+    }));
+    const summary={members:0,attendance:0,journals:0,documentation:0,targets:0,followups:0,imports:0,total:0};
+    for(const group of results)if(!group.error&&!group.unavailable){summary[group.key]=group.items.length;summary.total+=group.items.length;}
+    return NextResponse.json({summary,groups:results,complete:results.every(x=>!x.error&&!x.partial),warnings:results.filter(x=>x.error).map(x=>({key:x.key,error:x.error}))},
+      {headers:{'Cache-Control':'private, no-store'}});
+  }catch(error){return fail(error instanceof Error?error.message:'Gagal memeriksa kelengkapan.',500);}
 }
