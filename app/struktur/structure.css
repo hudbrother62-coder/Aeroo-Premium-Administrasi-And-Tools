@@ -1,0 +1,82 @@
+.positionsPage{max-width:1260px;margin:0 auto;padding-bottom:60px}
+.positionsHeader{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:22px}
+.positionsHeader h1{margin:6px 0 9px}
+.positionsHeader p{font-size:14px;max-width:620px;margin:0}
+.positionsEyebrow{font-size:11px;letter-spacing:.14em;font-weight:800;color:var(--teal)}
+.positionsOverview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.positionsOverview>div{display:flex;flex-direction:column;gap:6px;padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:16px}
+.positionsOverview strong{font-size:30px;letter-spacing:-.05em;font-variant-numeric:tabular-nums;line-height:1.1}
+.positionsOverview span{color:var(--muted);font-size:12px;font-weight:650}
+.positionsToolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px}
+.positionsTabs{display:inline-flex;gap:4px;padding:4px;border:1px solid var(--border);background:var(--surface-2);border-radius:13px}
+.positionsTabs button{min-height:38px;border:0;border-radius:9px;background:transparent;color:var(--muted);padding:0 14px;font-size:13px;font-weight:750;cursor:pointer;white-space:nowrap}
+.positionsTabs button.selected{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.07)}
+.positionsSearch{min-width:240px;max-width:340px;flex:1}
+.positionsSearch input{width:100%;min-height:45px;padding:10px 13px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);outline:none}
+.positionsSearch input:focus{border-color:var(--teal)}
+.positionLayers{display:grid;gap:0}
+.positionLayer{display:grid;grid-template-columns:56px minmax(0,1fr);gap:10px;min-width:0}
+.positionLayerMarker{position:relative;display:flex;flex-direction:column;align-items:center}
+.positionLayerMarker span{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:var(--teal-soft);color:var(--teal);font-size:13px;font-weight:900;font-variant-numeric:tabular-nums;position:relative;z-index:1}
+.positionLayer:first-child .positionLayerMarker span{background:var(--navy);color:white}
+.positionLayerMarker i{width:2px;flex:1;min-height:42px;background:var(--border);display:block}
+.positionLayerContent{padding:0 0 27px;min-width:0}
+.positionLayerHeader{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:3px 0 14px}
+.positionLayerHeader h2{font-size:19px;margin:0 0 4px;color:var(--text)}
+.positionLayerHeader p{font-size:12px;margin:0}
+.positionCount{font-size:12px;font-weight:750;color:var(--muted);background:var(--surface-2);padding:6px 10px;border-radius:20px;white-space:nowrap}
+.positionCards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.positionCard{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:17px 19px;display:flex;flex-direction:column;min-width:0}
+.positionCardTop{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.positionNumber{font-size:12px;font-weight:900;color:var(--teal);font-variant-numeric:tabular-nums}
+.positionSection{font-size:10px;font-weight:700;padding:5px 9px;border-radius:7px;color:var(--muted);background:var(--surface-2)}
+.positionCard h3{font-size:15px;font-weight:850;line-height:1.35;letter-spacing:-.02em;margin:0 0 6px}
+.positionPerson{display:inline-flex;align-items:center;gap:7px;width:fit-content;max-width:100%;font-size:15px;color:var(--text);font-weight:650;text-decoration:none;overflow-wrap:anywhere}
+.positionPerson:hover{color:var(--teal);text-decoration:underline}
+.positionPerson span{font-size:13px;color:var(--teal)}
+.positionDuties{font-size:12px;margin:11px 0 0}
+.positionCardBottom{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;align-items:flex-end;margin-top:auto;padding-top:15px}
+.positionCardBottom small{font-size:11px;color:var(--muted)}
+.positionActions{display:flex;gap:8px;flex-wrap:wrap}
+.positionActions button{border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:11px;font-weight:750;min-height:30px;padding:5px 9px;border-radius:8px;cursor:pointer}
+.positionActions button:hover{background:var(--surface-2)}
+.positionActions button.danger{color:var(--danger)}
+.positionActions button:disabled{opacity:.5;cursor:not-allowed}
+.positionEmpty{padding:44px 22px;text-align:center;color:var(--muted);background:var(--surface);border:1px dashed var(--border);border-radius:18px;font-size:14px}
+.positionsError{margin-bottom:16px}
+.positionsBackdrop{z-index:105;overflow-y:auto;align-items:flex-start;padding:clamp(12px,4vh,36px) 12px}
+.positionDialog{width:min(100%,650px);max-height:calc(100dvh - 40px);overflow-y:auto;margin:auto;background:var(--surface)}
+.positionDialog .cardHead p{font-size:12px;margin-bottom:0}
+.positionFormGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px;margin-top:18px}
+.positionFormGrid label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:750;color:var(--text);min-width:0}
+.positionFormGrid label.full{grid-column:1/-1}
+.positionActiveCheck{flex-direction:row!important;align-items:center}
+.positionActiveCheck input{height:17px;width:17px;accent-color:var(--teal)}
+.positionsPage .sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.positionsPage button:focus-visible,.positionsPage a:focus-visible,.positionsPage input:focus-visible,.positionsPage select:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+@media(max-width:760px){
+ .positionsHeader{flex-direction:column;align-items:stretch}
+ .positionsHeader .btn{align-self:flex-start}
+ .positionsOverview{gap:8px}
+ .positionsOverview>div{padding:13px 12px}
+ .positionsOverview strong{font-size:26px}
+ .positionsOverview span{font-size:11px}
+ .positionsToolbar{flex-direction:column;align-items:stretch}
+ .positionsTabs{width:100%}
+ .positionsTabs button{flex:1;padding:0 8px}
+ .positionsSearch{min-width:0;max-width:none}
+ .positionLayer{grid-template-columns:35px minmax(0,1fr);gap:7px}
+ .positionLayerMarker span{width:29px;height:29px;border-radius:9px;font-size:11px}
+ .positionLayerHeader{align-items:flex-start}
+ .positionLayerHeader h2{font-size:17px}
+ .positionCount{font-size:10px}
+ .positionCards{grid-template-columns:1fr;gap:10px}
+ .positionCard{padding:15px}
+}
+@media(max-width:480px){
+ .positionFormGrid{grid-template-columns:1fr}
+ .positionFormGrid label{grid-column:1}
+ .positionDialog{padding:16px;max-height:calc(100dvh - 24px)}
+ .positionsBackdrop{padding:12px}
+}
+@media(prefers-reduced-motion:reduce){.positionsPage *{scroll-behavior:auto}}
