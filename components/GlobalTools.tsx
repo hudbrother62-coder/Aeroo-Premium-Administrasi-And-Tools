@@ -5,10 +5,11 @@ import {useEffect,useRef,useState} from 'react';
 
 type SearchGroup={type:string;items:Array<{id:string;title:string;meta?:string;href:string}>};
 type Notice={key:string;kind:string;title:string;detail:string;href:string;read:boolean};
-export default function GlobalTools({enabled,dark,onToggleTheme}:{enabled:boolean;dark:boolean;onToggleTheme:()=>void}){
+export default function GlobalTools({enabled,dark,drawerOpen,onToggleTheme}:{enabled:boolean;dark:boolean;drawerOpen:boolean;onToggleTheme:()=>void}){
   const[searchOpen,setSearchOpen]=useState(false),[query,setQuery]=useState(''),[groups,setGroups]=useState<SearchGroup[]>([]),[searching,setSearching]=useState(false);
   const[noticeOpen,setNoticeOpen]=useState(false),[notices,setNotices]=useState<Notice[]>([]),[unread,setUnread]=useState(0);
   const timer=useRef<ReturnType<typeof setTimeout>|null>(null);
+  useEffect(()=>{if(drawerOpen){setSearchOpen(false);setNoticeOpen(false)}},[drawerOpen]);
   useEffect(()=>{const handler=(e:KeyboardEvent)=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();if(enabled)setSearchOpen(true)}if(e.key==='Escape'){setSearchOpen(false);setNoticeOpen(false)}};window.addEventListener('keydown',handler);return()=>window.removeEventListener('keydown',handler)},[enabled]);
   useEffect(()=>{if(enabled)void loadNotices()},[enabled]);
   useEffect(()=>{if(!searchOpen||query.trim().length<2){setGroups([]);return}if(timer.current)clearTimeout(timer.current);timer.current=setTimeout(async()=>{setSearching(true);const r=await fetch('/api/search?q='+encodeURIComponent(query));const j=await r.json();setGroups(r.ok?j.groups||[]:[]);setSearching(false)},220);return()=>{if(timer.current)clearTimeout(timer.current)}},[query,searchOpen]);

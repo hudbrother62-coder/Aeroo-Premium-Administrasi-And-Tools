@@ -131,14 +131,14 @@ export default function AppShell({children}:{children:React.ReactNode}){
     return <nav className={klass}>{klass.includes('navList')?sections.map(([label,paths])=>{const group=paths.flatMap(href=>items.filter(i=>i.href===href));return group.length?<div className="navGroup" key={label}><small className="navGroupLabel">{label}</small>{group.map(link)}</div>:null}):items.map(link)}</nav>
   };
 
-  const account=<div className="sideActions">{user&&quickItems.length>0&&<div className="desktopQuickAdd"><button className="sideButton quickAddButton" onClick={()=>setQuickOpen(v=>!v)} aria-expanded={quickOpen}><Plus size={18}/><span>Tambah Data</span></button>{quickOpen&&<div className="quickAddPanel">{quickItems.map(item=>{const Icon=item.icon;return <Link key={item.href} href={item.href} className="quickAddItem"><Icon size={17}/><span>{item.label}</span></Link>})}</div>}</div>}{!user&&<div className="viewerAccess"><div className="viewerAccessInfo"><Eye size={16}/><span><strong>Mode Viewer</strong><small>Akses baca saja</small></span></div><Link className="sideButton viewerLoginButton" href="/login"><LogIn size={18}/>Masuk Admin</Link></div>}
+  const account=<div className="sideActions">{user?.role==='ADMIN'&&<Link className="sideButton mobileAccountAccess" href="/tim-akses"><Users size={18}/><span>Akses login & pengguna</span></Link>}{user&&quickItems.length>0&&<div className="desktopQuickAdd"><button className="sideButton quickAddButton" onClick={()=>setQuickOpen(v=>!v)} aria-expanded={quickOpen}><Plus size={18}/><span>Tambah Data</span></button>{quickOpen&&<div className="quickAddPanel">{quickItems.map(item=>{const Icon=item.icon;return <Link key={item.href} href={item.href} className="quickAddItem"><Icon size={17}/><span>{item.label}</span></Link>})}</div>}</div>}{!user&&<div className="viewerAccess"><div className="viewerAccessInfo"><Eye size={16}/><span><strong>Mode Viewer</strong><small>Akses baca saja</small></span></div><Link className="sideButton viewerLoginButton" href="/login"><LogIn size={18}/>Masuk Admin</Link></div>}
     {user&&<div className="userBox">
       <div className="userIdentity"><strong>{user?.display_name||user?.username||'Simpul'}</strong><small>{user?roleLabel[user.role]:'Memuat…'}</small></div>
-      <button className="iconOnly" onClick={()=>void logout()} aria-label="Keluar"><LogOut size={18}/></button>
+      <button className="iconOnly accountLogoutButton" onClick={()=>void logout()} aria-label="Keluar dari akun"><LogOut size={18}/><span className="mobileAccountLogoutText">Keluar</span></button>
     </div>}
   </div>;
 
-  return <div className={collapsed?'appShell sidebarCollapsed':'appShell'}>
+  return <div className={`${collapsed?'appShell sidebarCollapsed':'appShell'}${drawer?' mobileNavOpen':''}`}>
     <aside className="desktopSidebar"><Brand/><button className="iconOnly sidebarToggle" onClick={()=>setCollapsed(v=>!v)} aria-label={collapsed?'Buka navigasi':'Ciutkan navigasi'} aria-expanded={!collapsed}>{collapsed?<PanelLeftOpen size={18}/>:<PanelLeftClose size={18}/>}</button>{renderNav(visible,'navList')}{account}</aside>
 
     <div className={drawer?'mobileOverlay show':'mobileOverlay'} onClick={()=>setDrawer(false)}/>
@@ -150,7 +150,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
     </aside>
 
     <main className="contentArea">
-      <div className="globalToolsDock"><GlobalTools enabled={!!user} dark={dark===true} onToggleTheme={()=>setDark(v=>!(v??false))}/></div>
+      <div className="globalToolsDock"><GlobalTools enabled={!!user} dark={dark===true} drawerOpen={drawer} onToggleTheme={()=>setDark(v=>!(v??false))}/></div>
       <header className="mobileHeader">
         <div className="mobileHeaderStart">
           <button type="button" className="iconOnly mobileMenuButton" onClick={()=>{setDrawer(true);setMoreOpen(false);setQuickOpen(false)}} aria-label="Buka semua menu" aria-controls="simpul-mobile-menu" aria-expanded={drawer}><Menu size={20}/></button>
