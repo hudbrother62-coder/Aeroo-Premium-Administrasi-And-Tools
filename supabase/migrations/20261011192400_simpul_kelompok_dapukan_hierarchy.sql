@@ -34,7 +34,7 @@ begin
       (8, 12, 'Sony Nurcholis', 'Pembangunan & Dhuafa', 'Pembangunan & Dhuafa')
     ) as v(hierarchy_level, display_order, member_name, position_title, position_section)
   loop
-    select count(*), min(id) into match_count, person_id
+    select count(*), (array_agg(id))[1] into match_count, person_id
     from public.members where lower(btrim(name)) = lower(entry.member_name);
     if match_count <> 1 then
       raise exception 'Nama % tidak cocok secara unik pada master anggota (jumlah: %)',
