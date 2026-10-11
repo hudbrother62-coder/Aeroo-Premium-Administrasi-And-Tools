@@ -1400,3 +1400,66 @@ html[data-theme="dark"] .textarea{background:#0f1728}
   .accessModeGrid{grid-template-columns:1fr}
   .noteBody{min-height:220px}
 }
+
+
+/* Agenda: two focused workspaces, with the same linked data on both screens */
+.agendaSidebarGroup{display:grid;gap:3px}
+.agendaSidebarLinks{margin:0 0 4px 43px;padding:2px 0 2px 12px;border-left:1px solid var(--border);display:grid;gap:2px}
+.agendaSidebarLinks a{font-size:11px;font-weight:550;color:var(--muted);border-radius:7px;padding:7px 8px;text-decoration:none}
+.agendaSidebarLinks a:hover,.agendaSidebarLinks a.active{color:var(--primary);background:var(--primary-soft)}
+.sidebarCollapsed .agendaSidebarLinks{display:none}
+.agendaTwoNav{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 16px}
+.agendaTwoNav a{display:inline-flex;gap:9px;align-items:center;min-height:43px;padding:0 16px;border:1px solid var(--border);background:var(--surface);color:var(--muted);border-radius:10px;text-decoration:none;font-size:13px;font-weight:600}
+.agendaTwoNav a.active{border-color:var(--primary);background:var(--primary-soft);color:var(--primary)}
+.agendaFilters{display:flex;flex-wrap:wrap;gap:11px;align-items:flex-end;margin:0 0 18px}
+.agendaFilters>label{display:grid;gap:5px;min-width:150px;font-size:11px;font-weight:600;color:var(--muted)}
+.agendaFilters>label:has(.agendaSearch){flex:1;min-width:200px;max-width:460px}
+.agendaSearch{position:relative;display:flex;align-items:center}
+.agendaSearch svg{position:absolute;left:12px;color:var(--muted);pointer-events:none}
+.agendaSearch input{width:100%;padding-left:35px}
+.agendaRefresh{height:44px;min-width:44px}
+.agendaListTitle{margin:3px 0 4px;display:flex;justify-content:space-between;align-items:center}
+.agendaListTitle h2{margin:0;font-size:17px}
+.agendaListTitle p,.agendaSelectedHeader p{margin:4px 0 0;color:var(--muted);font-size:12px}
+.agendaCards{display:grid;gap:12px}
+.agendaEntry{display:grid;grid-template-columns:125px minmax(0,1fr);gap:16px;padding:18px;background:var(--surface);border:1px solid var(--border);border-radius:14px}
+.agendaEntryTime{display:flex;gap:5px;flex-direction:column;align-items:flex-start;color:var(--primary);font-size:15px}
+.agendaEntryTime svg{margin-bottom:4px}
+.agendaEntryTime small{font-size:11px;color:var(--muted)}
+.agendaEntryBody{min-width:0;display:grid;gap:10px}
+.agendaEntryTop{display:flex;justify-content:space-between;gap:14px;align-items:start}
+.agendaEntryTop h3{font-size:15px;line-height:1.4;margin:0 0 4px}
+.agendaEntryTop small{color:var(--muted);font-size:11px}
+.agendaDescription{font-size:12px;color:var(--muted);margin:0;overflow-wrap:anywhere}
+.agendaStatus{display:inline-flex;align-items:center;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);padding:5px 9px;font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap}
+.agendaStatus.active,.agendaStatus.completed{color:var(--primary);background:var(--primary-soft);border-color:transparent}
+.agendaStatus.cancelled{opacity:.65}
+.agendaEntryActions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:3px}
+.agendaEntryActions .btn{font-size:12px;min-height:37px;padding:6px 12px}
+.agendaEntryActions .smallAction{font-size:12px}
+.agendaEmpty{min-height:210px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:9px;text-align:center;padding:28px;border:1px dashed var(--border);background:var(--surface);border-radius:14px;color:var(--muted)}
+.agendaEmpty strong{color:var(--text);font-size:15px}
+.agendaEmpty>span{font-size:12px}
+.agendaEmpty .btn{margin-top:8px}
+.agendaDots{display:flex;gap:3px;align-items:center;margin-top:4px}
+.agendaDots i{width:5px;height:5px;border-radius:100%;background:var(--primary)}
+.agendaDots i.cancelled{background:var(--muted);opacity:.4}
+.agendaLoading{display:grid;gap:10px;padding:20px}
+.agendaSelectedHeader{margin-top:4px}
+.agendaFormIntro{font-size:12px;color:var(--muted);margin:0}
+.agendaAdvanced{border-top:1px solid var(--border);margin-top:5px;padding-top:12px}
+.agendaAdvanced summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--primary);margin-bottom:10px}
+.agendaAdvanced .formGrid{margin-top:12px}
+@media(max-width:760px){
+ .agendaNewHeader{gap:12px}
+ .agendaFilters{gap:8px}.agendaFilters>label{flex:1;min-width:132px}
+ .agendaFilters>label:has(.agendaSearch){flex-basis:100%;max-width:none}
+ .agendaEntry{grid-template-columns:1fr;gap:11px;padding:14px}
+ .agendaEntryTime{flex-direction:row;align-items:center;gap:7px;border-bottom:1px solid var(--border);padding-bottom:9px}
+ .agendaEntryTime svg{margin:0}
+ .agendaEntryTop{gap:9px}
+ .agendaEntryActions .btn{flex:1;justify-content:center}
+ .agendaTwoNav a{flex:1;justify-content:center}
+ .agendaSidebarLinks{margin-left:42px}
+ .agendaHeaderActions .btn:last-child{grid-column:auto}
+}
