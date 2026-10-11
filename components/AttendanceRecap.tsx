@@ -33,7 +33,7 @@ export default function AttendanceRecap({embedded=false,focusEventId=''}:{embedd
  const [search,setSearch]=useState('');
  const [statusFilter,setStatusFilter]=useState('all');
 
- useEffect(()=>{if(focusEventId){setMeetingId(focusEventId);setDetail('meetings');const selectedMonth=new URLSearchParams(window.location.search).get('month');if(selectedMonth&&/^\\d{4}-(0[1-9]|1[0-2])$/.test(selectedMonth))setMonth(selectedMonth);}},[focusEventId]);
+ useEffect(()=>{if(focusEventId){setMeetingId(focusEventId);setDetail('meetings');const selectedMonth=new URLSearchParams(window.location.search).get('month');if(selectedMonth&&/^\d{4}-(0[1-9]|1[0-2])$/.test(selectedMonth))setMonth(selectedMonth);}},[focusEventId]);
  useEffect(()=>{let live=true;
   Promise.all([fetch('/api/classes'),fetch('/api/levels'),fetch('/api/auth/me')]).then(async results=>{
     if(results.some(r=>!r.ok))throw Error('Gagal memuat filter.');
