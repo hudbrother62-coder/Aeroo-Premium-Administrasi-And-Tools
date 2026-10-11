@@ -10,7 +10,7 @@ export async function GET(req:NextRequest){
   const memberId=req.nextUrl.searchParams.get('member_id');
 
   let q=s.from('journals')
-    .select('*,activity_types(id,name,audience),attendance_events(id,title,event_date),classes(id,name),members(id,name),journal_progress(id,member_id,target_id,progress_value,progress_note,assessment,follow_up,learning_targets(title))')
+    .select('*,activity_types(id,name,audience),attendance_events(id,title,event_date),classes(id,name,level_id),members(id,name),journal_progress(id,member_id,target_id,progress_value,progress_note,assessment,follow_up,learning_targets(title))')
     .order('journal_date',{ascending:false});
   const state=req.nextUrl.searchParams.get('state');const month=req.nextUrl.searchParams.get('month');
   if(state)q=q.eq('state',state);else q=q.neq('state','ARCHIVED');

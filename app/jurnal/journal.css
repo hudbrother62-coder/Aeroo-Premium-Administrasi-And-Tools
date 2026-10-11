@@ -1,0 +1,69 @@
+
+/* Journal workspace – scoped styles, shared by dashboard, entry and history */
+.journalWorkspace{max-width:1440px}
+.journalMainHeader{align-items:center;margin-bottom:18px}
+.journalMainHeader h1,.journalFormHeader h1{margin:7px 0}
+.journalEyebrow{display:inline-flex;gap:8px;align-items:center;color:var(--teal);font-size:12px;font-weight:800}
+.journalHeaderActions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.journalSubnav{display:flex;gap:5px;align-items:center;overflow-x:auto;max-width:100%;margin-bottom:18px;border-bottom:1px solid var(--border)}
+.journalSubnav a{display:inline-flex;gap:7px;align-items:center;text-decoration:none;padding:11px 14px;color:var(--muted);font-size:13px;font-weight:750;white-space:nowrap;border-bottom:2px solid transparent}
+.journalSubnav a.journalNavActive{color:var(--teal);border-bottom-color:var(--teal)}
+.journalSubnav a:hover{color:var(--text)}
+.journalBack{display:inline-flex;gap:8px;align-items:center;margin-bottom:8px;color:var(--teal);font-size:12px;font-weight:750;text-decoration:none}
+.journalFilterBar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;box-shadow:none}
+.journalFilterBar label{display:grid;gap:7px;font-size:12px;font-weight:750;color:var(--muted);min-width:0}
+.journalFilterBar label .input,.journalFilterBar label .select{width:100%;max-width:100%;min-width:0}
+.journalMetrics{margin-top:18px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}
+.journalMetric{box-shadow:none;display:flex;flex-direction:column;min-height:135px;gap:12px}
+.journalMetric>span{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:12px;font-weight:750}
+.journalMetric>span svg{color:var(--teal)}
+.journalMetric strong{font-size:34px;font-weight:850;letter-spacing:-1px;line-height:1}
+.journalMetric small{font-size:11px;color:var(--muted)}
+.journalContentGrid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,1fr);gap:14px}
+.journalContentGrid>.card{box-shadow:none;min-width:0}
+.journalChartCard>.cardHead h2,.journalStartCard h2,.journalRecent>.cardHead h2{font-size:17px;margin:0}
+.journalChartCard>.cardHead svg{color:var(--teal)}
+.journalBars{height:220px;display:flex;align-items:stretch;gap:16px;padding:12px 10px 0}
+.journalBarCol{display:flex;flex:1;min-width:0;align-items:center;flex-direction:column;gap:8px}
+.journalBarCol>span{color:var(--text);font-size:12px;font-weight:800}
+.journalBarCol small{color:var(--muted);font-size:11px;white-space:nowrap}
+.journalBarTrack{display:flex;align-items:flex-end;height:150px;background:var(--surface-2);width:min(100%,50px);border-radius:8px;overflow:hidden}
+.journalBarFill{width:100%;background:linear-gradient(180deg,#43bfc1,#257982);border-radius:8px 8px 3px 3px;min-height:0;transition:height .3s ease}
+.journalChartFooter{font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:14px;margin-top:9px}
+.journalStartCard{display:flex;flex-direction:column;gap:12px}
+.journalStartIcon,.journalRecentIcon{display:grid;place-items:center;flex-shrink:0;border-radius:13px;background:var(--teal-soft);color:var(--teal)}
+.journalStartIcon{width:46px;height:46px}
+.journalStartCard>p{margin:0 0 3px;font-size:12px;line-height:1.7;color:var(--muted)}
+.journalStep{display:flex;align-items:center;gap:11px;font-size:12px;color:var(--text)}
+.journalStep span{color:var(--teal);background:var(--teal-soft);font-weight:800;padding:6px;border-radius:8px}
+.journalStartButton{width:100%;justify-content:space-between;margin-top:auto}
+.journalRecent{box-shadow:none}
+.journalRecentList{display:grid;gap:0}
+.journalRecentItem{display:flex;align-items:center;gap:12px;padding:14px 0;border-top:1px solid var(--border)}
+.journalRecentIcon{width:39px;height:39px}
+.journalRecentText{display:grid;gap:4px;min-width:0;flex:1}
+.journalRecentText strong{font-size:13px;overflow-wrap:anywhere}
+.journalRecentText span{color:var(--muted);font-size:11px}
+.journalRecentItem .badge{white-space:nowrap}
+.journalRecentItem .btn{min-height:34px;font-size:12px}
+.journalEmpty{text-align:center;padding:48px 12px;display:flex;align-items:center;flex-direction:column;gap:11px;color:var(--muted)}
+.journalEmpty svg{color:var(--teal)}
+.journalEmpty strong{color:var(--text);font-size:15px}
+.journalEmpty p{font-size:12px;max-width:400px;margin:0 0 6px}
+.journalIntegration{margin:18px 0 4px;display:flex;gap:12px;align-items:flex-start;border:1px solid var(--border);border-radius:13px;padding:16px;color:var(--muted);font-size:12px;line-height:1.65}
+.journalIntegration>svg{flex-shrink:0;color:var(--teal)}
+.journalIntegration strong{color:var(--text)}
+.journalIntegration a{display:inline-flex;align-items:center;gap:3px;color:var(--teal);font-weight:750;text-decoration:none}
+.journalKindPicker{display:flex;gap:16px;box-shadow:none;max-width:1050px}
+.journalKindNumber,.journalFormStep>span{display:grid;place-items:center;background:var(--teal-soft);color:var(--teal);font-weight:850;width:40px;height:40px;border-radius:12px;flex-shrink:0}
+.journalKindContent{flex:1;min-width:0}
+.journalKindContent h2,.journalFormStep h2{font-size:18px;margin:0 0 5px}
+.journalKindContent>p,.journalFormStep p{font-size:12px;color:var(--muted);margin:0 0 16px}
+.journalKindContent>label{display:grid;gap:7px;max-width:440px;font-size:12px;font-weight:800;color:var(--muted)}
+.journalKindHint{margin-top:13px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text);font-size:12px;line-height:1.6}
+.journalEntryForm{max-width:1050px;box-shadow:none}
+.journalFormStep{display:flex;gap:13px;align-items:center;padding-bottom:15px;margin-bottom:17px;border-bottom:1px solid var(--border)}
+.journalFormStep p{margin:0}
+.journalFieldHint{color:var(--muted);font-size:11px;line-height:1.6;font-weight:500}
+@media(max-width:1100px){.journalFilterBar{grid-template-columns:repeat(2,minmax(0,1fr))}.journalMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}.journalContentGrid{grid-template-columns:1fr}}
+@media(max-width:600px){.journalMainHeader,.journalFormHeader{display:block}.journalHeaderActions{margin-top:14px}.journalHeaderActions .btn{flex:1}.journalMetrics{gap:9px}.journalMetric{padding:13px;min-height:118px}.journalMetric strong{font-size:29px}.journalFilterBar{gap:10px;padding:13px}.journalRecentItem{flex-wrap:wrap;gap:9px}.journalRecentText{flex-basis:calc(100% - 55px)}.journalRecentItem>.badge{margin-left:0}.journalRecentItem>.btn{margin-left:auto}.journalBars{gap:8px;padding-inline:0}.journalBarCol small{font-size:9px}.journalKindPicker{padding:14px;gap:11px}.journalKindNumber,.journalFormStep>span{width:32px;height:32px}.journalEntryForm{padding:14px}}
