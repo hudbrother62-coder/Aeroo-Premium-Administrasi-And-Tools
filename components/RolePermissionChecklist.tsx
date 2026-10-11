@@ -25,7 +25,7 @@ export function initialPermissions(role:AccessRole):PermissionValues{
 const readonlyKeys=new Set(['person.read','agenda.read','attendance.read','journal.read','target.read','position.read','report.read','note.read']);
 export function permissionDisabled(role:AccessRole,key:string):boolean{
   return role==='ADMIN'||(role==='VIEWER'&&!readonlyKeys.has(key))||
-    (role!=='ADMIN'&&(key==='user.manage'||key==='settings.manage'));
+    (key==='user.manage'||key==='settings.manage');
 }
 export function permissionEntries(values:PermissionValues,role:AccessRole){
   return PERMISSION_KEYS.map(permission=>({permission,allowed:role==='ADMIN'||(!permissionDisabled(role,permission)&&!!values[permission])}));
