@@ -20,7 +20,7 @@ export async function GET(req:NextRequest){
 
   const{data,error}=await q;
   if(error)return NextResponse.json({error:error.message},{status:400});
-  const rows=(data??[]).map(event=>classId?{...event,attendance_records:(event.attendance_records??[]).filter(record=>record.class_id_snapshot===classId||(!record.class_id_snapshot&&event.class_id===classId))}:event)
+  const rows=(data??[]).map(event=>classId?{...event,attendance_records:(event.attendance_records??[]).filter((record:{class_id_snapshot:string|null})=>record.class_id_snapshot===classId||(!record.class_id_snapshot&&event.class_id===classId))}:event)
     .filter(event=>!classId||event.class_id===classId||(event.attendance_records??[]).length>0);
   return NextResponse.json(rows);
 }
