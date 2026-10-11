@@ -1686,3 +1686,86 @@ html[data-theme="dark"] .textarea{background:#0f1728}
 .grantOption input,.scopeRow input{width:17px;height:17px;accent-color:var(--primary);flex-shrink:0;cursor:pointer}
 .grantOption:has(input:disabled){opacity:.6;cursor:not-allowed}
 @media(max-width:650px){.grantGrid{grid-template-columns:1fr}.grantPanelHeader{align-items:start}.grantCard>small{min-height:0}}
+
+/* Simpul responsive shell: navigation follows the selected color theme. */
+:root{color-scheme:light}
+html[data-theme="dark"]{color-scheme:dark}
+@media(min-width:980px){
+  .desktopSidebar{
+    background:var(--surface)!important;
+    color:var(--text);
+    border-right:1px solid var(--border)!important;
+    box-shadow:none;
+    backdrop-filter:none;
+  }
+  html[data-theme="dark"] .desktopSidebar{
+    background:linear-gradient(180deg,var(--surface),color-mix(in srgb,var(--surface-2) 35%,var(--surface)))!important;
+  }
+  .desktopSidebar .navGroupLabel{color:var(--muted-2)}
+  .desktopSidebar .navItem{color:var(--muted)}
+  .desktopSidebar .navItem:hover{background:var(--surface-2);color:var(--text)}
+  .desktopSidebar .navItem.active{
+    color:var(--primary)!important;
+    background:var(--primary-soft)!important;
+    border-color:transparent!important;
+    box-shadow:inset 3px 0 0 var(--primary);
+  }
+  .desktopSidebar .sideButton{background:var(--surface-2);border-color:var(--border);color:var(--text)}
+  .desktopSidebar .userBox{border-color:var(--border)}
+  .desktopSidebar .userBox small{color:var(--muted)}
+  .desktopSidebar .brandWordmark strong{color:var(--text)}
+  .desktopSidebar .brandWordmark small{color:var(--muted)}
+  .desktopSidebar .brandLogo:hover{background:var(--surface-2)}
+  .desktopSidebar .viewerAccessInfo{border-color:var(--border);color:var(--text)}
+  .desktopSidebar .viewerAccessInfo small{color:var(--muted)}
+  .globalTools .desktopThemeToggle{display:grid}
+}
+@media(max-width:979px){
+  .globalTools .desktopThemeToggle{display:none}
+  .mobileHeader{gap:6px;padding-left:max(9px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
+  .mobileHeaderStart{display:flex;align-items:center;gap:7px;flex:1;min-width:0}
+  .mobileMenuButton{width:38px;height:38px;flex:none;border-color:var(--border);background:var(--surface-2)}
+  .mobileHeader .mobileBrand,.mobileHeader .mobileBrand span{min-width:0}
+  .mobileHeader .headerActions{flex:none}
+  .mobileDrawer{
+    width:min(88vw,350px);max-width:calc(100vw - 24px);
+    height:100dvh;overflow:hidden;display:flex;flex-direction:column;
+    background:var(--surface);border-right:1px solid var(--border);
+    border-radius:0 18px 18px 0;
+    padding:calc(12px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));
+  }
+  .mobileDrawer .drawerHead{display:flex;align-items:center;justify-content:space-between;flex:none}
+  .mobileDrawer .drawerRole{flex:none}
+  .mobileDrawer .drawerNav{display:block;flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:8px 4px 12px}
+  .mobileDrawer .navGroup{margin-bottom:12px}
+  .mobileDrawer .navGroupLabel{padding:10px 10px 4px}
+  .mobileDrawer .navItem{min-height:46px}
+  .mobileDrawer .agendaSidebarLinks{margin-left:39px}
+  .mobileDrawer .sideActions{flex:none;margin-top:0;padding-top:10px;border-top:1px solid var(--border)}
+  .mobilePanelDismiss{position:fixed;inset:0;z-index:38;background:rgba(8,13,27,.20);border:0;cursor:default}
+  .mobileMorePanel,.mobileQuickPanel{max-height:min(62dvh,520px);overflow-y:auto;overscroll-behavior:contain}
+  .mobileMorePanel{z-index:43}
+  .mobileMoreHead{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:3px 5px 10px;margin-bottom:5px;border-bottom:1px solid var(--border)}
+  .mobileMoreHead strong{font-size:12px;color:var(--text)}
+  .mobileMoreHead button{padding:8px;border:0;border-radius:8px;background:var(--primary-soft);color:var(--primary);font-size:11px;font-weight:650;cursor:pointer}
+  .moreNavItems .navItem{min-width:0;min-height:46px;gap:7px}
+  .moreNavItems .navItem span:last-child{line-height:1.25;overflow-wrap:anywhere}
+  .mobileQuickPanel{z-index:44}
+  .mobileQuickFab{z-index:45}
+  .quickAddGrid .quickAddItem{min-height:46px}
+  .pageContent{min-width:0;width:100%}
+  .pageHeader,.cardHead{min-width:0}
+  .pageHeader .row,.cardHead .row{flex-wrap:wrap}
+  .tableWrap{max-width:100%;overflow-x:auto}
+  .formGrid > *{min-width:0}
+}
+@media(max-width:380px){
+  .mobileHeaderStart{gap:4px}
+  .mobileMenuButton{width:34px;height:36px}
+  .mobileBrand{gap:5px}
+  .mobileBrand img{width:27px;height:27px}
+  .mobileBrand b{font-size:13px}
+  .mobileBrand small{display:none}
+  .mobileBottomNav{left:4px;right:4px;gap:0}
+  .bottomNavItems .navItem,.bottomNavMore{font-size:9px;padding-inline:1px}
+}

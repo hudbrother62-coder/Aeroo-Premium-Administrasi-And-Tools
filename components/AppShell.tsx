@@ -65,6 +65,16 @@ export default function AppShell({children}:{children:React.ReactNode}){
     localStorage.setItem('aeroo-theme',dark?'dark':'light');
   },[dark]);
   useEffect(()=>{localStorage.setItem('airo-sidebar-collapsed',collapsed?'1':'0')},[collapsed]);
+  useEffect(()=>{
+    const syncTheme=(event:StorageEvent)=>{if(event.key==='aeroo-theme'&&event.newValue)setDark(event.newValue==='dark')};
+    window.addEventListener('storage',syncTheme);
+    return()=>window.removeEventListener('storage',syncTheme);
+  },[]);
+  useEffect(()=>{
+    const closeOnEscape=(event:KeyboardEvent)=>{if(event.key==='Escape'){setDrawer(false);setMoreOpen(false);setQuickOpen(false)}};
+    window.addEventListener('keydown',closeOnEscape);
+    return()=>window.removeEventListener('keydown',closeOnEscape);
+  },[]);
 
   useEffect(()=>{
     if(isLogin){setChecking(false);return}
@@ -118,11 +128,10 @@ export default function AppShell({children}:{children:React.ReactNode}){
 
   const renderNav=(items=visible,klass='navList')=>{
     const link=(item:typeof nav[number])=>{const active=item.href==='/'?path==='/':path.startsWith(item.href);const Icon=item.icon;const primary=<Link key={item.href} href={item.href} aria-current={active?'page':undefined} title={item.label} className={active?'navItem active':'navItem'}><span className="navIcon"><Icon size={18}/></span><span>{item.label}</span></Link>;return item.href==='/agenda'&&klass==='navList'?<div className="agendaSidebarGroup" key={item.href}>{primary}<div className="agendaSidebarLinks"><Link href="/agenda/kalender" className={path==='/agenda/kalender'?'active':''}>Kalender</Link><Link href="/agenda" className={path==='/agenda'?'active':''}>Daftar &amp; Kelola</Link></div></div>:item.href==='/catatan'&&klass==='navList'?<div className="agendaSidebarGroup" key={item.href}>{primary}<div className="agendaSidebarLinks"><Link href="/catatan?scope=PERSONAL">Pribadi</Link><Link href="/catatan?scope=ROLE">Per Role</Link><Link href="/catatan?scope=MAIN">Utama</Link></div></div>:primary};
-    return <nav className={klass}>{klass==='navList'?sections.map(([label,paths])=>{const group=paths.flatMap(href=>items.filter(i=>i.href===href));return group.length?<div className="navGroup" key={label}><small className="navGroupLabel">{label}</small>{group.map(link)}</div>:null}):items.map(link)}</nav>
+    return <nav className={klass}>{klass.includes('navList')?sections.map(([label,paths])=>{const group=paths.flatMap(href=>items.filter(i=>i.href===href));return group.length?<div className="navGroup" key={label}><small className="navGroupLabel">{label}</small>{group.map(link)}</div>:null}):items.map(link)}</nav>
   };
 
   const account=<div className="sideActions">{user&&quickItems.length>0&&<div className="desktopQuickAdd"><button className="sideButton quickAddButton" onClick={()=>setQuickOpen(v=>!v)} aria-expanded={quickOpen}><Plus size={18}/><span>Tambah Data</span></button>{quickOpen&&<div className="quickAddPanel">{quickItems.map(item=>{const Icon=item.icon;return <Link key={item.href} href={item.href} className="quickAddItem"><Icon size={17}/><span>{item.label}</span></Link>})}</div>}</div>}{!user&&<div className="viewerAccess"><div className="viewerAccessInfo"><Eye size={16}/><span><strong>Mode Viewer</strong><small>Akses baca saja</small></span></div><Link className="sideButton viewerLoginButton" href="/login"><LogIn size={18}/>Masuk Admin</Link></div>}
-    <button className="sideButton" onClick={()=>setDark(v=>!v)}>{dark?<Sun size={18}/>:<Moon size={18}/>}<span>{dark?'Mode terang':'Mode gelap'}</span></button>
     {user&&<div className="userBox">
       <div className="userIdentity"><strong>{user?.display_name||user?.username||'Simpul'}</strong><small>{user?roleLabel[user.role]:'Memuat…'}</small></div>
       <button className="iconOnly" onClick={()=>void logout()} aria-label="Keluar"><LogOut size={18}/></button>
@@ -133,30 +142,34 @@ export default function AppShell({children}:{children:React.ReactNode}){
     <aside className="desktopSidebar"><Brand/><button className="iconOnly sidebarToggle" onClick={()=>setCollapsed(v=>!v)} aria-label={collapsed?'Buka navigasi':'Ciutkan navigasi'} aria-expanded={!collapsed}>{collapsed?<PanelLeftOpen size={18}/>:<PanelLeftClose size={18}/>}</button>{renderNav(visible,'navList')}{account}</aside>
 
     <div className={drawer?'mobileOverlay show':'mobileOverlay'} onClick={()=>setDrawer(false)}/>
-    <aside className={drawer?'mobileDrawer open':'mobileDrawer'} aria-hidden={!drawer}>
+    <aside id="simpul-mobile-menu" className={drawer?'mobileDrawer open':'mobileDrawer'} aria-label="Semua menu Simpul" aria-hidden={!drawer} inert={!drawer}>
       <div className="drawerHead"><Brand compact/><button className="iconOnly" onClick={()=>setDrawer(false)} aria-label="Tutup menu"><X size={20}/></button></div>
       <div className="drawerRole"><span>{user?roleLabel[user.role]:'Viewer'}</span><small>{user?.display_name||user?.username||'Ringkasan publik'}</small></div>
-      {renderNav(mobileMore,'navList drawerNav')}
+      {renderNav(visible,'navList drawerNav')}
       {account}
     </aside>
 
     <main className="contentArea">
-      <div className="globalToolsDock"><GlobalTools enabled={!!user}/></div>
+      <div className="globalToolsDock"><GlobalTools enabled={!!user} dark={dark===true} onToggleTheme={()=>setDark(v=>!(v??false))}/></div>
       <header className="mobileHeader">
-        <Link href="/" className="mobileBrand"><Image src="/simpul-logo.webp" alt="" width={48} height={48} priority/><span><b>Simpul</b><small>{title}</small></span></Link>
+        <div className="mobileHeaderStart">
+          <button type="button" className="iconOnly mobileMenuButton" onClick={()=>{setDrawer(true);setMoreOpen(false);setQuickOpen(false)}} aria-label="Buka semua menu" aria-controls="simpul-mobile-menu" aria-expanded={drawer}><Menu size={20}/></button>
+          <Link href="/" className="mobileBrand"><Image src="/simpul-logo.webp" alt="" width={48} height={48} priority/><span><b>Simpul</b><small>{title}</small></span></Link>
+        </div>
         <div className="headerActions">
           {!user&&<Link href="/login" className="headerLogin"><LogIn size={16}/>Masuk</Link>}
-          <button className="iconOnly headerTheme" onClick={()=>setDark(v=>!v)} aria-label="Tema">{dark?<Sun size={19}/>:<Moon size={19}/>}</button>
+          <button className="iconOnly headerTheme" onClick={()=>setDark(v=>!(v??false))} aria-label={dark?'Aktifkan mode terang':'Aktifkan mode gelap'} title={dark?'Mode terang':'Mode gelap'} aria-pressed={dark===true}>{dark?<Sun size={19}/>:<Moon size={19}/>}</button>
         </div>
       </header>
       <NavigationReturn/>
       <div className="pageContent" key={path}>{children}</div>
-      {user&&quickItems.length>0&&<><button className="mobileQuickFab" onClick={()=>{setQuickOpen(v=>!v);setMoreOpen(false)}} aria-label="Tambah data" aria-expanded={quickOpen}><Plus size={22}/></button>{quickOpen&&<div className="mobileQuickPanel"><div className="quickAddGrid">{quickItems.map(item=>{const Icon=item.icon;return <Link key={item.href} href={item.href} className="quickAddItem"><Icon size={18}/><span>{item.label}</span></Link>})}</div></div>}</>}
+      {(moreOpen||quickOpen)&&<button type="button" className="mobilePanelDismiss" aria-label="Tutup menu terbuka" onClick={()=>{setMoreOpen(false);setQuickOpen(false)}}/>}
+      {user&&quickItems.length>0&&<><button className="mobileQuickFab" onClick={()=>{setQuickOpen(v=>!v);setMoreOpen(false);setDrawer(false)}} aria-label={quickOpen?'Tutup tambah data':'Tambah data'} aria-expanded={quickOpen}>{quickOpen?<X size={22}/>:<Plus size={22}/>}</button>{quickOpen&&<div className="mobileQuickPanel"><div className="quickAddGrid">{quickItems.map(item=>{const Icon=item.icon;return <Link key={item.href} href={item.href} className="quickAddItem"><Icon size={18}/><span>{item.label}</span></Link>})}</div></div>}</>}
       <nav className="mobileBottomNav" aria-label="Navigasi utama">
         {renderNav(mobilePrimary,'bottomNavItems')}
-        {mobileMore.length>0&&<button className={moreOpen?'bottomNavMore active':'bottomNavMore'} onClick={()=>{setMoreOpen(v=>!v);setDrawer(false)}} aria-expanded={moreOpen}><span><MoreHorizontal size={20}/></span><small>Lainnya</small></button>}
+        {mobileMore.length>0&&<button className={moreOpen?'bottomNavMore active':'bottomNavMore'} onClick={()=>{setMoreOpen(v=>!v);setDrawer(false);setQuickOpen(false)}} aria-expanded={moreOpen}><span><MoreHorizontal size={20}/></span><small>Lainnya</small></button>}
       </nav>
-      {moreOpen&&<div className="mobileMorePanel">{renderNav(mobileMore,'moreNavItems')}</div>}
+      {moreOpen&&<div className="mobileMorePanel" role="region" aria-label="Menu lainnya"><div className="mobileMoreHead"><strong>Menu lainnya</strong><button type="button" onClick={()=>{setMoreOpen(false);setDrawer(true)}}>Lihat semua menu</button></div>{renderNav(mobileMore,'moreNavItems')}</div>}
     </main>
   </div>;
 }
