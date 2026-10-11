@@ -1,5 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {db} from './supabase-server';
+import {buildDashboardAnalytics} from './dashboard-analytics';
 import {jakartaDate,effectiveMembership,projectMember,slugByAudience,summarizeAttendance,summarizeProgress} from './domain';
 export async function publicRows(resource:string){const s=await db();const {data,error}=await s.rpc('viewer_data',{p_resource:resource});if(error)throw new Error(error.message);return Array.isArray(data)?data:[];}
 export function filterPublic(rows:any[],req:NextRequest,resource:string){const q=req.nextUrl.searchParams;return rows.filter(r=>{
@@ -32,5 +33,12 @@ export async function dataSummary(req:NextRequest){
  return {month,span,counts:{total:people.length,caberawit:people.filter(p=>has(p,'caberawit')).length,muda_mudi:people.filter(p=>has(p,'muda-mudi')).length,ibu_ibu:people.filter(p=>has(p,'ibu-ibu')).length,pengurus:people.filter(p=>has(p,'pengurus')).length},attendance:{...summarizeAttendance(entries),meetings:selected.length},journals:js.length,individuals:[...map.values()].map(p=>({...p,percentage:p.H+p.I+p.A?Math.round(p.H/(p.H+p.I+p.A)*1000)/10:null}))};
 }
 export async function publicDashboard(req:NextRequest){
- const month=req.nextUrl.searchParams.get('month')||jakartaDate().slice(0,7);if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))throw Error('Bulan tidak valid');const span=req.nextUrl.searchParams.get('span')==='6'?6:1;const [members,events,journals,cats]=await Promise.all([publicRows('members'),publicRows('attendance'),publicRows('journals'),publicRows('categories')]);const months=Array.from({length:span},(_,i)=>new Date(Date.UTC(Number(month.slice(0,4)),Number(month.slice(5,7))-span+i,1)).toISOString().slice(0,7));const selected=events.filter(e=>e.state!=='CANCELLED'&&months.includes(e.event_date.slice(0,7)));const rows=selected.flatMap(e=>e.attendance_records);const summary=summarizeAttendance(rows);return {members:members.length,categories:cats.map(c=>({name:c.name,count:members.filter(m=>m.member_categories?.some((x:any)=>x.category_id===c.id)).length})),attendance:{meetings:selected.length,present:summary.H,excused:summary.I,absent:summary.A,pending:summary.pending},journals:journals.filter(j=>months.includes(j.journal_date.slice(0,7))).length,monthly:months.map(m=>({month:m,meetings:selected.filter(e=>e.event_date.startsWith(m)).length,present:selected.filter(e=>e.event_date.startsWith(m)).flatMap(e=>e.attendance_records).filter(r=>r.status==='H').length,journals:journals.filter(j=>j.journal_date.startsWith(m)).length}))};
+ const month=req.nextUrl.searchParams.get('month')||jakartaDate().slice(0,7);
+ const span=([1,3,6].includes(Number(req.nextUrl.searchParams.get('span')))?Number(req.nextUrl.searchParams.get('span')):1) as 1|3|6;
+ const levelId=req.nextUrl.searchParams.get('level_id')||'';
+ const [members,events,journals,levels,targets,progress,cats]=await Promise.all([
+  publicRows('members'),publicRows('attendance'),publicRows('journals'),publicRows('levels'),publicRows('targets'),publicRows('progress'),publicRows('categories')
+ ]);
+ const analytics=buildDashboardAnalytics({people:members,events,journals,levels,targets,progress,month,span,levelId});
+ return {...analytics,categories:cats.map(c=>({name:c.name,count:members.filter(m=>m.member_categories?.some((x:any)=>x.category_id===c.id)).length})),monthly:analytics.trend.map(b=>({month:b.label,meetings:b.meetings,present:b.present,journals:0}))};
 }
