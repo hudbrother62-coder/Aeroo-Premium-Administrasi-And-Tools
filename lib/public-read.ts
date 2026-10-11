@@ -73,9 +73,9 @@ export async function publicDashboard(req:NextRequest){
  const month=req.nextUrl.searchParams.get('month')||jakartaDate().slice(0,7);
  const span=([1,3,6].includes(Number(req.nextUrl.searchParams.get('span')))?Number(req.nextUrl.searchParams.get('span')):1) as 1|3|6;
  const levelId=req.nextUrl.searchParams.get('level_id')||'';
- const [members,events,journals,levels,targets,progress,cats]=await Promise.all([
-  publicRows('members'),publicRows('attendance'),publicRows('journals'),publicRows('levels'),publicRows('targets'),publicRows('progress'),publicRows('categories')
+ const [members,events,journals,levels,classes,targets,progress,cats]=await Promise.all([
+  publicRows('members'),publicRows('attendance'),publicRows('journals'),publicRows('levels'),publicRows('classes'),publicRows('targets'),publicRows('progress'),publicRows('categories')
  ]);
- const analytics=buildDashboardAnalytics({people:members,events,journals,levels,targets,progress,month,span,levelId});
+ const analytics=buildDashboardAnalytics({people:members,events,journals,levels,classes,targets,progress,month,span,levelId});
  return {...analytics,categories:cats.map(c=>({name:c.name,count:members.filter(m=>m.member_categories?.some((x:any)=>x.category_id===c.id)).length})),monthly:analytics.trend.map(b=>({month:b.label,meetings:b.meetings,present:b.present,journals:0}))};
 }

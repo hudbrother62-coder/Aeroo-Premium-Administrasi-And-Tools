@@ -10,6 +10,7 @@ export type DashboardAnalytics={
   members:number;attendance:{meetings:number;present:number;excused:number;absent:number;pending:number;total:number;percentage:number|null};
   journals:number;targets:{count:number;assessed:number;percentage:number|null};
   trend:DashboardBucket[];distribution:DashboardGroup[];comparison:DashboardGroup[];
+  levelMapping:{inferred:number;unmapped:number};
   targetByLevel:Array<{id:string;name:string;percentage:number|null;assessed:number}>;
 };
 
@@ -22,17 +23,37 @@ function stat(rows:Row[]){
   const total=present+excused+absent;
   return {present,excused,absent,pending:rows.length-total,total,percentage:ratio(present,total)};
 }
-export function matchingRecords(event:Row,levelId:string){
+export type DashboardLookup={people:Map<string,Row>;classLevels:Map<string,string>};
+export function createDashboardLookup(people:Row[],classes:Row[]=[]):DashboardLookup{
+  return {people:new Map(people.map(p=>[String(p.id),p])),classLevels:new Map(classes.filter(c=>c.level_id).map(c=>[String(c.id),String(c.level_id)]))};
+}
+function memberPlacement(person:Row|undefined,date:string){
+  if(!person)return {levelId:'',classId:''};
+  const memberships:Row[]=person.member_memberships||[];
+  const withLevel=memberships.filter(m=>m.level_id&&effectiveMembership(m,date));
+  const current=memberships.filter(m=>m.level_id&&effectiveMembership(m));
+  const matching=(withLevel.length?withLevel:current).sort((a,b)=>String(b.valid_from||'').localeCompare(String(a.valid_from||'')));
+  const selected=matching.find(m=>['caberawit','muda-mudi'].includes(m.categories?.slug))||matching[0];
+  return {levelId:String(selected?.level_id||person.level_id||''),classId:String(selected?.class_id||person.class_id||'')};
+}
+export function recordPlacement(event:Row,row:Row,lookup?:DashboardLookup){
+  const member=lookup?.people.get(String(row.member_id||''))||lookup?.people.get(String(row.participant_key||''));
+  const placement=memberPlacement(member,String(event.event_date||''));
+  const classId=String(row.class_id_snapshot||event.class_id||placement.classId||'');
+  const levelId=String(row.level_id_snapshot||lookup?.classLevels.get(String(row.class_id_snapshot||''))||event.level_id||lookup?.classLevels.get(String(event.class_id||''))||placement.levelId||'');
+  return {levelId,classId,inferred:!row.level_id_snapshot&&Boolean(levelId)};
+}
+export function matchingRecords(event:Row,levelId:string,lookup?:DashboardLookup){
   const rows:Array<Row>=event.attendance_records||[];
-  return !levelId?rows:rows.filter(r=>r.level_id_snapshot===levelId||(!r.level_id_snapshot&&event.level_id===levelId));
+  return !levelId?rows:rows.filter(r=>recordPlacement(event,r,lookup).levelId===levelId);
 }
 export function matchesDashboardLevel(person:Row,levelId:string){
   if(!levelId)return true;
   const memberships:Array<Row>=(person.member_memberships||[]).filter((m:Row)=>effectiveMembership(m));
   return memberships.length?memberships.some(m=>m.level_id===levelId):person.level_id===levelId;
 }
-function eventInLevel(event:Row,levelId:string){
-  return !levelId||event.level_id===levelId||matchingRecords(event,levelId).length>0;
+function eventInLevel(event:Row,levelId:string,lookup:DashboardLookup){
+  return !levelId||event.level_id===levelId||lookup.classLevels.get(String(event.class_id||''))===levelId||matchingRecords(event,levelId,lookup).length>0;
 }
 function memberClass(person:Row,levelId:string){
   const memberships:Array<Row>=(person.member_memberships||[]).filter((m:Row)=>effectiveMembership(m)&&(!levelId||m.level_id===levelId)&&m.class_id);
@@ -48,18 +69,21 @@ function compareGroup(id:string,name:string,people:Row[],rows:Row[]):DashboardGr
 }
 export function buildDashboardAnalytics(input:{
   people:Row[];events:Row[];journals:Row[];levels:Row[];
-  targets?:Row[];progress?:Row[];month:string;span:1|3|6;levelId?:string;
+  targets?:Row[];progress?:Row[];classes?:Row[];month:string;span:1|3|6;levelId?:string;
 }):DashboardAnalytics{
   const {people,events,journals,month,span}=input;
   if(!isValidDashboardMonth(month))throw new Error('Bulan tidak valid.');
   const selectedLevel=input.levelId||'';
+  const lookup=createDashboardLookup(people,input.classes||[]);
   const levels=(input.levels||[]).filter(l=>l.active!==false).map(l=>({id:String(l.id),name:String(l.name)}));
   if(selectedLevel&&!levels.some(l=>l.id===selectedLevel))throw new Error('Jenjang tidak ditemukan.');
   const months=previousMonths(month,span),first=months[0];
   const availableEvents=events.filter(e=>e.state!=='CANCELLED');
   const periodEvents=availableEvents.filter(e=>e.event_date?.slice(0,7)>=first&&e.event_date?.slice(0,7)<=month);
-  const scopedEvents=periodEvents.filter(e=>eventInLevel(e,selectedLevel));
-  const entries=scopedEvents.flatMap(e=>matchingRecords(e,selectedLevel));
+  const scopedEvents=periodEvents.filter(e=>eventInLevel(e,selectedLevel,lookup));
+  const entries=scopedEvents.flatMap(e=>matchingRecords(e,selectedLevel,lookup));
+  const inferred=scopedEvents.reduce((total,e)=>total+matchingRecords(e,selectedLevel,lookup).filter(r=>recordPlacement(e,r,lookup).inferred).length,0);
+  const unmapped=periodEvents.reduce((total,e)=>total+(e.attendance_records||[]).filter((r:Row)=>!recordPlacement(e,r,lookup).levelId).length,0);
   const attendance=stat(entries);
   const members=people.filter(p=>matchesDashboardLevel(p,selectedLevel));
   const periodJournals=journals.filter(j=>j.state==='COMPLETED'&&j.journal_date?.slice(0,7)>=first&&j.journal_date?.slice(0,7)<=month);
@@ -67,12 +91,12 @@ export function buildDashboardAnalytics(input:{
   const classIds=new Set(members.flatMap(p=>(p.member_memberships||[]).filter((m:Row)=>effectiveMembership(m)&&(!selectedLevel||m.level_id===selectedLevel)).map((m:Row)=>m.class_id).filter(Boolean)));
   const scopedJournals=selectedLevel?periodJournals.filter(j=>{
     const event=eventIndex.get(j.event_id);
-    return event?eventInLevel(event,selectedLevel):Boolean(j.class_id&&classIds.has(j.class_id));
+    return event?eventInLevel(event,selectedLevel,lookup):Boolean(j.class_id&&classIds.has(j.class_id));
   }):periodJournals.filter(j=>!j.event_id||eventIndex.has(j.event_id));
 
-  const allRows=(arr:Row[],levelId:string)=>arr.flatMap(e=>matchingRecords(e,levelId));
+  const allRows=(arr:Row[],levelId:string)=>arr.flatMap(e=>matchingRecords(e,levelId,lookup));
   const levelStats=levels.map(l=>{
-    const scope=periodEvents.filter(e=>eventInLevel(e,l.id));
+    const scope=periodEvents.filter(e=>eventInLevel(e,l.id,lookup));
     const s=stat(allRows(scope,l.id));
     return {id:l.id,name:l.name,count:people.filter(p=>matchesDashboardLevel(p,l.id)).length,present:s.present,total:s.total,percentage:s.percentage};
   });
@@ -83,7 +107,7 @@ export function buildDashboardAnalytics(input:{
     classKeys.get(key)!.people.push(p);
   }
   const classes=[...classKeys].map(([id,c])=>{
-    const rows=entries.filter(r=>(r.class_id_snapshot||'__unassigned__')===id);
+    const rows=scopedEvents.flatMap(e=>matchingRecords(e,selectedLevel,lookup).filter(r=>(recordPlacement(e,r,lookup).classId||'__unassigned__')===id));
     return compareGroup(id,c.name,c.people,rows);
   }).sort((a,b)=>b.count-a.count||a.name.localeCompare(b.name,'id'));
   const unassigned=people.filter(p=>!levels.some(l=>matchesDashboardLevel(p,l.id)));
@@ -99,7 +123,7 @@ export function buildDashboardAnalytics(input:{
     for(let day=1;day<=days;day+=7){
       const from=month+'-'+String(day).padStart(2,'0'),to=month+'-'+String(Math.min(days,day+6)).padStart(2,'0');
       const group=scopedEvents.filter(e=>e.event_date>=from&&e.event_date<=to);
-      const s=stat(group.flatMap(e=>matchingRecords(e,selectedLevel)));
+      const s=stat(group.flatMap(e=>matchingRecords(e,selectedLevel,lookup)));
       buckets.push({label:day+'–'+Math.min(days,day+6),meetings:group.length,present:s.present,total:s.total,percentage:s.percentage});
     }
   }else{
@@ -126,7 +150,7 @@ export function buildDashboardAnalytics(input:{
     return {id:l.id,name:l.name,percentage:score(values),assessed:values.length};
   });
   return {
-    month,span,selectedLevel,levels:levelStats,
+    month,span,selectedLevel,levels:levelStats,levelMapping:{inferred,unmapped},
     members:members.length,
     attendance:{meetings:scopedEvents.length,...attendance},
     journals:scopedJournals.length,

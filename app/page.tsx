@@ -38,7 +38,7 @@ function chartLine(bucket:DashboardBucket[],color='var(--sim-blue)'){
   </div>;
 }
 function HorizontalStats({items,mode}:{items:DashboardGroup[];mode:'attendance'|'count'|'progress'}){
-  const list=items.slice(0,7),max=Math.max(1,...list.map(x=>x.count));
+  const list=items,max=Math.max(1,...list.map(x=>x.count));
   if(!list.length)return <p className="simMuted simEmptyMini">Belum ada data untuk ditampilkan.</p>;
   return <div className="simHorizontal">{list.map((x,i)=><div className="simHorizontalItem" key={x.id}>
     <div className="simHorizontalHead"><strong title={x.name}>{x.name}</strong><b>{mode==='count'?number.format(x.count):pct(x.percentage)}</b></div>
@@ -72,7 +72,7 @@ export default function Home(){
   const [error,setError]=useState('');
   const [loading,setLoading]=useState(true);
   const [level,setLevel]=useState('');
-  const [month,setMonth]=useState(()=>new Date().toISOString().slice(0,7));
+  const [month,setMonth]=useState(()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'}).slice(0,7));
   const [span,setSpan]=useState<1|3|6>(1);
   const [reload,setReload]=useState(0);
   const [visitorName,setVisitorName]=useState('');
@@ -149,7 +149,7 @@ export default function Home(){
       <div className="simMajor">
         <ChartCard title="Tren Kehadiran" subtitle={'Persentase hadir dari status H, I, A yang sudah dicatat · '+period} action={<Link href="/rekap-presensi" className="simTextLink">Detail <ArrowRight size={15}/></Link>}>
           {chartLine(trend)}
-          <div className="simLegend"><span><i className="simBlueLegend"/> Kehadiran aktual</span><span>Pending tidak dihitung dalam persentase</span></div>
+          <div className="simLegend"><span><i className="simBlueLegend"/> Kehadiran aktual</span><span>Pending tidak dihitung dalam persentase</span></div>{data.levelMapping?.inferred>0&&<div className="simLegacyNotice">{number.format(data.levelMapping.inferred)} catatan lama dipetakan menurut kelas / keanggotaan yang tersedia. <span>Data asli tidak diubah.</span></div>}
         </ChartCard>
         <ChartCard title={level?'Kehadiran per Kelas':'Kehadiran per Jenjang'} subtitle="Perbandingan persentase kehadiran tercatat">
           <HorizontalStats items={data.comparison} mode="attendance"/>
@@ -165,7 +165,7 @@ export default function Home(){
           <VerticalStats items={trend.map(b=>({label:b.label,value:b.meetings}))}/>
         </ChartCard>
         <ChartCard title={level?'Sebaran Anggota per Kelas':'Sebaran Anggota per Jenjang'} subtitle="Berdasarkan keanggotaan yang masih aktif">
-          <VerticalStats items={data.distribution.slice(0,9).map(x=>({label:x.name,value:x.count}))}/>
+          <VerticalStats items={data.distribution.map(x=>({label:x.name,value:x.count}))}/>
         </ChartCard>
       </div>
       <div className="simBottomGrid">
