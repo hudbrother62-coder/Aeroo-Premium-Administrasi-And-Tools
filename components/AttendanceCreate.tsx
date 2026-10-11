@@ -1,6 +1,7 @@
 'use client';
 
 import {FormEvent,useEffect,useMemo,useRef,useState} from 'react';
+import {ClipboardCheck} from 'lucide-react';
 import {audienceLabels,writeScopesForRole,type Audience,type Role} from '@/lib/access';
 import {jakartaDate} from '@/lib/domain';
 
