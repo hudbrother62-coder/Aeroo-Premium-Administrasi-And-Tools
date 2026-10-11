@@ -9,7 +9,8 @@ type ClassRow={id:string;name:string;audience:string;level_id?:string|null};
 type LevelRow={id:string;name:string};
 type Status='H'|'I'|'A'|null;
 type Person={id:string;name:string;class_name:string;level_name?:string;H:number;I:number;A:number;pending:number;percentage:number|null;dates:{H:string[];I:string[];A:string[]}};
-type Meeting={id:string;title:string;date:string;audience:string;class_name:string;total:number;summary:{H:number;I:number;A:number;pending:number};participants:Array<{id:string;name:string;class_name:string;level_name:string;status:Status;notes:string}>};
+type Participant={id:string;name:string;class_name:string;level_name:string;status:Status;notes:string};
+type Meeting={id:string;title:string;date:string;audience:string;class_name:string;total:number;summary:{H:number;I:number;A:number;pending:number}};
 type Recap={month:string;summary:{H:number;I:number;A:number;pending:number;meetings:number};individuals:Person[];meetings:Meeting[]};
 const statusLabel=(s:Status)=>s==='H'?'Hadir':s==='I'?'Izin':s==='A'?'Alfa':'Belum diisi';
 const statusClass=(s:Status)=>s==='H'?'hadir':s==='I'?'izin':s==='A'?'alfa':'pending';
@@ -32,6 +33,9 @@ export default function AttendanceRecap({embedded=false,focusEventId=''}:{embedd
  const [expandedPerson,setExpandedPerson]=useState('');
  const [search,setSearch]=useState('');
  const [statusFilter,setStatusFilter]=useState('all');
+ const [participants,setParticipants]=useState<Participant[]>([]);
+ const [participantsLoading,setParticipantsLoading]=useState(false);
+ const [participantsError,setParticipantsError]=useState('');
 
  useEffect(()=>{if(focusEventId){setMeetingId(focusEventId);setDetail('meetings');const selectedMonth=new URLSearchParams(window.location.search).get('month');if(selectedMonth&&/^\d{4}-(0[1-9]|1[0-2])$/.test(selectedMonth))setMonth(selectedMonth);}},[focusEventId]);
  useEffect(()=>{let live=true;
@@ -44,36 +48,49 @@ export default function AttendanceRecap({embedded=false,focusEventId=''}:{embedd
   }).catch(()=>{if(live)setError('Filter kelas belum dapat dimuat.');});
   return()=>{live=false};
  },[]);
- useEffect(()=>{let live=true;setLoading(true);setError('');
+ useEffect(()=>{const controller=new AbortController();let live=true;setLoading(true);setError('');setData(null);setMeetingId('');setParticipants([]);
    const params=new URLSearchParams({month});if(audience)params.set('audience',audience);if(levelId)params.set('level_id',levelId);if(classId)params.set('class_id',classId);
-   fetch('/api/attendance/recap?'+params.toString()).then(async r=>{const j=await r.json();if(!r.ok)throw Error(j.error||'Rekap gagal dimuat.');return j;})
+   fetch('/api/attendance/recap?'+params.toString(),{signal:controller.signal}).then(async r=>{const j=await r.json();if(!r.ok)throw Error(j.error||'Rekap gagal dimuat.');return j;})
     .then(j=>{if(live)setData(j);}).catch(e=>{if(live){setError(e.message);setData(null);}}).finally(()=>{if(live)setLoading(false);});
-   return()=>{live=false};
+   return()=>{live=false;controller.abort()};
  },[month,audience,levelId,classId]);
+ useEffect(()=>{
+   if(detail!=='meetings'||!meetingId||!data?.meetings.some(m=>m.id===meetingId)){setParticipants([]);setParticipantsError('');setParticipantsLoading(false);return;}
+   let live=true;const controller=new AbortController();
+   setParticipants([]);setParticipantsError('');setParticipantsLoading(true);
+   const params=new URLSearchParams({month,event_id:meetingId});
+   if(audience)params.set('audience',audience);if(levelId)params.set('level_id',levelId);if(classId)params.set('class_id',classId);
+   fetch('/api/attendance/recap?'+params.toString(),{signal:controller.signal})
+     .then(async r=>{const j=await r.json();if(!r.ok)throw Error(j.error||'Rincian peserta gagal dimuat.');return j;})
+     .then(j=>{if(live)setParticipants(Array.isArray(j.participants)?j.participants:[]);})
+     .catch(e=>{if(live)setParticipantsError(e.message);})
+     .finally(()=>{if(live)setParticipantsLoading(false);});
+   return()=>{live=false;controller.abort()};
+ },[detail,meetingId,month,audience,levelId,classId,data]);
  const availableClasses=classes.filter(c=>(!audience||c.audience===audience)&&(!levelId||c.level_id===levelId));
  const meetings=data?.meetings||[];
  const meeting=meetings.find(m=>m.id===meetingId)||null;
  const people=useMemo(()=>(data?.individuals||[]).filter(p=>p.name.toLocaleLowerCase('id-ID').includes(search.toLocaleLowerCase('id-ID'))||p.class_name.toLocaleLowerCase('id-ID').includes(search.toLocaleLowerCase('id-ID'))),[data,search]);
- const visibleParticipants=(meeting?.participants||[]).filter(p=>(statusFilter==='all'||(p.status||'pending')===statusFilter)&&p.name.toLocaleLowerCase('id-ID').includes(search.toLocaleLowerCase('id-ID')));
+ const visibleParticipants=participants.filter(p=>(statusFilter==='all'||(p.status||'pending')===statusFilter)&&p.name.toLocaleLowerCase('id-ID').includes(search.toLocaleLowerCase('id-ID')));
  const totalMarked=(data?.summary.H||0)+(data?.summary.I||0)+(data?.summary.A||0);
  const overallRate=totalMarked?Math.round((data?.summary.H||0)/totalMarked*1000)/10:null;
  const statuses=[{id:'H',label:'Hadir',value:data?.summary.H||0},{id:'I',label:'Izin',value:data?.summary.I||0},{id:'A',label:'Alfa',value:data?.summary.A||0},{id:'pending',label:'Belum diisi',value:data?.summary.pending||0}];
  async function exportExcel(){
   const XLSX=await import('xlsx');
-  const rows=detail==='meetings'&&meeting?meeting.participants.map(p=>({Tanggal:meeting.date,Pertemuan:meeting.title,Nama:p.name,Kelas:p.class_name,Status:statusLabel(p.status),Keterangan:p.notes})):detail==='individual'?(data?.individuals||[]).map(p=>({Nama:p.name,Kelas:p.class_name,Hadir:p.H,Izin:p.I,Alfa:p.A,'Belum diisi':p.pending,'Persentase (%)':p.percentage??''})):meetings.map(m=>({Tanggal:m.date,Pertemuan:m.title,Lingkup:audienceLabels[m.audience as Audience]||m.audience,Kelas:m.class_name,Peserta:m.total,Hadir:m.summary.H,Izin:m.summary.I,Alfa:m.summary.A,'Belum diisi':m.summary.pending}));
+  const rows=detail==='meetings'&&meeting?participants.map(p=>({Tanggal:meeting.date,Pertemuan:meeting.title,Nama:p.name,Kelas:p.class_name,Status:statusLabel(p.status),Keterangan:p.notes})):detail==='individual'?(data?.individuals||[]).map(p=>({Nama:p.name,Kelas:p.class_name,Hadir:p.H,Izin:p.I,Alfa:p.A,'Belum diisi':p.pending,'Persentase (%)':p.percentage??''})):meetings.map(m=>({Tanggal:m.date,Pertemuan:m.title,Lingkup:audienceLabels[m.audience as Audience]||m.audience,Kelas:m.class_name,Peserta:m.total,Hadir:m.summary.H,Izin:m.summary.I,Alfa:m.summary.A,'Belum diisi':m.summary.pending}));
   const ws=XLSX.utils.json_to_sheet(rows.length?rows:[{Keterangan:'Tidak ada data untuk filter ini'}]);
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Rekap Presensi');XLSX.writeFile(wb,'rekap-presensi-'+month+'.xlsx');
  }
  return <div className="attendanceRecap">
    {!embedded&&<div className="pageHeader"><h1>Rekap Presensi</h1></div>}
-   <div className="attendancePanelHead attendanceRecapHead"><div><h2>Analisis Presensi</h2><p>Mulai dari gambaran keseluruhan, lalu telusuri pertemuan dan setiap peserta.</p></div><button type="button" className="btn ghost" onClick={()=>void exportExcel()} disabled={!data||loading}><Download size={16}/> Ekspor Excel</button></div>
+   <div className="attendancePanelHead attendanceRecapHead"><div><h2>Analisis Presensi</h2><p>Mulai dari gambaran keseluruhan, lalu telusuri pertemuan dan setiap peserta.</p></div><button type="button" className="btn ghost" onClick={()=>void exportExcel()} disabled={!data||loading||(detail==='meetings'&&!!meeting&& (participantsLoading||!!participantsError))}><Download size={16}/> Ekspor Excel</button></div>
    <section className="attendanceFilters attendanceRecapFilters">
     <label>Periode<input className="input" aria-label="Bulan rekap" type="month" value={month} onChange={e=>{setMonth(e.target.value);setMeetingId('');}}/></label>
     <label>Lingkup<select className="select" value={audience} onChange={e=>{setAudience(e.target.value);setLevelId('');setClassId('');setMeetingId('');}}><option value="">Keseluruhan</option>{readable.map(a=><option key={a} value={a}>{audienceLabels[a]}</option>)}</select></label>
     <label>Jenjang<select className="select" value={levelId} onChange={e=>{setLevelId(e.target.value);setClassId('');setMeetingId('');}}><option value="">Semua jenjang</option>{levels.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
     <label>Kelas<select className="select" value={classId} onChange={e=>{setClassId(e.target.value);setMeetingId('');}}><option value="">Semua kelas</option>{availableClasses.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
    </section>
-   {error&&<div className="notice error" role="alert">{error}</div>}
+   {error&&<div className="notice error" role="alert">{error} Silakan coba filter yang lebih spesifik atau muat ulang.</div>}
    {loading?<div className="card"><div className="skeleton" style={{height:160}}/></div>:<>
    <div className="attendanceKpiGrid">
      <div className="attendanceKpi"><span>Total pertemuan</span><strong>{data?.summary.meetings||0}</strong><small>Dalam filter yang dipilih</small></div>
@@ -102,7 +119,9 @@ export default function AttendanceRecap({embedded=false,focusEventId=''}:{embedd
        {meeting?<><div className="attendancePanelHead"><div><span className="attendanceEyebrow">{dayLabel(meeting.date)}</span><h2>{meeting.title}</h2><p>{meeting.class_name||audienceLabels[meeting.audience as Audience]||meeting.audience} · {meeting.total} peserta</p></div></div>
        <div className="attendanceSmallMetrics"><span>{meeting.summary.H} Hadir</span><span>{meeting.summary.I} Izin</span><span>{meeting.summary.A} Alfa</span><span>{meeting.summary.pending} Belum</span></div>
        <div className="attendanceDetailFilters"><label className="attendanceSearch"><Search size={16}/><input className="input" type="search" placeholder="Cari nama peserta" value={search} onChange={e=>setSearch(e.target.value)}/></label><select className="select" aria-label="Filter status" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="all">Semua status</option><option value="H">Hadir</option><option value="I">Izin</option><option value="A">Alfa</option><option value="pending">Belum diisi</option></select></div>
-       <div className="tableWrap"><table className="table"><thead><tr><th>Nama peserta</th><th>Kelas</th><th>Status</th><th>Keterangan</th></tr></thead><tbody>{visibleParticipants.map(p=><tr key={p.id}><td><strong>{p.name}</strong></td><td>{p.class_name||'—'}</td><td><span className={'attendanceStatusChip '+statusClass(p.status)}>{statusLabel(p.status)}</span></td><td>{p.notes||'—'}</td></tr>)}{!visibleParticipants.length&&<tr><td colSpan={4}>Tidak ada peserta sesuai filter.</td></tr>}</tbody></table></div>
+       {participantsLoading&&<div className="card"><div className="skeleton" style={{height:90}}/></div>}
+       {participantsError&&<div className="notice error" role="alert">{participantsError}</div>}
+       {!participantsLoading&&!participantsError&&<div className="tableWrap"><table className="table"><thead><tr><th>Nama peserta</th><th>Kelas</th><th>Status</th><th>Keterangan</th></tr></thead><tbody>{visibleParticipants.map(p=><tr key={p.id}><td><strong>{p.name}</strong></td><td>{p.class_name||'—'}</td><td><span className={'attendanceStatusChip '+statusClass(p.status)}>{statusLabel(p.status)}</span></td><td>{p.notes||'—'}</td></tr>)}{!visibleParticipants.length&&<tr><td colSpan={4}>Tidak ada peserta sesuai filter.</td></tr>}</tbody></table></div>}
        </>:<div className="attendanceEmpty"><Users size={27}/><strong>Pilih sebuah pertemuan</strong><span>Rincian hadir, izin, alfa, dan nama peserta akan tampil di sini.</span></div>}
      </section>
    </div>}

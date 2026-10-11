@@ -20,41 +20,18 @@ export async function publicProjection(req:NextRequest,resource:string){const s=
 export async function publicRecap(req:NextRequest){
  const params=req.nextUrl.searchParams;
  const month=params.get('month')||jakartaDate().slice(0,7);
- if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))throw Error('Bulan tidak valid');
- const audience=params.get('audience')||'';
- const klass=params.get('class_id')||'';
- const level=params.get('level_id')||'';
- const source=(await readRows('attendance')).filter((e:any)=>e.event_date?.startsWith(month)&&e.state!=='CANCELLED'&&(!audience||e.audience===audience));
- const selected=source.map((event:any)=>{
-   const records=(event.attendance_records||[]).filter((r:any)=>
-     (!klass||r.class_id_snapshot===klass||(!r.class_id_snapshot&&event.class_id===klass))&&
-     (!level||r.level_id_snapshot===level||(!r.level_id_snapshot&&event.level_id===level))
-   );
-   return {...event,attendance_records:records};
- }).filter((e:any)=>(!klass&&!level)||e.attendance_records.length>0);
- const people=new Map<string,any>();
- const all:any[]=[];
- const meetings=selected.map((event:any)=>{
-   const rows=event.attendance_records||[];
-   for(const r of rows){
-     all.push(r);
-     const id=r.participant_key||r.member_id||r.id;
-     if(!people.has(id))people.set(id,{id,name:r.member_name_snapshot||'Peserta',class_name:r.class_name_snapshot||'',level_name:r.level_name_snapshot||'',H:0,I:0,A:0,pending:0,dates:{H:[],I:[],A:[]}});
-     const person=people.get(id);
-     if(r.status==='H'||r.status==='I'||r.status==='A'){person[r.status]++;person.dates[r.status].push(event.event_date);}
-     else person.pending++;
-   }
-   const summary=summarizeAttendance(rows);
-   return {id:event.id,title:event.title,date:event.event_date,audience:event.audience,class_name:event.classes?.name||'',total:rows.length,summary,participants:rows.map((r:any)=>({id:r.participant_key||r.id,name:r.member_name_snapshot||'Peserta',class_name:r.class_name_snapshot||'',level_name:r.level_name_snapshot||'',status:r.status||null,notes:r.notes||''}))};
- }).sort((a:any,b:any)=>b.date.localeCompare(a.date)||a.title.localeCompare(b.title));
- const days=new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),0).getDate();
- const totals=summarizeAttendance(all);
- return {
-   month,summary:{...totals,meetings:selected.length},
-   individuals:[...people.values()].map(p=>({...p,percentage:p.H+p.I+p.A?Math.round(p.H/(p.H+p.I+p.A)*1000)/10:null})).sort((a,b)=>a.name.localeCompare(b.name,'id')),
-   meetings,
-   calendar:Array.from({length:days},(_,i)=>{const date=month+'-'+String(i+1).padStart(2,'0');const n=selected.filter((e:any)=>e.event_date===date).length;return {date,events:n,recorded:n>0};})
- };
+ if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))throw Error('Bulan tidak valid.');
+ const asUuid=(key:string)=>{const value=params.get(key)||null;if(value&&!/^[a-f\d]{8}-[a-f\d]{4}-[1-8][a-f\d]{3}-[89ab][a-f\d]{3}-[a-f\d]{12}$/i.test(value))throw Error('Parameter '+key+' tidak valid.');return value;};
+ const s=await db();
+ const {data,error}=await s.rpc('attendance_recap_scoped',{
+   p_month:month,
+   p_audience:params.get('audience')||null,
+   p_level_id:asUuid('level_id'),
+   p_class_id:asUuid('class_id'),
+   p_event_id:asUuid('event_id'),
+ });
+ if(error)throw new Error(error.message);
+ return data;
 }
 export async function publicTargetOverview(req:NextRequest){const month=req.nextUrl.searchParams.get('month')||jakartaDate().slice(0,7);if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))throw Error('Bulan tidak valid');const end=new Date(Number(month.slice(0,4)),Number(month.slice(5,7))+4,1).toISOString().slice(0,10);const versions=await publicRows('versions');const version=req.nextUrl.searchParams.get('version_id')||versions[0]?.id||'__unversioned__';const targets=(await readRows('targets')).filter((t:any)=>t.target_month>=month+'-01'&&t.target_month<=end&&(version==='__unversioned__'?!t.version_id:t.version_id===version));const [members,progress]=await Promise.all([readRows('members'),readRows('progress')]);const individual=members.filter((p:any)=>p.member_categories.some((c:any)=>['caberawit','muda-mudi'].includes(c.categories.slug))).map((p:any)=>{const ids=targets.filter((t:any)=>(p.member_memberships||[]).some((mm:any)=>(mm.active||mm.valid_to)&&mm.level_id===t.level_id&&(!t.class_id||mm.class_id===t.class_id)&&(!t.target_month||(!mm.valid_from||mm.valid_from.slice(0,7)<=t.target_month.slice(0,7))&&(!mm.valid_to||mm.valid_to.slice(0,7)>=t.target_month.slice(0,7))))).map((t:any)=>t.id);const summary=summarizeProgress(ids,progress.filter((r:any)=>r.member_id===p.id));return {id:p.id,name:p.name,class_name:p.classes?.name,level_name:p.levels?.name,targets:summary.assigned,assessed:summary.assessed,percentage:summary.percentage}});const groups=new Map<string,any[]>();for(const p of individual){const name=p.class_name||p.level_name||'Tanpa kelas';groups.set(name,[...(groups.get(name)||[]),p])}return {version_id:version,targets,individual,classes:[...groups].map(([name,ps])=>({name,count:ps.length,percentage:ps.filter(p=>p.percentage!==null).length?Math.round(ps.filter(p=>p.percentage!==null).reduce((s,p)=>s+p.percentage,0)/ps.filter(p=>p.percentage!==null).length):null}))};}
 
