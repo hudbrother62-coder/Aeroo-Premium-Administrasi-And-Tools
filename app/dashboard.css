@@ -136,3 +136,9 @@ html[data-theme="dark"] .simDashboard{
 .simLegacyNotice{margin-top:10px;font-size:10px;line-height:1.55;color:var(--sim-muted);border:1px solid var(--sim-border);background:var(--sim-surface);padding:10px 12px;border-radius:9px}
 .simLegacyNotice span{color:var(--sim-text);font-weight:750}
 .simHorizontal{max-height:330px;overflow-y:auto;padding-right:5px;scrollbar-width:thin}
+
+/* Dashboard keeps chart sections alive if the secondary task feed fails. */
+.simRetryMini{margin-top:5px;border:1px solid var(--sim-border);color:var(--sim-text);border-radius:9px;background:var(--sim-panel);padding:9px 13px;font-size:11px;font-weight:700;cursor:pointer}
+.simOfflineState{border:1px solid var(--sim-border);border-radius:16px;background:var(--sim-panel);padding:28px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:9px;color:var(--sim-muted)}
+.simOfflineState strong{color:var(--sim-text)}
+.simOfflineState p{max-width:370px;color:var(--sim-muted);font-size:12px}

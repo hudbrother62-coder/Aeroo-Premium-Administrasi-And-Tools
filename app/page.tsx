@@ -8,6 +8,7 @@ import type {DashboardAnalytics,DashboardBucket,DashboardGroup} from '@/lib/dash
 import './dashboard.css';
 
 type Task={id:string;title:string;journal_id?:string};
+type TaskFeed={todayEvents:Task[];unfinishedAttendance:Task[];draftJournals:Task[];overdueDecisions:Task[]};
 type Dashboard=DashboardAnalytics&{
   role?:string;todayEvents?:Task[];unfinishedAttendance?:Task[];draftJournals?:Task[];
   overdueDecisions?:Task[];completeness?:{members:number;attendance:number;journals:number;followups:number;imports:number};
@@ -71,6 +72,9 @@ export default function Home(){
   const [canOperate,setCanOperate]=useState(false);
   const [error,setError]=useState('');
   const [loading,setLoading]=useState(true);
+  const [tasks,setTasks]=useState<TaskFeed|null>(null);
+  const [tasksLoading,setTasksLoading]=useState(false);
+  const [tasksError,setTasksError]=useState(false);
   const [level,setLevel]=useState('');
   const [month,setMonth]=useState(()=>new Date().toLocaleDateString('sv-SE',{timeZone:'Asia/Jakarta'}).slice(0,7));
   const [span,setSpan]=useState<1|3|6>(1);
@@ -96,12 +100,31 @@ export default function Home(){
         setData(result);setLoggedIn(signed);setCanOperate(signed&&Array.isArray(user.write_scopes)&&user.write_scopes.length>0);
       }catch(e){
         if(!alive)return;
-        setData(null);setError(e instanceof Error?e.message:'Gagal memuat ringkasan.');
+        // Keep the last successful charts visible if a refresh times out.
+        setError(e instanceof Error?e.message:'Gagal memuat ringkasan.');
       }finally{if(alive)setLoading(false);}
     }
     void load();
     return ()=>{alive=false;controller.abort();};
   },[month,span,level,reload]);
+  useEffect(()=>{
+    if(!loggedIn){setTasks(null);setTasksError(false);return;}
+    let alive=true;
+    const controller=new AbortController();
+    setTasks(null);setTasksLoading(true);setTasksError(false);
+    const q=level?'?level_id='+encodeURIComponent(level):'';
+    void (async()=>{
+      try{
+        const response=await fetch('/api/dashboard/tasks'+q,{cache:'no-store',signal:controller.signal});
+        if(!response.ok)throw new Error('Tindak lanjut sementara tidak tersedia.');
+        const result=await response.json();
+        if(alive)setTasks(result as TaskFeed);
+      }catch{
+        if(alive)setTasksError(true);
+      }finally{if(alive)setTasksLoading(false);}
+    })();
+    return ()=>{alive=false;controller.abort();};
+  },[loggedIn,level,reload]);
   useEffect(()=>{
     if(!loggedIn&&data){
       try{
@@ -119,8 +142,8 @@ export default function Home(){
   const attendance=data?.attendance;
   const levelName=level?data?.levels?.find(x=>x.id===level)?.name||'Jenjang':'Semua Jenjang';
   const trend=data?.trend||[];
-  const checklist=(data?.completeness?Object.values(data.completeness).reduce((a,b)=>a+b,0):0);
-  const hasActions=Boolean(data?.unfinishedAttendance?.length||data?.draftJournals?.length||data?.overdueDecisions?.length||checklist);
+  const checklist=0;
+  const hasActions=Boolean(tasks?.unfinishedAttendance?.length||tasks?.draftJournals?.length||tasks?.overdueDecisions?.length);
   const period=span===1?'bulan ini':span+' bulan';
   return <div className="simDashboard">
     <div className="simHero">
@@ -139,7 +162,7 @@ export default function Home(){
     {error&&<div className="notice error simError"><AlertCircle size={17}/>{error}<button onClick={()=>setReload(x=>x+1)}>Coba lagi</button></div>}
     {!loggedIn&&!loading&&data&&<div className="simViewerHint"><Eye size={17}/><span>Mode viewer: grafik menggunakan data publik dan hanya bisa dibaca.</span><Link href="/login"><LogIn size={15}/> Masuk</Link></div>}
     {canOperate&&<div className="simQuickActions"><Link href="/agenda?create=1"><CalendarDays size={16}/> Buat Agenda</Link><Link href="/presensi/buat"><ClipboardCheck size={16}/> Presensi</Link><Link href="/jurnal/buat"><BookOpen size={16}/> Tulis Jurnal</Link></div>}
-    {loading&&!data?<div className="simLoadingGrid" role="status"><div className="simSkeleton"/><div className="simSkeleton"/><div className="simSkeleton"/><div className="simSkeleton"/></div>:data&&<>
+    {loading&&!data?<div className="simLoadingGrid" role="status" aria-label="Memuat ringkasan"><div className="simSkeleton"/><div className="simSkeleton"/><div className="simSkeleton"/><div className="simSkeleton"/></div>:data?<>
       <div className="simStats">
         <StatCard href="/database" icon={<Users size={22}/>} tone="purple" label="Total Anggota" value={number.format(data.members)} detail={level?'Aktif pada jenjang ini':'Anggota aktif dalam cakupan akses'}/>
         <StatCard href="/rekap-presensi" icon={<CheckCircle2 size={22}/>} tone="blue" label="Tingkat Kehadiran" value={pct(attendance?.percentage)} detail={attendance?.total?number.format(attendance.total)+' status presensi tercatat':'Belum ada status presensi'}/>
@@ -176,18 +199,20 @@ export default function Home(){
           </div>:<div className="simSpecialEmpty"><ClipboardCheck size={25}/><p>Belum ada presensi pada periode ini.</p></div>}
         </ChartCard>
         <ChartCard title="Perlu Ditindaklanjuti" subtitle="Prioritas administrasi yang perlu diperiksa" action={loggedIn?<Link className="simTextLink" href="/kelengkapan">Lihat semua <ArrowRight size={15}/></Link>:undefined}>
-          {loggedIn&&hasActions?<div className="simTaskList">
-            {(data.unfinishedAttendance||[]).slice(0,2).map(x=><Link key={x.id} href={'/presensi/buat?event_id='+encodeURIComponent(x.id)}><span className="simTaskIcon simTaskAmber"><ClipboardCheck size={18}/></span><span><strong>Presensi belum lengkap</strong><small>{x.title}</small></span><ArrowRight size={16}/></Link>)}
-            {(data.draftJournals||[]).slice(0,2).map(x=><Link key={x.id} href={'/jurnal/buat?journal_id='+encodeURIComponent(x.id)}><span className="simTaskIcon"><BookOpen size={18}/></span><span><strong>Jurnal belum diselesaikan</strong><small>{x.title}</small></span><ArrowRight size={16}/></Link>)}
-            {(data.overdueDecisions||[]).slice(0,2).map(x=><Link key={x.id} href={'/jurnal/buat?journal_id='+encodeURIComponent(x.journal_id||'')}><span className="simTaskIcon simTaskRed"><AlertCircle size={18}/></span><span><strong>Tindak lanjut terlambat</strong><small>{x.title}</small></span><ArrowRight size={16}/></Link>)}
+          {loggedIn&&tasksLoading?<div className="simSpecialEmpty" role="status"><RefreshCw className="simSpin" size={22}/><p>Memuat tindak lanjut…</p></div>:
+          loggedIn&&tasksError?<div className="simSpecialEmpty"><AlertCircle size={23}/><strong>Tindak lanjut belum dapat dimuat</strong><p>Grafik tetap tersedia. Segarkan untuk mencoba lagi.</p><button className="simRetryMini" onClick={()=>setReload(x=>x+1)}>Coba lagi</button></div>:
+          loggedIn&&hasActions?<div className="simTaskList">
+            {(tasks?.unfinishedAttendance||[]).slice(0,2).map(x=><Link key={x.id} href={'/presensi/buat?event_id='+encodeURIComponent(x.id)}><span className="simTaskIcon simTaskAmber"><ClipboardCheck size={18}/></span><span><strong>Presensi belum lengkap</strong><small>{x.title}</small></span><ArrowRight size={16}/></Link>)}
+            {(tasks?.draftJournals||[]).slice(0,2).map(x=><Link key={x.id} href={'/jurnal/buat?journal_id='+encodeURIComponent(x.id)}><span className="simTaskIcon"><BookOpen size={18}/></span><span><strong>Jurnal belum diselesaikan</strong><small>{x.title}</small></span><ArrowRight size={16}/></Link>)}
+            {(tasks?.overdueDecisions||[]).slice(0,2).map(x=><Link key={x.id} href={'/jurnal/buat?journal_id='+encodeURIComponent(x.journal_id||'')}><span className="simTaskIcon simTaskRed"><AlertCircle size={18}/></span><span><strong>Tindak lanjut terlambat</strong><small>{x.title}</small></span><ArrowRight size={16}/></Link>)}
             {checklist>0&&<Link href="/kelengkapan"><span className="simTaskIcon simTaskAmber"><BarChart3 size={18}/></span><span><strong>{number.format(checklist)} item perlu diperiksa</strong><small>Lihat kelengkapan data organisasi</small></span><ArrowRight size={16}/></Link>}
           </div>:<div className="simSuccessEmpty"><CheckCircle2 size={24}/><strong>{loggedIn?'Tidak ada tindak lanjut mendesak':'Ringkasan hanya-baca'}</strong><p>{loggedIn?'Tidak ditemukan pekerjaan tertunda pada cakupan ini.':'Masuk untuk melihat pekerjaan internal.'}</p></div>}
         </ChartCard>
         <ChartCard title="Kegiatan Hari Ini" subtitle={'Jurnal selesai: '+number.format(data.journals)+' · '+period} action={<Link href="/agenda" className="simTextLink">Agenda <ArrowRight size={15}/></Link>}>
-          {data.todayEvents?.length?<div className="simTaskList">{data.todayEvents.slice(0,4).map(x=><Link key={x.id} href={'/agenda'}><span className="simTaskIcon"><CalendarDays size={18}/></span><span><strong>{x.title}</strong><small>Kegiatan hari ini</small></span><ChevronRight size={15}/></Link>)}</div>:<div className="simSpecialEmpty"><CalendarDays size={24}/><strong>Belum ada pertemuan hari ini</strong><p>Lihat kalender untuk jadwal kegiatan berikutnya.</p></div>}
+          {loggedIn&&tasksLoading?<div className="simSpecialEmpty"><RefreshCw className="simSpin" size={21}/><p>Memuat agenda hari ini…</p></div>:loggedIn&&tasksError?<div className="simSpecialEmpty"><AlertCircle size={21}/><p>Agenda hari ini belum bisa dimuat. Grafik lainnya tetap tersedia.</p></div>:tasks?.todayEvents?.length?<div className="simTaskList">{tasks.todayEvents.slice(0,4).map(x=><Link key={x.id} href={'/agenda'}><span className="simTaskIcon"><CalendarDays size={18}/></span><span><strong>{x.title}</strong><small>Kegiatan hari ini</small></span><ChevronRight size={15}/></Link>)}</div>:<div className="simSpecialEmpty"><CalendarDays size={24}/><strong>Belum ada pertemuan hari ini</strong><p>Lihat kalender untuk jadwal kegiatan berikutnya.</p></div>}
         </ChartCard>
       </div>
       {!loggedIn&&<div className="simVisit"><span>Kunjungan publik (opsional)</span><input value={visitorName} onChange={e=>setVisitorName(e.target.value)} maxLength={80} placeholder="Nama pengunjung" aria-label="Nama pengunjung"/><button disabled={!visitorName.trim()} onClick={()=>void identify()}>Catat kunjungan</button>{visitMessage&&<small>{visitMessage}</small>}</div>}
-    </>}
+    </>:!loading&&<div className="simOfflineState"><AlertCircle size={20}/><strong>Grafik belum bisa dimuat.</strong><p>Data dari database sedang tidak tersedia. Silakan coba lagi, data yang tersimpan tidak berubah.</p><button className="simRetryMini" onClick={()=>setReload(x=>x+1)}>Coba muat lagi</button></div>}
   </div>;
 }
