@@ -1,5 +1,6 @@
 'use client';
-import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
+import {Suspense,useCallback,useEffect,useMemo,useRef,useState} from 'react';
+import {useSearchParams} from 'next/navigation';
 import {Archive,CheckCheck,FileText,LockKeyhole,NotebookPen,Pin,Plus,RotateCcw,Search,ShieldCheck,Trash2,Users} from 'lucide-react';
 import type {NoteScope,NoteStatus} from '@/lib/note-scopes';
 import './notes.css';
@@ -22,7 +23,9 @@ function savedKey(n:Note){return 'simpul-note:'+n.owner_user_id+':'+n.scope+':'+
 function dateLabel(date:string){return new Date(date).toLocaleDateString('id-ID',{day:'numeric',month:'short',year:'numeric'});}
 function allowedScope(value:string|null):NoteScope{return value==='ROLE'||value==='MAIN'?value:'PERSONAL';}
 
-export default function Notes(){
+function NotesWorkspace(){
+ const searchParams=useSearchParams();
+ const urlScope=searchParams.get('scope');
  const[scope,setScope]=useState<NoteScope>('PERSONAL');
  const[status,setStatus]=useState<NoteStatus>('ACTIVE');
  const[rows,setRows]=useState<Note[]>([]);
@@ -94,6 +97,13 @@ export default function Notes(){
   }catch(e){setError(e instanceof Error?e.message:'Gagal menyimpan.');}
   finally{busy.current=false;setSaving(false);}
  },[status]);
+
+ useEffect(()=>{
+  const wanted=allowedScope(urlScope);
+  if(wanted===scope)return;
+  if(pending.current||busy.current){void flush();return;}
+  activeNote.current=null;conflict.current=false;setDraft(null);setStatus('ACTIVE');setSearch('');setError('');setScope(wanted);
+ },[urlScope,scope,flush,saving,dirty]);
 
  useEffect(()=>{
   if(!dirty)return;
@@ -201,7 +211,7 @@ export default function Notes(){
     <>
      <div className="notesEditorTop"><span className="notesSaveState"><span className={'notesStatusDot '+(dirty?'pending':'')}/>{saving?'Menyimpan…':dirty?'Perubahan belum tersimpan':'Tersimpan'}</span>
       <div className="notesEditorActions">{canEdit&&<button className="smallAction" title={draft.is_pinned?'Lepas sematan':'Sematkan'} onClick={()=>edit({is_pinned:!draft.is_pinned})}>
-       <Pin size={15}/>{draft.is_pinned?'Dilepas':'Sematkan'}
+       <Pin size={15}/>{draft.is_pinned?'Lepas':'Sematkan'}
       </button>}</div>
      </div>
      {!canEdit&&<div className="notesReadonly"><LockKeyhole size={15}/> Catatan ini hanya dapat diubah oleh pembuatnya.</div>}
@@ -222,4 +232,8 @@ export default function Notes(){
    </section>
   </div>
  </div>;
+}
+
+export default function Notes(){
+ return <Suspense fallback={<div className="notesEmpty">Memuat catatan...</div>}><NotesWorkspace/></Suspense>;
 }
