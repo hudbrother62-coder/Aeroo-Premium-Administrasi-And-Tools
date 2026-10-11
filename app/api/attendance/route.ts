@@ -11,15 +11,18 @@ export async function GET(req:NextRequest){
   const classId=req.nextUrl.searchParams.get('class_id');
 
   let q=s.from('attendance_events')
-    .select('*,classes(id,name),levels(id,name),activity_types(id,name),attendance_records(id,status,member_id)')
+    .select('*,classes(id,name),levels(id,name),activity_types(id,name),attendance_records(id,status,member_id,class_id_snapshot,level_id_snapshot)')
     .order('event_date',{ascending:false});
   if(from)q=q.gte('event_date',from);
   if(to)q=q.lte('event_date',to);
   if(audience)q=q.eq('audience',audience);
-  if(classId)q=q.eq('class_id',classId);
+
 
   const{data,error}=await q;
-  return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data??[]);
+  if(error)return NextResponse.json({error:error.message},{status:400});
+  const rows=(data??[]).map(event=>classId?{...event,attendance_records:(event.attendance_records??[]).filter(record=>record.class_id_snapshot===classId||(!record.class_id_snapshot&&event.class_id===classId))}:event)
+    .filter(event=>!classId||event.class_id===classId||(event.attendance_records??[]).length>0);
+  return NextResponse.json(rows);
 }
 
 export async function POST(req:NextRequest){
