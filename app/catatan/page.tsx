@@ -31,6 +31,7 @@ function NotesWorkspace(){
  const[rows,setRows]=useState<Note[]>([]);
  const[draft,setDraft]=useState<Note|null>(null);
  const[user,setUser]=useState<User|null>(null);
+ const[userReady,setUserReady]=useState(false);
  const[loading,setLoading]=useState(true);
  const[saving,setSaving]=useState(false);
  const[dirty,setDirty]=useState(false);
@@ -46,11 +47,12 @@ function NotesWorkspace(){
   const back=()=>{if(pending.current||busy.current)return;setScope(fromUrl());setStatus('ACTIVE');setDraft(null);activeNote.current=null;setSearch('');setError('');};
   window.addEventListener('popstate',back);
   fetch('/api/auth/me',{cache:'no-store'}).then(async r=>r.ok?await r.json():null)
-   .then(data=>setUser(data&&!data.public?data:null)).catch(()=>setUser(null));
+   .then(data=>setUser(data&&!data.public?data:null)).catch(()=>setUser(null)).finally(()=>setUserReady(true));
   return()=>window.removeEventListener('popstate',back);
  },[]);
 
  useEffect(()=>{
+  if(!userReady)return;
   const controller=new AbortController();
   setLoading(true);setError('');setRows([]);
   fetch('/api/notes?scope='+scope+'&status='+status,{cache:'no-store',signal:controller.signal})
@@ -72,7 +74,7 @@ function NotesWorkspace(){
    .catch(e=>{if(!controller.signal.aborted)setError(e instanceof Error?e.message:'Gagal memuat catatan.');})
    .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
   return()=>controller.abort();
- },[scope,status,reload,user?.id]);
+ },[scope,status,reload,user?.id,userReady]);
 
  const flush=useCallback(async()=>{
   if(busy.current||!pending.current||!activeNote.current||conflict.current)return;
@@ -115,9 +117,17 @@ function NotesWorkspace(){
    if(pending.current||busy.current){e.preventDefault();e.returnValue='';}
   };
   const retry=()=>{void flush();};
+  const intercept=(event:MouseEvent)=>{
+   if((!pending.current&&!busy.current)||event.ctrlKey||event.metaKey||event.shiftKey)return;
+   const anchor=(event.target as Element|null)?.closest?.('a[href]') as HTMLAnchorElement|null;
+   if(!anchor||anchor.target==='_blank')return;
+   event.preventDefault();event.stopPropagation();
+   void (async()=>{await flush();if(!pending.current&&!busy.current)window.location.assign(anchor.href);})();
+  };
+  document.addEventListener('click',intercept,true);
   window.addEventListener('beforeunload',warn);
   window.addEventListener('online',retry);
-  return()=>{window.removeEventListener('beforeunload',warn);window.removeEventListener('online',retry);};
+  return()=>{document.removeEventListener('click',intercept,true);window.removeEventListener('beforeunload',warn);window.removeEventListener('online',retry);};
  },[flush]);
 
  const canCreate=Boolean(user&&(scope==='PERSONAL'||(scope==='ROLE'&&user.role!=='VIEWER'&&user.permissions?.['note.write']!==false)||(scope==='MAIN'&&user.role==='ADMIN')));
