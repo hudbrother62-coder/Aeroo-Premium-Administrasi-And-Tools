@@ -82,8 +82,8 @@ export function buildDashboardAnalytics(input:{
   const periodEvents=availableEvents.filter(e=>e.event_date?.slice(0,7)>=first&&e.event_date?.slice(0,7)<=month);
   const scopedEvents=periodEvents.filter(e=>eventInLevel(e,selectedLevel,lookup));
   const entries=scopedEvents.flatMap(e=>matchingRecords(e,selectedLevel,lookup));
-  const inferred=entries.filter(r=>!r.level_id_snapshot).length;
-  const unmapped=periodEvents.flatMap(e=>e.attendance_records||[]).filter(r=>!recordPlacement(periodEvents.find(e=>(e.attendance_records||[]).includes(r))||{},r,lookup).levelId).length;
+  const inferred=scopedEvents.reduce((total,e)=>total+matchingRecords(e,selectedLevel,lookup).filter(r=>recordPlacement(e,r,lookup).inferred).length,0);
+  const unmapped=periodEvents.reduce((total,e)=>total+(e.attendance_records||[]).filter((r:Row)=>!recordPlacement(e,r,lookup).levelId).length,0);
   const attendance=stat(entries);
   const members=people.filter(p=>matchesDashboardLevel(p,selectedLevel));
   const periodJournals=journals.filter(j=>j.state==='COMPLETED'&&j.journal_date?.slice(0,7)>=first&&j.journal_date?.slice(0,7)<=month);
