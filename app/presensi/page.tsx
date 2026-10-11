@@ -3,7 +3,7 @@
 import {useEffect,useMemo,useState} from 'react';
 import Link from 'next/link';
 import {CalendarDays,ChevronLeft,ChevronRight,ClipboardCheck,History,BarChart3,ArrowRight} from 'lucide-react';
-import CreateAttendance from './buat/page';
+import CreateAttendance from '@/components/AttendanceCreate';
 import AttendanceRecap from '@/components/AttendanceRecap';
 import {audienceLabels,readScopesForRole,writeScopesForRole,type Audience,type Role} from '@/lib/access';
 import {jakartaDate} from '@/lib/domain';
