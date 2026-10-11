@@ -1,41 +1,43 @@
 import {NextRequest,NextResponse} from 'next/server';
-import {dataSummary,readRows} from '@/lib/public-read';
+import {readRows,publicDashboard} from '@/lib/public-read';
 import {jakartaDate,effectiveMembership} from '@/lib/domain';
+import {buildDashboardAnalytics,matchingRecords} from '@/lib/dashboard-analytics';
 import {db} from '@/lib/supabase-server';
 
 export async function GET(req:NextRequest){
   try{
-    req.nextUrl.searchParams.set('month',jakartaDate().slice(0,7));
-    const [summary,people,events,journals]=await Promise.all([dataSummary(req),readRows('members'),readRows('attendance'),readRows('journals')]);
-    const s=await db();const today=jakartaDate();
-    const[{data:levels},{data:me},{data:decisions},{data:imports}]=await Promise.all([
-      s.from('levels').select('id,name').order('sort_order'),
+    const s=await db();
+    const {data:appRole,error:roleError}=await s.rpc('current_app_role');
+    if(roleError)throw new Error(roleError.message);
+    if(!appRole||appRole==='VIEWER')return NextResponse.json(await publicDashboard(req),{headers:{'Cache-Control':'private, no-store'}});
+    const month=req.nextUrl.searchParams.get('month')||jakartaDate().slice(0,7);
+    const span=([1,3,6].includes(Number(req.nextUrl.searchParams.get('span')))?Number(req.nextUrl.searchParams.get('span')):1) as 1|3|6;
+    const levelId=req.nextUrl.searchParams.get('level_id')||'';
+    const [people,events,journals,targets,progress,levelsResult,meResult,decisionResult,importResult]=await Promise.all([
+      readRows('members'),readRows('attendance'),readRows('journals'),readRows('targets'),readRows('progress'),
+      s.from('levels').select('id,name,sort_order,active').order('sort_order').order('name'),
       s.rpc('get_current_app_user'),
-      s.from('meeting_decisions').select('id,decision,deadline,status,journal_id').lt('deadline',today).neq('status','COMPLETED').neq('status','CANCELLED').order('deadline').limit(8),
+      s.from('meeting_decisions').select('id,decision,deadline,status,journal_id').lt('deadline',jakartaDate()).neq('status','COMPLETED').neq('status','CANCELLED').order('deadline').limit(20),
       s.from('import_jobs').select('id,status').in('status',['FAILED','PARTIAL']).limit(20)
     ]);
-    const month=today.slice(0,7);
-    const monthEvents=events.filter(e=>e.event_date.startsWith(month)&&e.state!=='CANCELLED');
-    const rows=monthEvents.flatMap(e=>e.attendance_records);
-    const categories=new Map<string,number>();
-    for(const p of people)for(const c of p.member_categories||[]){const name=c.categories?.name;if(name&&!['Kelompok','Pengurus'].includes(name))categories.set(name,(categories.get(name)||0)+1)}
-    const open=events.filter(e=>e.state!=='CANCELLED'&&e.event_date<=today&&e.attendance_records?.some((r:any)=>r.status===null));
-    const incompleteMembers=people.filter(p=>{
-      const active=(p.member_memberships||[]).filter((m:any)=>effectiveMembership(m));
-      return active.some((m:any)=>['caberawit','muda-mudi'].includes(m.categories?.slug)&&(!m.level_id||!m.class_id));
-    });
-    const draft=journals.filter(j=>j.state==='DRAFT');
+    if(levelsResult.error)throw new Error(levelsResult.error.message);
+    const analytics=buildDashboardAnalytics({people,events,journals,targets,progress,levels:levelsResult.data||[],month,span,levelId});
+    const today=jakartaDate();
+    const relevant=(e:any)=>e.state!=='CANCELLED'&&(!levelId||e.level_id===levelId||matchingRecords(e,levelId).length>0);
+    const scopedEventIds=new Set(events.filter(relevant).map(e=>e.id));
+    const scopedClassIds=new Set(people.filter(p=>(p.member_memberships||[]).some((m:any)=>effectiveMembership(m)&&(!levelId||m.level_id===levelId))).flatMap(p=>(p.member_memberships||[]).map((m:any)=>m.class_id).filter(Boolean)));
+    const relevantJournal=(j:any)=>!levelId||j.event_id&&scopedEventIds.has(j.event_id)||j.class_id&&scopedClassIds.has(j.class_id);
+    const draft=journals.filter(j=>j.state==='DRAFT'&&relevantJournal(j));
+    const open=events.filter(e=>relevant(e)&&e.event_date<=today&&matchingRecords(e,levelId).some((r:any)=>r.status===null));
+    const decisions=(decisionResult.data||[]).filter((d:any)=>!levelId||journals.some(j=>j.id===d.journal_id&&relevantJournal(j)));
+    const incompleteMembers=people.filter(p=>(!levelId||(p.member_memberships||[]).some((m:any)=>effectiveMembership(m)&&m.level_id===levelId))&&(p.member_memberships||[]).some((m:any)=>effectiveMembership(m)&&['caberawit','muda-mudi'].includes(m.categories?.slug)&&(!m.level_id||!m.class_id)));
     return NextResponse.json({
-      role:me?.[0]?.role||'VIEWER',
-      todayEvents:events.filter(e=>e.event_date===today&&e.state!=='CANCELLED').map(e=>({id:e.id,title:e.title,audience:e.audience})),
-      unfinishedAttendance:open.map(e=>({id:e.id,title:e.title})),
-      draftJournals:draft.map(j=>({id:j.id,title:j.title})),
-      overdueDecisions:(decisions||[]).map((d:any)=>({id:d.id,title:d.decision,journal_id:d.journal_id,deadline:d.deadline})),
-      completeness:{members:incompleteMembers.length,attendance:open.length,journals:draft.length,followups:(decisions||[]).length,imports:(imports||[]).length},
-      members:people.length,categories:[...categories].map(([name,count])=>({name,count})),
-      attendance:{meetings:summary.attendance.meetings,present:summary.attendance.H,excused:summary.attendance.I,absent:summary.attendance.A,pending:summary.attendance.pending},
-      journals:summary.journals,
-      levels:(levels||[]).map(l=>({id:l.id,name:l.name,count:people.filter(p=>p.member_memberships?.some((m:any)=>effectiveMembership(m)&&m.level_id===l.id)).length,present:rows.filter(r=>r.level_id_snapshot===l.id&&r.status==='H').length,total:rows.filter(r=>r.level_id_snapshot===l.id&&r.status!==null).length}))
-    });
-  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Ringkasan tidak dapat dimuat'},{status:400})}
+      ...analytics,role:meResult.data?.[0]?.role||appRole,
+      todayEvents:events.filter(e=>relevant(e)&&e.event_date===today).slice(0,8).map(e=>({id:e.id,title:e.title,audience:e.audience})),
+      unfinishedAttendance:open.slice(0,8).map(e=>({id:e.id,title:e.title})),
+      draftJournals:draft.slice(0,8).map(j=>({id:j.id,title:j.title})),
+      overdueDecisions:decisions.slice(0,8).map((d:any)=>({id:d.id,title:d.decision,journal_id:d.journal_id,deadline:d.deadline})),
+      completeness:{members:incompleteMembers.length,attendance:open.length,journals:draft.length,followups:decisions.length,imports:levelId?0:(importResult.data||[]).length}
+    },{headers:{'Cache-Control':'private, no-store'}});
+  }catch(error){return NextResponse.json({error:error instanceof Error?error.message:'Ringkasan tidak dapat dimuat'},{status:400})}
 }
