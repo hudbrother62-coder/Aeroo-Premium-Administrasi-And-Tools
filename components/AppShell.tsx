@@ -79,7 +79,12 @@ export default function AppShell({children}:{children:React.ReactNode}){
 
   useEffect(()=>{setDrawer(false);setMoreOpen(false);setQuickOpen(false)},[path]);
   useEffect(()=>{const close=()=>{setDrawer(false);setMoreOpen(false);setQuickOpen(false)};window.addEventListener('simpul:close-overlays',close);return()=>window.removeEventListener('simpul:close-overlays',close)},[]);
-  const visible=useMemo(()=>user?nav.filter(x=>x.roles.includes(user.role)&&(navPermission[x.href]?user.permissions?.[navPermission[x.href]]!==false:true)):nav.filter(x=>x.publicRead),[user]);
+  const visible=useMemo(()=>user?nav.filter(x=>{
+    if(['/tim-akses','/audit','/pengaturan'].includes(x.href))return user.role==='ADMIN';
+    const permission=navPermission[x.href];
+    if(permission&&user.permissions&&permission in user.permissions)return user.permissions[permission]===true;
+    return x.roles.includes(user.role);
+  }):nav.filter(x=>x.publicRead),[user]);
   const primaryMobile=['/','/agenda','/presensi','/jurnal'];
   const mobilePrimary=primaryMobile.flatMap(href=>visible.filter(x=>x.href===href));
   const mobileMore=visible.filter(x=>!primaryMobile.includes(x.href));

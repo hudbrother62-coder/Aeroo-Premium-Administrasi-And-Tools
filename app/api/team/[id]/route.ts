@@ -19,13 +19,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const supabase = await db();
-  const { error } = await supabase.rpc('admin_update_app_user', {
-    p_user_id: id,
-    p_display_name: displayName,
-    p_role: role,
-    p_active: active,
-    p_new_password: newPassword,
-  });
+  const access=body.access;
+  if(access && (!Array.isArray(access.scopes)||!Array.isArray(access.permissions)))return NextResponse.json({error:'Akses tidak valid.'},{status:400});
+  const args={p_user_id:id,p_display_name:displayName,p_role:role,p_active:active,p_new_password:newPassword};
+  const {error}=access
+    ? await supabase.rpc('admin_update_app_user_with_access',{...args,p_scopes:access.scopes,p_permissions:access.permissions,p_class_scope:access.class_scope||null})
+    : await supabase.rpc('admin_update_app_user',args);
 
   if (error) {
     const msg = error.message.includes('last_admin_protected')

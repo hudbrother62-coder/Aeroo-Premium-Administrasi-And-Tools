@@ -25,12 +25,16 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = await db();
-  const { data, error } = await supabase.rpc('admin_create_app_user', {
-    p_username: username,
-    p_password: password,
-    p_display_name: displayName,
-    p_role: role,
-  });
+  const access = body.access;
+  if(access && (!Array.isArray(access.scopes)||!Array.isArray(access.permissions)))return NextResponse.json({error:'Akses harus dipilih dengan benar.'},{status:400});
+  const { data, error } = access
+    ? await supabase.rpc('admin_create_app_user_with_access',{
+        p_username:username,p_password:password,p_display_name:displayName,p_role:role,
+        p_scopes:access.scopes,p_permissions:access.permissions,p_class_scope:access.class_scope||null
+      })
+    : await supabase.rpc('admin_create_app_user', {
+        p_username:username,p_password:password,p_display_name:displayName,p_role:role
+      });
 
   if (error) {
     const msg = error.message.includes('username_exists') ? 'Username sudah digunakan.' : error.message;

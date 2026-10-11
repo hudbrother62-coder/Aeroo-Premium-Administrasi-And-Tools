@@ -1,5 +1,6 @@
 'use client';
 import {FormEvent,useEffect,useState} from 'react';
+import {PermissionChecklist,PERMISSION_KEYS,initialPermissions,permissionEntries,togglePermission,type PermissionValues} from '@/components/RolePermissionChecklist';
 
 type Role='ADMIN'|'DEWAN_GURU'|'KELOMPOK'|'VIEWER';
 type TeamUser={id:string;username:string;display_name:string|null;role:Role;active:boolean;created_at:string};
@@ -16,17 +17,6 @@ const roleInfo:Record<Role,{label:string;desc:string;pages:string[]}>={
   VIEWER:{label:'Viewer',desc:'Baca saja. Tidak dapat mengubah data.',pages:['Beranda','Database','Presensi','Jurnal','Agenda','Rekap','Laporan']},
 };
 const audiences=[['KELOMPOK','Semua Anggota'],['CABERAWIT','Caberawit'],['MUDA_MUDI','Muda-Mudi'],['IBU_IBU','Ibu-Ibu'],['PENGURUS','Pengurus']] as const;
-const permissionLabels:Record<string,string>={
-  'person.read':'Lihat anggota','person.write':'Kelola anggota',
-  'agenda.read':'Lihat agenda','agenda.write':'Kelola agenda',
-  'attendance.read':'Lihat presensi','attendance.write':'Kelola presensi',
-  'journal.read':'Lihat jurnal','journal.write':'Kelola jurnal',
-  'target.read':'Lihat target','target.write':'Kelola target',
-  'position.read':'Lihat pengurus','position.write':'Kelola pengurus','decision.write':'Kelola keputusan',
-  'report.read':'Lihat laporan','report.publish':'Publikasi laporan',
-  'note.read':'Lihat catatan bersama','note.write':'Kelola catatan bersama',
-  'import.manage':'Kelola import','archive.manage':'Kelola arsip','user.manage':'Kelola akun','settings.manage':'Pengaturan sistem'
-};
 function defaults(role:Role):Scope[]{
   const read=role==='ADMIN'?audiences.map(x=>x[0]):role==='KELOMPOK'?['KELOMPOK','MUDA_MUDI','IBU_IBU','PENGURUS']:role==='VIEWER'?['KELOMPOK','CABERAWIT','MUDA_MUDI','IBU_IBU']:[];
   const write=role==='ADMIN'?audiences.map(x=>x[0]):role==='KELOMPOK'?['KELOMPOK','IBU_IBU','PENGURUS']:[];
@@ -37,7 +27,9 @@ export default function TeamPage(){
   const[data,setData]=useState<TeamUser[]>([]),[visits,setVisits]=useState<Visit[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
   const[showForm,setShowForm]=useState(false),[form,setForm]=useState({username:'',display_name:'',password:'',role:'VIEWER' as Role}),[saving,setSaving]=useState(false);
   const[editUser,setEditUser]=useState<TeamUser|null>(null),[editForm,setEditForm]=useState({display_name:'',role:'VIEWER' as Role,active:true,new_password:''}),[editSaving,setEditSaving]=useState(false);
-  const[accessUser,setAccessUser]=useState<TeamUser|null>(null),[scopes,setScopes]=useState<Scope[]>([]),[permStates,setPermStates]=useState<Record<string,'inherit'|'allow'|'deny'>>({}),[availablePerms,setAvailablePerms]=useState<string[]>([]),[accessSaving,setAccessSaving]=useState(false);
+  const[accessUser,setAccessUser]=useState<TeamUser|null>(null),[scopes,setScopes]=useState<Scope[]>([]),[permStates,setPermStates]=useState<PermissionValues>({}),[accessSaving,setAccessSaving]=useState(false);
+  const[createScopes,setCreateScopes]=useState<Scope[]>(()=>defaults('VIEWER')),[createPerms,setCreatePerms]=useState<PermissionValues>(()=>initialPermissions('VIEWER'));
+  const[createCabMode,setCreateCabMode]=useState<'ONE'|'ALL'|'NONE'>('NONE'),[createClassScope,setCreateClassScope]=useState<ClassScope>(null);
   const[cabClasses,setCabClasses]=useState<CabClass[]>([]),[cabMode,setCabMode]=useState<'ONE'|'ALL'|'NONE'>('NONE'),[classScope,setClassScope]=useState<ClassScope>(null);
 
   async function load(){
@@ -47,27 +39,30 @@ export default function TeamPage(){
     setData(j);setLoading(false);
     fetch('/api/viewer-visits').then(r=>r.json()).then(v=>Array.isArray(v)&&setVisits(v)).catch(()=>{});
   }
-  useEffect(()=>{void load()},[]);
+  useEffect(()=>{void load();fetch('/api/classes?audience=CABERAWIT').then(r=>r.json()).then(v=>{if(Array.isArray(v))setCabClasses(v)}).catch(()=>{})},[]);
 
   async function createUser(e:FormEvent){
     e.preventDefault();setSaving(true);setError('');
-    try{const r=await fetch('/api/team',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(form)});const j=await r.json();if(!r.ok)throw Error(j.error||'Gagal membuat akun.');setForm({username:'',display_name:'',password:'',role:'VIEWER'});setShowForm(false);await load()}
+    try{const r=await fetch('/api/team',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...form,access:{scopes:createScopes,permissions:permissionEntries(createPerms,form.role),class_scope:form.role==='DEWAN_GURU'&&createCabMode==='ONE'?createClassScope:null}})});const j=await r.json();if(!r.ok)throw Error(j.error||'Gagal membuat akun.');setForm({username:'',display_name:'',password:'',role:'VIEWER'});setCreateScopes(defaults('VIEWER'));setCreatePerms(initialPermissions('VIEWER'));setCreateCabMode('NONE');setCreateClassScope(null);setShowForm(false);await load()}
     catch(e){setError(e instanceof Error?e.message:'Gagal membuat akun.')}finally{setSaving(false)}
   }
   function openEdit(user:TeamUser){setEditUser(user);setEditForm({display_name:user.display_name||'',role:user.role,active:user.active,new_password:''});setError('')}
-  async function saveEdit(){if(!editUser)return;setEditSaving(true);setError('');const r=await fetch('/api/team/'+editUser.id,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({...editForm,new_password:editForm.new_password||null})});const j=await r.json();setEditSaving(false);if(!r.ok){setError(j.error||'Gagal memperbarui akun.');return}setEditUser(null);await load()}
+  async function saveEdit(){if(!editUser)return;setEditSaving(true);setError('');const r=await fetch('/api/team/'+editUser.id,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({...editForm,new_password:editForm.new_password||null,...(editForm.role!==editUser.role?{access:{scopes:defaults(editForm.role),permissions:permissionEntries(initialPermissions(editForm.role),editForm.role),class_scope:null}}:{})})});const j=await r.json();setEditSaving(false);if(!r.ok){setError(j.error||'Gagal memperbarui akun.');return}setEditUser(null);await load()}
   async function setActive(user:TeamUser,active:boolean){const r=await fetch('/api/team/'+user.id,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({display_name:user.display_name??'',role:user.role,active,new_password:null})});const j=await r.json();if(!r.ok){setError(j.error||'Gagal memperbarui akun.');return}await load()}
 
   async function openAccess(user:TeamUser){
     setError('');const r=await fetch('/api/team/'+user.id+'/access',{cache:'no-store'});const j=await r.json();if(!r.ok){setError(j.error||'Akses tidak dapat dimuat.');return}
     const explicit=j.scopes as Scope[];const nextScopes=explicit.length?audiences.map(([a])=>explicit.find(x=>x.audience===a)||{audience:a,can_read:false,can_write:false}):defaults(user.role);
-    setScopes(nextScopes);setAvailablePerms(j.available_permissions||[]);setPermStates(Object.fromEntries((j.permissions as Permission[]).map(x=>[x.permission,x.allowed?'allow':'deny'])));
+    setScopes(nextScopes);setPermStates({...initialPermissions(user.role),...Object.fromEntries((j.permissions as Permission[]).map(x=>[x.permission,x.allowed]))});
     setCabClasses(j.caberawit_classes||[]);setClassScope(j.class_scope||null);
     const globalCab=nextScopes.find(x=>x.audience==='CABERAWIT');
     setCabMode(user.role!=='DEWAN_GURU'?'NONE':globalCab?.can_read||globalCab?.can_write?'ALL':j.class_scope?'ONE':'NONE');
     setAccessUser(user);
   }
-  function updateScope(audience:string,key:'can_read'|'can_write',value:boolean){setScopes(v=>v.map(x=>x.audience===audience?{...x,[key]:value,...(key==='can_write'&&value?{can_read:true}:{})}:x))}
+  function updateScope(audience:string,key:'can_read'|'can_write',value:boolean){setScopes(v=>v.map(x=>x.audience===audience?{...x,[key]:value,...(key==='can_write'&&value?{can_read:true}:{}),...(key==='can_read'&&!value?{can_write:false}:{})}:x))}
+  function updateCreateScope(audience:string,key:'can_read'|'can_write',value:boolean){setCreateScopes(v=>v.map(x=>x.audience===audience?{...x,[key]:value,...(key==='can_write'&&value?{can_read:true}:{}),...(key==='can_read'&&!value?{can_write:false}:{})}:x))}
+  function changeCreateRole(role:Role){setForm(v=>({...v,role}));setCreateScopes(defaults(role));setCreatePerms(initialPermissions(role));setCreateCabMode('NONE');setCreateClassScope(null)}
+  function setCreateCaberawitMode(mode:'ONE'|'ALL'|'NONE'){setCreateCabMode(mode);setCreateClassScope(null);setCreateScopes(v=>v.map(x=>x.audience==='CABERAWIT'?{...x,can_read:mode==='ALL',can_write:mode==='ALL'}:x))}
   function setCaberawitMode(mode:'ONE'|'ALL'|'NONE'){
     setCabMode(mode);
     if(mode==='ALL'){setClassScope(null);setScopes(v=>v.map(x=>x.audience==='CABERAWIT'?{...x,can_read:true,can_write:true}:x))}
@@ -75,15 +70,27 @@ export default function TeamPage(){
   }
   async function saveAccess(){
     if(!accessUser)return;setAccessSaving(true);setError('');
-    const permissions=Object.entries(permStates).filter(([,v])=>v!=='inherit').map(([permission,v])=>({permission,allowed:v==='allow'}));
+    const permissions=permissionEntries(permStates,accessUser.role);
     const normalizedClass=accessUser.role==='DEWAN_GURU'&&cabMode==='ONE'&&classScope?.class_id?{class_id:classScope.class_id,can_read:true,can_write:classScope.can_write!==false}:null;
     const r=await fetch('/api/team/'+accessUser.id+'/access',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({scopes,class_scope:normalizedClass,permissions})});const j=await r.json();setAccessSaving(false);
     if(!r.ok){setError(j.error||'Akses gagal disimpan.');return}setAccessUser(null);
   }
 
-  return <><div className="pageHeader"><div><h1>Akses</h1><p>Role menentukan menu dasar. Scope menentukan data yang benar-benar boleh dibaca atau diubah.</p></div><button className="btn" onClick={()=>setShowForm(v=>!v)}>{showForm?'Tutup':'+ Akun'}</button></div>
+  return <><div className="pageHeader"><div><h1>Akses</h1><p>Buat akun, centang akses fitur yang boleh digunakan, lalu batasi data sesuai lingkupnya. Bisa diubah kapan saja.</p></div><button className="btn" onClick={()=>setShowForm(v=>!v)}>{showForm?'Tutup':'+ Akun'}</button></div>
     <section className="roleMatrix">{(Object.keys(roleInfo) as Role[]).map(r=><article className="card rolePolicyCard" key={r}><strong>{roleInfo[r].label}</strong><p>{roleInfo[r].desc}</p><div className="chips">{roleInfo[r].pages.map(x=><span className="chip" key={x}>{x}</span>)}</div></article>)}</section>
-    {showForm&&<form onSubmit={createUser} className="card section"><div className="formGrid"><label>Nama<input className="input" value={form.display_name} onChange={e=>setForm({...form,display_name:e.target.value})}/></label><label>Username<input className="input" value={form.username} onChange={e=>setForm({...form,username:e.target.value})} required/></label><label>Password<input className="input" type="password" minLength={8} value={form.password} onChange={e=>setForm({...form,password:e.target.value})} required/></label><label>Role<select className="select" value={form.role} onChange={e=>setForm({...form,role:e.target.value as Role})}><option value="DEWAN_GURU">Dewan Guru</option><option value="KELOMPOK">Operator Kelompok</option><option value="VIEWER">Viewer</option><option value="ADMIN">Admin</option></select></label></div><button className="btn section" disabled={saving}>{saving?'Menyimpan…':'Buat Akun'}</button></form>}
+    {showForm&&<form onSubmit={createUser} className="card section"><div className="formGrid"><label>Nama<input className="input" value={form.display_name} onChange={e=>setForm({...form,display_name:e.target.value})}/></label><label>Username<input className="input" value={form.username} onChange={e=>setForm({...form,username:e.target.value})} required/></label><label>Password<input className="input" type="password" minLength={8} value={form.password} onChange={e=>setForm({...form,password:e.target.value})} required/></label><label>Role<select className="select" value={form.role} onChange={e=>changeCreateRole(e.target.value as Role)}><option value="DEWAN_GURU">Dewan Guru</option><option value="KELOMPOK">Operator Kelompok</option><option value="VIEWER">Viewer</option><option value="ADMIN">Admin</option></select></label></div>
+      <div className="section">
+        <h3>Lingkup Data yang Diizinkan</h3><p className="itemMeta">Centang Baca dan Tulis untuk data yang boleh diakses akun. Tanpa lingkup, fitur tidak membuka data tersebut.</p>
+        <div className="scopeTable section">{createScopes.map(x=><div className="scopeRow" key={x.audience}><strong>{audiences.find(a=>a[0]===x.audience)?.[1]||x.audience}</strong>
+          <label><input type="checkbox" checked={x.can_read} disabled={form.role==='ADMIN'||(form.role==='DEWAN_GURU'&&x.audience==='CABERAWIT')} onChange={e=>updateCreateScope(x.audience,'can_read',e.target.checked)}/> Baca</label>
+          <label><input type="checkbox" checked={x.can_write} disabled={form.role==='ADMIN'||form.role==='VIEWER'||(form.role==='DEWAN_GURU'&&x.audience==='CABERAWIT')} onChange={e=>updateCreateScope(x.audience,'can_write',e.target.checked)}/> Tulis</label>
+        </div>)}</div>
+      </div>
+      {form.role==='DEWAN_GURU'&&<section className="section"><h3>Akses Kelas Caberawit</h3><p className="itemMeta">Pilih hanya satu kelas, seluruh Caberawit, atau tanpa akses kelas.</p><div className="accessModeGrid">{(['ONE','ALL','NONE'] as const).map(m=><button key={m} type="button" className={createCabMode===m?'smallAction active':'smallAction'} onClick={()=>setCreateCaberawitMode(m)}>{m==='ONE'?'Satu kelas':m==='ALL'?'Semua kelas':'Tidak ada'}</button>)}</div>
+        {createCabMode==='ONE'&&<div className="formGrid section"><label>Kelas Caberawit<select className="select" value={createClassScope?.class_id||''} onChange={e=>setCreateClassScope(e.target.value?{class_id:e.target.value,can_read:true,can_write:true}:null)}><option value="">Pilih kelas</option>{cabClasses.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label><input type="checkbox" checked={createClassScope?.can_write!==false} onChange={e=>setCreateClassScope(v=>v?{...v,can_write:e.target.checked,can_read:true}:v)}/> Boleh mengisi data kelas</label></div>}
+      </section>}
+      <PermissionChecklist role={form.role} values={createPerms} onChange={(key,checked)=>setCreatePerms(v=>togglePermission(v,key,checked))}/>
+      <button className="btn section" disabled={saving||(form.role==='DEWAN_GURU'&&createCabMode==='ONE'&&!createClassScope?.class_id)}>{saving?'Menyimpan…':'Buat Akun & Simpan Akses'}</button></form>}
     {error&&<div className="notice error section">{error}</div>}
     <section className="section"><div className="cardHead"><h2>Daftar Akun</h2><span className="itemMeta">{loading?'Memuat…':data.length+' akun'}</span></div><div className="list">{data.map(user=><div className="item row between" key={user.id}><div className="row"><div className="avatar">{user.username.slice(0,2).toUpperCase()}</div><div><div className="itemTitle">{user.display_name||user.username}</div><div className="itemMeta">@{user.username} · {roleInfo[user.role].label}</div></div></div><div className="row accountActions"><button className="smallAction" onClick={()=>openEdit(user)}>Edit</button><button className="smallAction" onClick={()=>void openAccess(user)}>Atur Akses</button><button className={user.active?'smallAction':'smallAction danger'} onClick={()=>void setActive(user,!user.active)}>{user.active?'Nonaktifkan':'Aktifkan'}</button></div></div>)}</div></section>
     <section className="section"><div className="cardHead"><h2>Kunjungan Viewer</h2></div><div className="tableWrap"><table className="table"><thead><tr><th>Waktu</th><th>Nama</th><th>Perangkat</th></tr></thead><tbody>{visits.map(v=><tr key={v.id}><td>{new Date(v.visited_at).toLocaleString('id-ID')}</td><td>{v.display_name||'Anonim'}</td><td>{v.device.slice(0,90)}</td></tr>)}{!visits.length&&<tr><td colSpan={3}>Belum ada kunjungan.</td></tr>}</tbody></table></div></section>
@@ -92,8 +99,8 @@ export default function TeamPage(){
 
     {accessUser&&<div className="dialogBackdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!accessSaving)setAccessUser(null)}}><div className="dialogCard accessDialog" role="dialog" aria-modal="true"><div className="cardHead"><div><h2>{accessUser.display_name||accessUser.username}</h2><span className="itemMeta">{roleInfo[accessUser.role].label} · {roleInfo[accessUser.role].desc}</span></div><button className="smallAction" onClick={()=>setAccessUser(null)}>Tutup</button></div>
       {accessUser.role==='DEWAN_GURU'&&<section className="section card accessSubCard"><div className="cardHead"><div><h3>Akses Caberawit</h3><p className="itemMeta">Satu Dewan Guru hanya memegang satu kelas. Akses seluruh Caberawit harus dipilih khusus.</p></div></div><div className="accessModeGrid"><button type="button" className={cabMode==='ONE'?'smallAction active':'smallAction'} onClick={()=>setCaberawitMode('ONE')}>Satu kelas</button><button type="button" className={cabMode==='ALL'?'smallAction active':'smallAction'} onClick={()=>setCaberawitMode('ALL')}>Seluruh Caberawit</button><button type="button" className={cabMode==='NONE'?'smallAction active':'smallAction'} onClick={()=>setCaberawitMode('NONE')}>Tidak ada</button></div>{cabMode==='ONE'&&<div className="formGrid section"><label>Kelas Caberawit<select className="select" value={classScope?.class_id||''} onChange={e=>setClassScope(e.target.value?{class_id:e.target.value,can_read:true,can_write:true}:null)}><option value="">Pilih kelas</option>{cabClasses.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select></label><label><input type="checkbox" checked={classScope?.can_write!==false} onChange={e=>setClassScope(v=>v?{...v,can_write:e.target.checked,can_read:true}:v)}/> Boleh mengisi presensi, jurnal, progres dan catatan kelas</label></div>}</section>}
-      <h3>Lingkup Program</h3><div className="scopeTable section">{scopes.map(x=><div className="scopeRow" key={x.audience}><strong>{audiences.find(a=>a[0]===x.audience)?.[1]||x.audience}</strong><label><input type="checkbox" checked={x.can_read} disabled={accessUser.role==='DEWAN_GURU'&&x.audience==='CABERAWIT'} onChange={e=>updateScope(x.audience,'can_read',e.target.checked)}/> Baca</label><label><input type="checkbox" checked={x.can_write} disabled={accessUser.role==='DEWAN_GURU'&&x.audience==='CABERAWIT'} onChange={e=>updateScope(x.audience,'can_write',e.target.checked)}/> Tulis</label></div>)}</div>
-      <details className="section"><summary>Permission per fitur</summary><div className="permissionGrid section">{availablePerms.map(p=><label key={p}>{permissionLabels[p]||p}<select className="select" value={permStates[p]||'inherit'} onChange={e=>setPermStates(v=>({...v,[p]:e.target.value as any}))}><option value="inherit">Ikuti role</option><option value="allow">Izinkan</option><option value="deny">Tolak</option></select></label>)}</div></details>
+      <h3>Lingkup Data</h3><p className="itemMeta">Atur data yang boleh dibaca atau diubah akun ini.</p><div className="scopeTable section">{scopes.map(x=><div className="scopeRow" key={x.audience}><strong>{audiences.find(a=>a[0]===x.audience)?.[1]||x.audience}</strong><label><input type="checkbox" checked={x.can_read} disabled={accessUser.role==='ADMIN'||(accessUser.role==='DEWAN_GURU'&&x.audience==='CABERAWIT')} onChange={e=>updateScope(x.audience,'can_read',e.target.checked)}/> Baca</label><label><input type="checkbox" checked={x.can_write} disabled={accessUser.role==='ADMIN'||accessUser.role==='VIEWER'||(accessUser.role==='DEWAN_GURU'&&x.audience==='CABERAWIT')} onChange={e=>updateScope(x.audience,'can_write',e.target.checked)}/> Tulis</label></div>)}</div>
+      <PermissionChecklist role={accessUser.role} values={permStates} onChange={(key,checked)=>setPermStates(v=>togglePermission(v,key,checked))}/>
       <div className="formActions"><button className="btn" disabled={accessSaving||(accessUser.role==='DEWAN_GURU'&&cabMode==='ONE'&&!classScope?.class_id)} onClick={()=>void saveAccess()}>{accessSaving?'Menyimpan…':'Simpan Akses'}</button></div>
     </div></div>}
   </>;
