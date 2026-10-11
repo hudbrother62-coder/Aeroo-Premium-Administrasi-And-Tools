@@ -1,0 +1,10 @@
+/* Navigation shared by all Simpul routes and modal dialogs. */
+.simpulReturnBar{max-width:1500px;margin:0 auto;padding:14px 16px 0;display:flex;align-items:center}
+.simpulReturnLink{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:40px;padding:8px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-weight:650;font-size:13px;text-decoration:none;transition:background .15s,border-color .15s,transform .15s}
+.simpulReturnLink:hover{background:var(--surface-2);border-color:var(--teal);transform:translateX(-2px)}
+.simpulReturnLink:focus-visible,.simpulDialogReturn:focus-visible{outline:3px solid var(--teal);outline-offset:3px}
+.simpulDialogReturn{position:fixed;z-index:115;top:max(12px,env(safe-area-inset-top));left:16px;display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:9px 13px;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);box-shadow:var(--shadow-lg);font-weight:700;cursor:pointer}
+.simpulDialogReturn:hover{background:var(--surface-2)}
+@media(min-width:900px){.simpulReturnBar{padding:18px 28px 0}.simpulDialogReturn{left:calc(var(--sidebar) + 24px)}.sidebarCollapsed .simpulDialogReturn{left:90px}}
+@media(max-width:700px){.simpulReturnBar{padding:11px 14px 0}.simpulDialogReturn{left:12px;top:max(10px,env(safe-area-inset-top))}}
+@media(prefers-reduced-motion:reduce){.simpulReturnLink{transition:none}}
