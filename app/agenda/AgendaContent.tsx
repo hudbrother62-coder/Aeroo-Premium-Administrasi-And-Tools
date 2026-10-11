@@ -117,8 +117,8 @@ export default function AgendaContent({mode}:{mode:'list'|'calendar'}){
       </>}
       <button type="button" className="smallAction agendaRefresh" title="Muat ulang agenda" aria-label="Muat ulang agenda" onClick={()=>void loadAgenda()}><RotateCw size={18}/></button>
     </div>
-    {loading?<div className="card agendaLoading" role="status"><div className="skeleton" style={{height:80}}/>Memuat jadwal…</div>:mode==='calendar'?<>
-      <section className="card section agendaPanel">
+    {loading?<div className="card agendaLoading" role="status"><div className="skeleton" style={{height:80}}/>Memuat jadwal…</div>:mode==='calendar'?<div className="agendaCalendarWorkspace">
+      <section className="card section agendaPanel agendaCompactCalendar">
         <div className="calendarHead">
           <button type="button" className="smallAction" onClick={()=>changeMonth(-1)} aria-label="Bulan sebelumnya"><ChevronLeft/></button>
           <div><h2>{month.toLocaleDateString('id-ID',{month:'long',year:'numeric'})}</h2><small>{data.filter(e=>e.status!=='CANCELLED').length} kegiatan aktif</small></div>
@@ -126,21 +126,30 @@ export default function AgendaContent({mode}:{mode:'list'|'calendar'}){
         </div>
         <div className="calendarGrid agendaCalendar">{['Sen','Sel','Rab','Kam','Jum','Sab','Min'].map(d=><div className="calendarDayName" key={d}>{d}</div>)}{cells.map((c,i)=>c?<button type="button" className={'calendarCell agendaCell'+(selected===c.date?' selected':'')+(c.date===jakartaDate()?' today':'')} key={c.date} aria-label={c.date+': '+c.events.length+' agenda'} aria-pressed={selected===c.date} onClick={()=>setSelected(c.date)}>
           <span className="calendarDate">{c.day}</span>{c.events.length>0&&<span className="agendaDots" aria-hidden="true">{c.events.slice(0,3).map(e=><i key={e.id} className={e.status==='CANCELLED'?'cancelled':''}/>)}</span>}
-          <span className="agendaCount">{c.events.length?c.events.length+' kegiatan':''}</span>
+          <span className="agendaCount">{c.events.length?c.events.length:''}</span>
         </button>:<span key={'empty-'+i}/>)}</div>
       </section>
-      <section className="section">
+      <section className="card section agendaDayPanel" aria-label="Kegiatan pada tanggal terpilih">
         <div className="cardHead agendaSelectedHeader"><div><h2>{new Date(selected+'T12:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</h2><p>{selectedEvents.length} kegiatan pada tanggal ini</p></div>{canWrite&&<button type="button" className="btn secondary" onClick={()=>void openFor(selected)}>+ Tanggal ini</button>}</div>
-        <div className="agendaCards">{selectedEvents.map(e=><article className="agendaEntry" key={e.id}>
+        <div className="agendaCards agendaDayEvents">{selectedEvents.map(e=><article className="agendaEntry" key={e.id}>
           <div className="agendaEntryTime"><Clock3 size={16}/><strong>{time(e.starts_at)}</strong>{e.ends_at&&<small>– {time(e.ends_at)}</small>}</div>
           <div className="agendaEntryBody"><div className="agendaEntryTop"><h3>{e.title}</h3><span className={'agendaStatus '+(e.status||'SCHEDULED').toLowerCase()}>{statusText(e.status)}</span></div>
             <div className="agendaMeta">{e.location&&<span><MapPin size={15}/>{e.location}</span>}{(e.person_in_charge||e.presenter)&&<span><UserRound size={15}/>{e.person_in_charge||e.presenter}</span>}</div>
             {e.notes&&<p className="agendaDescription">{e.notes}</p>}
             <div className="agendaEntryActions">{canEdit(e)&&e.status!=='CANCELLED'&&<>{e.attendance_enabled!==false&&<Link href={attendanceHref(e)} className="btn secondary"><ClipboardCheck size={15}/>{e.attendance_event_id?'Buka presensi':'Mulai presensi'}</Link>}<Link href={journalHref(e)} className="btn ghost"><BookOpen size={15}/>{e.journal_id?'Buka jurnal':'Isi jurnal'}</Link></>}{canEdit(e)&&<button type="button" className="smallAction" onClick={()=>void editEvent(e)}>Edit</button>}{canEdit(e)&&e.status!=='CANCELLED'&&<button type="button" className="smallAction danger" onClick={()=>void remove(e)}>Batalkan</button>}</div>
           </div></article>)}
-          {!selectedEvents.length&&<div className="agendaEmpty"><CalendarPlus size={24}/><strong>Belum ada kegiatan pada tanggal ini</strong><span>Pilih tanggal lain atau tambahkan agenda baru.</span>{canWrite&&<button className="btn secondary" type="button" onClick={()=>void openFor(selected)}>Tambah kegiatan</button>}</div>}</div>
+          {!selectedEvents.length&&<div className="agendaEmpty"><CalendarPlus size={24}/><strong>Belum ada kegiatan pada tanggal ini</strong><span>Pilih tanggal lain atau tambahkan agenda baru.</span>{canWrite&&<button className="btn secondary" type="button" onClick={()=>void openFor(selected)}>Tambah kegiatan</button>}</div>}
+          {!selectedEvents.length&&data.some(e=>e.status!=='CANCELLED')&&<div className="agendaNearby">
+            <div className="agendaNearbyHead"><strong>Kegiatan lain bulan ini</strong><Link href="/agenda">Lihat semua</Link></div>
+            {sortedEvents.filter(e=>e.status!=='CANCELLED').slice(0,4).map(e=><button type="button" key={e.id} className="agendaNearbyItem" onClick={()=>setSelected(localDay(e.starts_at))}>
+              <span>{new Date(localDay(e.starts_at)+'T12:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'short'})}</span>
+              <strong>{e.title}</strong>
+              <small>{time(e.starts_at)}</small>
+              <ChevronRight size={15}/>
+            </button>)}
+          </div>}</div>
       </section>
-    </>:<section className="section agendaCards">
+    </div>:<section className="section agendaCards">
       <div className="agendaListTitle"><div><h2>Jadwal {month.toLocaleDateString('id-ID',{month:'long',year:'numeric'})}</h2><p>{displayedEvents.length} dari {data.length} kegiatan</p></div></div>
       {displayedEvents.map(e=><article className="agendaEntry" key={e.id}>
         <div className="agendaEntryTime"><strong>{new Date(localDay(e.starts_at)+'T12:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short'})}</strong><small>{time(e.starts_at)}{e.ends_at?'–'+time(e.ends_at):''}</small></div>
