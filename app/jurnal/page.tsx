@@ -4,9 +4,9 @@ import Link from 'next/link';
 import {useEffect,useMemo,useState} from 'react';
 import {BookOpenText,ArrowRight,ClipboardList,Target,CheckCheck,UsersRound,CalendarDays,History,Plus} from 'lucide-react';
 import {jakartaDate} from '@/lib/domain';
-import {readScopesForRole,type Audience} from '@/lib/access';
+import {readScopesForRole,writeScopesForRole,type Audience} from '@/lib/access';
 
-type Journal={id:string;journal_date:string;journal_kind:string;title:string;state?:string;follow_up?:string;classes?:{id?:string;name?:string;level_id?:string};journal_progress?:Array<{member_id?:string;participant_key?:string;target_id?:string;progress_value?:number|null}>};
+type Journal={id:string;class_id?:string;journal_date:string;journal_kind:string;title:string;state?:string;follow_up?:string;classes?:{id?:string;name?:string;level_id?:string};journal_progress?:Array<{member_id?:string;participant_key?:string;target_id?:string;progress_value?:number|null}>};
 type Level={id:string;name:string};
 type ClassRow={id:string;name:string;level_id?:string;audience:string};
 const kindLabels:Record<string,string>={PENGKAJIAN:'Pengkajian',KELOMPOK:'Kelompok',IBU_IBU:'Ibu-Ibu',PENGURUS:'Musyawarah',CABERAWIT_CLASS:'Caberawit Kelas',CABERAWIT_INDIVIDUAL:'Caberawit Individu',MUDA_MUDI_CLASS:'Muda-Mudi Kelas',MUDA_MUDI_INDIVIDUAL:'Muda-Mudi Individu'};
@@ -54,14 +54,14 @@ export default function JournalDashboard(){
   },[month,refresh]);
 
   const readable=readScopes??readScopesForRole(role);
-  const writable=writeScopes??[];
+  const writable=writeScopes??writeScopesForRole(role);
   const availableKinds=Object.entries(kindLabels).filter(([k])=>readable.includes(audienceFor(k)));
   const filtered=useMemo(()=>journals.filter(j=>{
     if(!readable.includes(audienceFor(j.journal_kind)))return false;
     if(kind&&j.journal_kind!==kind)return false;
-    if(classId&&j.classes?.id!==classId)return false;
+    if(classId&&(j.classes?.id||j.class_id)!==classId)return false;
     if(levelId){
-      const journalLevel=j.classes?.level_id||classes.find(c=>c.id===j.classes?.id)?.level_id;
+      const journalLevel=j.classes?.level_id||classes.find(c=>c.id===(j.classes?.id||j.class_id))?.level_id;
       if(journalLevel!==levelId)return false;
     }
     return true;
@@ -124,7 +124,7 @@ export default function JournalDashboard(){
 
     <section className="card section journalRecent">
       <div className="cardHead"><div><h2>Jurnal terbaru</h2><p>Ringkasan pencatatan sesuai filter yang aktif.</p></div><Link className="btn ghost" href="/jurnal/riwayat">Lihat riwayat <ArrowRight size={16}/></Link></div>
-      {loading?<div className="emptyState">Memuat jurnal…</div>:recent.length?<div className="journalRecentList">{recent.map(j=><div className="journalRecentItem" key={j.id}><div className="journalRecentIcon"><BookOpenText size={18}/></div><div className="journalRecentText"><strong>{j.title}</strong><span>{kindLabels[j.journal_kind]||j.journal_kind} · {j.classes?.name||'Lintas kelas'} · {j.journal_date}</span></div><span className="badge">{j.state==='COMPLETED'?'Selesai':j.state==='ARCHIVED'?'Arsip':'Draf'}</span><Link className="btn ghost" href={writable.includes(audienceFor(j.journal_kind))?'/jurnal/buat?journal_id='+j.id:'/jurnal/riwayat'}>Lihat <ArrowRight size={14}/></Link></div>)}</div>:<div className="journalEmpty"><BookOpenText size={27}/><strong>Belum ada jurnal untuk filter ini</strong><p>Jurnal yang disimpan akan otomatis muncul di sini dan masuk ke riwayat.</p>{canCreate&&<Link href="/jurnal/buat" className="btn">Tambah jurnal pertama</Link>}</div>}
+      {loading?<div className="emptyState">Memuat jurnal…</div>:recent.length?<div className="journalRecentList">{recent.map(j=><div className="journalRecentItem" key={j.id}><div className="journalRecentIcon"><BookOpenText size={18}/></div><div className="journalRecentText"><strong>{j.title}</strong><span>{kindLabels[j.journal_kind]||j.journal_kind} · {j.classes?.name||classes.find(c=>c.id===j.class_id)?.name||'Lintas kelas'} · {j.journal_date}</span></div><span className="badge">{j.state==='COMPLETED'?'Selesai':j.state==='ARCHIVED'?'Arsip':'Draf'}</span><Link className="btn ghost" href={writable.includes(audienceFor(j.journal_kind))?'/jurnal/buat?journal_id='+j.id:'/jurnal/riwayat'}>Lihat <ArrowRight size={14}/></Link></div>)}</div>:<div className="journalEmpty"><BookOpenText size={27}/><strong>Belum ada jurnal untuk filter ini</strong><p>Jurnal yang disimpan akan otomatis muncul di sini dan masuk ke riwayat.</p>{canCreate&&<Link href="/jurnal/buat" className="btn">Tambah jurnal pertama</Link>}</div>}
     </section>
     <div className="journalIntegration"><Target size={18}/><span><strong>Terhubung dengan Target & Progres.</strong> Penilaian individu yang ditautkan ke target dapat dipakai untuk analisis perkembangan. <Link href="/target">Buka Target & Progres <ArrowRight size={13}/></Link></span></div>
   </div>;

@@ -7,7 +7,7 @@ import {ArrowLeft,History} from 'lucide-react';
 import {readScopesForRole,writeScopesForRole,type Audience} from '@/lib/access';
 import {useEffect,useState} from 'react';
 
-type Journal={id:string;journal_date:string;journal_kind:string;title:string;state?:string;revision?:number;started_at?:string;ended_at?:string;material?:string;summary?:string;decisions?:string;assessment?:{presenter?:string;presenter_id?:string;materials?:Array<{topic:string;page:string;status?:string}>;meeting_type?:string;absence?:string};classes?:{id?:string;name?:string;level_id?:string};members?:{name?:string}};
+type Journal={id:string;class_id?:string;journal_date:string;journal_kind:string;title:string;state?:string;revision?:number;started_at?:string;ended_at?:string;material?:string;summary?:string;decisions?:string;assessment?:{presenter?:string;presenter_id?:string;materials?:Array<{topic:string;page:string;status?:string}>;meeting_type?:string;absence?:string};classes?:{id?:string;name?:string;level_id?:string};members?:{name?:string}};
 const tabs=[['','Semua'],['PENGKAJIAN','Pengkajian'],['KELOMPOK','Kelompok'],['IBU_IBU','Ibu-Ibu'],['PENGURUS','Musyawarah'],['CABERAWIT_CLASS','Caberawit Kelas'],['CABERAWIT_INDIVIDUAL','Caberawit Individu'],['MUDA_MUDI_CLASS','Muda-Mudi Kelas'],['MUDA_MUDI_INDIVIDUAL','Muda-Mudi Individu']] as const;
 const labels:Record<string,string>={PENGKAJIAN:'Pengkajian',KELOMPOK:'Kelompok',IBU_IBU:'Ibu-Ibu',PENGURUS:'Musyawarah',CABERAWIT_CLASS:'Caberawit Kelas',CABERAWIT_INDIVIDUAL:'Caberawit Individu',MUDA_MUDI_CLASS:'Muda-Mudi Kelas',MUDA_MUDI_INDIVIDUAL:'Muda-Mudi Individu'};
 
@@ -25,17 +25,17 @@ export default function Page(){
 
   const load=async()=>{
     setLoading(true);
-    const q=new URLSearchParams({month});if(kind)q.set('kind',kind);
+    const q=new URLSearchParams({month});if(kind)q.set('kind',kind);if(status==='ARCHIVED')q.set('state','ARCHIVED');
     try{const r=await fetch('/api/journals?'+q);const j=await r.json();if(!r.ok)throw new Error(j.error);setData(j);setError('')}
     catch{setError('Jurnal belum dapat dimuat.')}finally{setLoading(false)}
   };
-  useEffect(()=>{void load()},[kind,month]);
+  useEffect(()=>{void load()},[kind,month,status]);
 
-  const filtered=data.filter(j=>(!status||(j.state||'DRAFT')===status)&&(!levelId||(j.classes?.level_id||classes.find(c=>c.id===j.classes?.id)?.level_id)===levelId));
+  const filtered=data.filter(j=>(!status||(j.state||'DRAFT')===status)&&(!levelId||(j.classes?.level_id||classes.find(c=>c.id===(j.classes?.id||j.class_id))?.level_id)===levelId));
   return <div className="journalWorkspace">
     <div className="pageHeader"><div><Link className="journalBack" href="/jurnal"><ArrowLeft size={16}/> Dashboard Jurnal</Link><h1>Riwayat Jurnal</h1><p>Temukan, periksa, dan perbarui jurnal yang sudah tersimpan.</p></div><Link className="btn writeOnly" href="/jurnal/buat">+ Tambah Jurnal</Link></div>
     <nav className="journalSubnav" aria-label="Navigasi jurnal"><Link href="/jurnal">Dashboard</Link><Link href="/jurnal/buat">Isi Jurnal</Link><Link href="/jurnal/riwayat" className="journalNavActive"><History size={15}/> Riwayat Jurnal</Link></nav>
-    <div className="card journalFilterBar"><label>Bulan<input aria-label="Bulan jurnal" type="month" className="input" value={month} onChange={e=>setMonth(e.target.value)}/></label><label>Jenis jurnal<select aria-label="Jenis jurnal" className="select" value={kind} onChange={e=>setKind(e.target.value)}>{tabs.filter(([v])=>!v||(scopedRead??readScopesForRole(role)).includes((v==='PENGKAJIAN'?'KELOMPOK':v.startsWith('CABERAWIT')?'CABERAWIT':v.startsWith('MUDA_MUDI')?'MUDA_MUDI':v) as any)).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label><label>Jenjang<select className="select" value={levelId} onChange={e=>setLevelId(e.target.value)}><option value="">Semua jenjang</option>{levels.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select></label><label>Status<select className="select" value={status} onChange={e=>setStatus(e.target.value)}><option value="">Semua status</option><option value="DRAFT">Draf</option><option value="COMPLETED">Selesai</option></select></label></div>
+    <div className="card journalFilterBar"><label>Bulan<input aria-label="Bulan jurnal" type="month" className="input" value={month} onChange={e=>setMonth(e.target.value)}/></label><label>Jenis jurnal<select aria-label="Jenis jurnal" className="select" value={kind} onChange={e=>setKind(e.target.value)}>{tabs.filter(([v])=>!v||(scopedRead??readScopesForRole(role)).includes((v==='PENGKAJIAN'?'KELOMPOK':v.startsWith('CABERAWIT')?'CABERAWIT':v.startsWith('MUDA_MUDI')?'MUDA_MUDI':v) as any)).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label><label>Jenjang<select className="select" value={levelId} onChange={e=>setLevelId(e.target.value)}><option value="">Semua jenjang</option>{levels.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select></label><label>Status<select className="select" value={status} onChange={e=>setStatus(e.target.value)}><option value="">Semua status</option><option value="DRAFT">Draf</option><option value="COMPLETED">Selesai</option><option value="ARCHIVED">Arsip</option></select></label></div>
     {kind==='PENGKAJIAN'&&!loading&&<div className="metricGrid section">{Object.entries(studyRecap(filtered)).map(([k,v])=><div className="metricCard" key={k}><span>{({sessions:'Pengkajian selesai',minutes:'Durasi (menit)',presenters:'Pemateri',completed:'Materi tuntas',unfinished:'Materi belum tuntas'} as Record<string,string>)[k]}</span><strong>{v}</strong></div>)}</div>}{error&&<div className="notice error">{error}</div>}
     <div className="list section">
       {loading?<div className="card">Memuat…</div>:filtered.map(j=><article className="item" key={j.id}>
