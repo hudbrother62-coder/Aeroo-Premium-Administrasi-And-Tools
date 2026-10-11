@@ -2,11 +2,20 @@
 
 import {jakartaDate} from '@/lib/domain';
 import {useEffect,useState} from 'react';
+import AttendanceRecap from '@/components/AttendanceRecap';
 
 type Summary={month:string;counts:{total:number;caberawit:number;muda_mudi:number;pengurus:number;ibu_ibu:number};attendance:{H:number;I:number;A:number;meetings:number};journals:number;individuals:Array<{id:string;name:string;categories:string[];class_name:string;level_name:string;H:number;I:number;A:number;percentage:number|null;journals:number}>};
 
 export default function RekapPage(){
-  const now=new Date();
+  const[tab,setTab]=useState<'ringkasan'|'presensi'>('ringkasan');
+  useEffect(()=>{if(new URLSearchParams(window.location.search).get('tab')==='presensi')setTab('presensi')},[]);
+  function switchTab(next:'ringkasan'|'presensi'){
+    setTab(next);
+    const url=new URL(window.location.href);
+    if(next==='presensi')url.searchParams.set('tab','presensi');
+    else url.searchParams.delete('tab');
+    window.history.replaceState(null,'',url.pathname+url.search);
+  }
   const[month,setMonth]=useState(jakartaDate().slice(0,7));const[role,setRole]=useState('VIEWER');useEffect(()=>{fetch('/api/auth/me').then(r=>r.json()).then(u=>setRole(u.role))},[]);
   const[mode,setMode]=useState<'ALL'|'PERSON'>('ALL');
   const[span,setSpan]=useState<1|6>(1);
@@ -16,11 +25,13 @@ export default function RekapPage(){
   const[error,setError]=useState('');
 
   const load=async()=>{try{const r=await fetch(`/api/summary?month=${month}&span=${span}`);const j=await r.json();if(!r.ok)throw new Error(j.error);setData(j);setError('')}catch{setError('Rekap data belum dapat dimuat.')}};
-  useEffect(()=>{void load()},[month,span]);
+  useEffect(()=>{if(tab==='ringkasan')void load()},[month,span,tab]);
   const person=data?.individuals.find(x=>x.id===selected)||data?.individuals[0];
 
   return <>
-    <div className="pageHeader"><h1>Rekap</h1><div className="taskLinks">{(["xlsx","docx","pdf"] as const).map(format=><a key={format} className="btn secondary" href={"/api/reports/summary?"+new URLSearchParams({month,span:String(span),format})}>Ekspor {format==="xlsx"?"Excel":format==="docx"?"Word":"PDF"}</a>)}</div></div>
+    <div className="pageHeader"><h1>Rekap</h1>{tab==='ringkasan'&&<div className="taskLinks">{(["xlsx","docx","pdf"] as const).map(format=><a key={format} className="btn secondary" href={"/api/reports/summary?"+new URLSearchParams({month,span:String(span),format})}>Ekspor {format==="xlsx"?"Excel":format==="docx"?"Word":"PDF"}</a>)}</div>}</div>
+    <div className="tabBar" role="tablist" aria-label="Jenis rekap"><button type="button" className={tab==='ringkasan'?'tab active':'tab'} role="tab" aria-selected={tab==='ringkasan'} onClick={()=>switchTab('ringkasan')}>Ringkasan Data</button><button type="button" className={tab==='presensi'?'tab active':'tab'} role="tab" aria-selected={tab==='presensi'} onClick={()=>switchTab('presensi')}>Riwayat Presensi</button></div>
+    {tab==='presensi'?<AttendanceRecap/>:<>
     <div className="toolbar card"><input className="input" type="month" value={month} onChange={e=>setMonth(e.target.value)}/><select className="select" value={span} onChange={e=>setSpan(Number(e.target.value) as 1|6)}><option value={1}>Satu bulan</option><option value={6}>Enam bulan terakhir</option></select><div className="tabBar" style={{margin:0}}><button className={mode==='ALL'?'tab active':'tab'} onClick={()=>setMode('ALL')}>Keseluruhan</button><button className={mode==='PERSON'?'tab active':'tab'} onClick={()=>setMode('PERSON')}>1 Individu</button></div></div>
     {error&&<div className="notice error section">{error}</div>}
     {mode==='ALL'&&data&&<>
@@ -41,6 +52,7 @@ export default function RekapPage(){
         <section className="card"><h2>{person.name}</h2><div className="itemMeta">{person.categories.join(' • ')||'Tanpa kategori'} · {person.class_name||'Tanpa kelas'} · {person.level_name||'Tanpa jenjang'}</div><div className="attendanceSummary section"><div><span>H</span><strong>{person.H}</strong><small>Hadir</small></div><div><span>I</span><strong>{person.I}</strong><small>Izin</small></div><div><span>A</span><strong>{person.A}</strong><small>Alfa</small></div></div></section>
         <section className="card"><div className="metricCard" style={{boxShadow:'none'}}><span>Persentase hadir</span><strong>{person.percentage===null?'Belum diisi':person.percentage+'%'}</strong></div><div className="metricCard section" style={{boxShadow:'none'}}><span>Jurnal individu</span><strong>{person.journals}</strong></div></section>
       </div>}
+    </>}
     </>}
   </>;
 }

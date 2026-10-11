@@ -1,3 +1,3 @@
-import AttendanceRecap from '@/components/AttendanceRecap';
+import {redirect} from 'next/navigation';
 
-export default function Page(){return <AttendanceRecap/>}
+export default function Page(){redirect('/rekap?tab=presensi')}

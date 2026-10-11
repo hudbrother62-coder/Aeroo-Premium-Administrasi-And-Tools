@@ -3,6 +3,7 @@
 import {jakartaDate} from '@/lib/domain';
 import {readScopesForRole} from '@/lib/access';
 import {useEffect,useMemo,useState} from 'react';
+import AttendanceHistory from '@/components/AttendanceHistory';
 type ClassRow={id:string;name:string;audience:string};
 type Recap={summary:{H:number;I:number;A:number;pending:number;meetings:number};individuals:Array<{id:string;name:string;class_name:string;archived:boolean;H:number;I:number;A:number;percentage:number|null;dates:{H:string[];I:string[];A:string[]}}> ;calendar:Array<{date:string;events:number;recorded:boolean}>};
 const labels:Record<string,string>={KELOMPOK:'Kelompok',MUDA_MUDI:'Muda-Mudi',CABERAWIT:'Caberawit',IBU_IBU:'Ibu-Ibu',PENGURUS:'Pengurus'};
@@ -10,6 +11,7 @@ const labels:Record<string,string>={KELOMPOK:'Kelompok',MUDA_MUDI:'Muda-Mudi',CA
 export default function Page({embedded=false}:{embedded?:boolean}){
   const now=new Date();
   const[month,setMonth]=useState(jakartaDate().slice(0,7));const[role,setRole]=useState('VIEWER');
+  const[readScopes,setReadScopes]=useState<string[]|null>(null);
   const[audience,setAudience]=useState('');
   const[classId,setClassId]=useState('');
   const[classes,setClasses]=useState<ClassRow[]>([]);
@@ -22,7 +24,7 @@ export default function Page({embedded=false}:{embedded?:boolean}){
     try{
       const[r,c,u]=await Promise.all([fetch('/api/attendance/recap?'+q),fetch('/api/classes'),fetch('/api/auth/me')]);
       const j=await r.json();if(!r.ok)throw new Error(j.error);
-      setData(j);setRole((await u.json()).role);setClasses(await c.json());setError('');
+      const user=await u.json();setData(j);setRole(user.role);setReadScopes(Array.isArray(user.read_scopes)?user.read_scopes:null);setClasses(await c.json());setError('');
     }catch{setError('Rekap presensi belum dapat dimuat.')}
   };
   useEffect(()=>{void load()},[month,audience,classId]);
@@ -36,7 +38,7 @@ export default function Page({embedded=false}:{embedded?:boolean}){
     {!embedded&&<div className="pageHeader"><div><h1>Rekap Presensi</h1></div></div>}
     <div className="toolbar card">
       <input className="input" type="month" value={month} onChange={e=>setMonth(e.target.value)}/>
-      <select className="select" value={audience} onChange={e=>{setAudience(e.target.value);setClassId('')}}><option value="">Keseluruhan</option>{Object.entries(labels).filter(([a])=>readScopesForRole(role).includes(a as any)).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
+      <select className="select" value={audience} onChange={e=>{setAudience(e.target.value);setClassId('')}}><option value="">Keseluruhan</option>{Object.entries(labels).filter(([a])=>(readScopes??readScopesForRole(role)).includes(a)).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
       {(audience==='CABERAWIT'||audience==='MUDA_MUDI')&&<select className="select" value={classId} onChange={e=>setClassId(e.target.value)}><option value="">Semua kelas</option>{classOptions.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>}
     </div>
     {error&&<div className="notice error section">{error}</div>}
@@ -46,7 +48,9 @@ export default function Page({embedded=false}:{embedded?:boolean}){
       <div className="metricCard"><span>Izin</span><strong>{data?.summary.I??0}</strong></div>
       <div className="metricCard"><span>Alfa</span><strong>{data?.summary.A??0}</strong></div>
     </div>
-    <div className="notice section">Belum diisi: {data?.summary.pending??0} catatan. Catatan kosong tidak dihitung sebagai Alfa.</div><section className="card section">
+    <div className="notice section">Belum diisi: {data?.summary.pending??0} catatan. Catatan kosong tidak dihitung sebagai Alfa.</div>
+    <AttendanceHistory month={month} audience={audience} classId={classId} onChanged={()=>void load()}/>
+    <section className="card section">
       <div className="cardHead"><div><h2>Kalender Presensi</h2><p>Tanggal berwarna berarti sudah ada presensi.</p></div></div>
       <div className="calendarGrid">
         {['Sen','Sel','Rab','Kam','Jum','Sab','Min'].map(x=><div className="calendarDayName" key={x}>{x}</div>)}

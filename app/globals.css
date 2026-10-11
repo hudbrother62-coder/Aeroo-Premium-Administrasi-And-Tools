@@ -1463,3 +1463,13 @@ html[data-theme="dark"] .textarea{background:#0f1728}
  .agendaSidebarLinks{margin-left:42px}
  .agendaHeaderActions .btn:last-child{grid-column:auto}
 }
+
+
+/* Attendance history in Rekap */
+.attendanceHistoryItem{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.attendanceHistoryActions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.attendanceHistoryDialog{width:min(920px,100%)}
+.attendanceCorrectionRow{display:grid;grid-template-columns:minmax(125px,.65fr) minmax(170px,1.4fr) auto;gap:10px;align-items:end;margin-top:12px}
+.attendanceCorrectionRow label{display:grid;gap:6px;color:var(--muted);font-size:12px;font-weight:750}
+.attendanceCorrectionRow .btn{min-width:90px}
+@media(max-width:700px){.attendanceHistoryItem{flex-direction:column;align-items:stretch}.attendanceHistoryActions{justify-content:space-between}.attendanceHistoryActions .btn{flex:1}.attendanceCorrectionRow{grid-template-columns:1fr}.attendanceHistoryDialog{padding:14px;max-height:88vh}}
