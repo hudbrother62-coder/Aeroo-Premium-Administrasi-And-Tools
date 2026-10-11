@@ -148,7 +148,7 @@ export async function GET(req:NextRequest){
     // Backwards-compatible aggregate response, isolating failed sections.
     const results=await Promise.all(sections.map(async section=>{
       try{return await readSection(s,section.key,today);}
-      catch(error):Promise<Result>{return {key:section.key,title:section.title,items:[],partial:false,unavailable:false,
+      catch(error){return {key:section.key,title:section.title,items:[],partial:false,unavailable:false,
         error:error instanceof Error?error.message:'Pemeriksaan gagal dimuat.'};}
     }));
     const summary={members:0,attendance:0,journals:0,documentation:0,targets:0,followups:0,imports:0,total:0};
