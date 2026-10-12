@@ -18,6 +18,7 @@ export default function TargetPage(){
   const[personSearch,setPersonSearch]=useState('');
   const[targetSearch,setTargetSearch]=useState(''),[levelFilter,setLevelFilter]=useState(''),[page,setPage]=useState(1);
   const[sourceGroups,setSourceGroups]=useState<Record<string,Array<[number,string,string]>>>({});
+  const[sourceMonths,setSourceMonths]=useState<Record<string,Record<string,number[]>>>({});
   const[showCreate,setShowCreate]=useState(false),[levels,setLevels]=useState<any[]>([]),[classes,setClasses]=useState<any[]>([]),[role,setRole]=useState('VIEWER');
   const[targetForm,setTargetForm]=useState({level_id:'',class_id:'',code:'',title:'',description:'',target_value:'',target_unit:'',target_month:new Date().toISOString().slice(0,7)});
 
@@ -28,7 +29,7 @@ export default function TargetPage(){
   useEffect(()=>{void load()},[selected]);
   useEffect(()=>{Promise.all([fetch('/api/levels').then(r=>r.json()),fetch('/api/classes').then(r=>r.json()),fetch('/api/auth/me').then(r=>r.json())]).then(([l,c,u])=>{setLevels(Array.isArray(l)?l:[]);setClasses(Array.isArray(c)?c:[]);setRole(u?.role||'VIEWER')});if(new URLSearchParams(window.location.search).get('create')==='1')setShowCreate(true)},[]);
   useEffect(()=>{fetch('/api/targets/overview?month='+month+(selected?'&version_id='+selected:'')).then(r=>r.json()).then(setOverview).catch(()=>setOverview(null))},[month,selected]);
-  useEffect(()=>{if(!selected){setSourceGroups({});return;}let active=true;fetch('/api/targets/catalog?version_id='+encodeURIComponent(selected)).then(async r=>{const data=await r.json();if(!r.ok)throw Error(data.error||'Katalog gagal dimuat');return data}).then(data=>{if(active)setSourceGroups(data.group_rows||{})}).catch(()=>{if(active)setSourceGroups({})});return()=>{active=false};},[selected]);
+  useEffect(()=>{if(!selected){setSourceGroups({});setSourceMonths({});return;}let active=true;fetch('/api/targets/catalog?version_id='+encodeURIComponent(selected)).then(async r=>{const data=await r.json();if(!r.ok)throw Error(data.error||'Katalog gagal dimuat');return data}).then(data=>{if(active){setSourceGroups(data.group_rows||{});setSourceMonths(data.month_schedule||{})}}).catch(()=>{if(active){setSourceGroups({});setSourceMonths({})}});return()=>{active=false};},[selected]);
 
   async function upload(e:FormEvent<HTMLFormElement>){
     e.preventDefault();setUploading(true);setError('');setResult('');
@@ -108,7 +109,7 @@ export default function TargetPage(){
           <div className="list section">
             {headings.map(([sourceRow,subject,title])=><div className="item" key={name+'-'+sourceRow}>
               <strong>{title}</strong>
-              <div className="itemMeta">{subject} · baris Excel {sourceRow} · {targets.some(t=>t.levels?.name===(name==='Muda-Mudi'?'Remaja':name)&&Number(t.source_metadata?.source_row)===Number(sourceRow))?'Sudah tersedia sebagai target individu':'Judul induk / pengelompokan'}</div>
+              <div className="itemMeta">{subject} · baris Excel {sourceRow} · {sourceMonths[name]?.[String(sourceRow)]?.length?'Jadwal: '+sourceMonths[name][String(sourceRow)].map(n=>['Juli','Agustus','September','Oktober','November'][n-7]||String(n)).join(', ')+' · ':''}{targets.some(t=>t.levels?.name===(name==='Muda-Mudi'?'Remaja':name)&&Number(t.source_metadata?.source_row)===Number(sourceRow))?'Sudah tersedia sebagai target individu':'Judul induk / pengelompokan'}</div>
             </div>)}
           </div>
         </details>
