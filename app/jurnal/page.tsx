@@ -81,12 +81,20 @@ export default function JournalDashboard(){
   return <div className="journalWorkspace">
     <header className="pageHeader journalMainHeader">
       <div><span className="journalEyebrow"><BookOpenText size={15}/> Pencatatan kegiatan & pembinaan</span><h1>Dashboard Jurnal</h1><p>Catat kegiatan sesuai jenjang. Jurnal menjadi sumber observasi, evaluasi, progres target dan laporan.</p></div>
-      <div className="journalHeaderActions"><Link className="btn ghost" href="/jurnal/riwayat"><History size={16}/> Riwayat Jurnal</Link>{canCreate&&<Link className="btn" href="/jurnal/buat"><Plus size={16}/> Tambah Jurnal</Link>}</div>
+      <div className="journalHeaderActions"><Link className="btn ghost" href="/jurnal/riwayat"><History size={16}/> Riwayat Jurnal</Link>{canCreate&&<Link className="btn" href="/jurnal/cepat"><Plus size={16}/> Isi Jurnal (Mudah)</Link>}</div>
     </header>
 
     <nav className="journalSubnav" aria-label="Navigasi jurnal">
-      <Link className="journalNavActive" href="/jurnal">Dashboard</Link><Link href="/jurnal/buat">Isi Jurnal</Link><Link href="/jurnal/riwayat">Riwayat Jurnal</Link>
+      <Link className="journalNavActive" href="/jurnal">Dashboard</Link><Link href="/jurnal/cepat">Isi Jurnal (Mudah)</Link><Link href="/jurnal/buat">Formulir Lengkap</Link><Link href="/jurnal/riwayat">Riwayat Jurnal</Link>
     </nav>
+
+    {writable.some(scope=>scope==='CABERAWIT'||scope==='MUDA_MUDI')&&<section className="journalEasyEntry" aria-label="Cara tercepat mengisi jurnal">
+      <div className="journalEasyEntryIntro"><strong>Mulai dari sini</strong><p>Hanya 3 langkah: pilih kegiatan, pilih target, lalu isi hasil. Cocok untuk guru yang tidak terbiasa dengan aplikasi.</p></div>
+      <div className="journalEasyEntryActions">
+        <Link href="/jurnal/cepat"><BookOpenText size={20}/><span><strong>Catat kegiatan</strong><small>Materi dan hasil pembelajaran</small></span><ArrowRight size={18}/></Link>
+        <Link href="/jurnal/cepat?mode=score"><UsersRound size={20}/><span><strong>Nilai beberapa anak</strong><small>Ambil peserta hadir dari presensi</small></span><ArrowRight size={18}/></Link>
+      </div>
+    </section>}
 
     <section className="journalFilterBar card" aria-label="Filter dashboard jurnal">
       <label>Bulan<input className="input" aria-label="Bulan dashboard jurnal" type="month" value={month} onChange={e=>setMonth(e.target.value)}/></label>
