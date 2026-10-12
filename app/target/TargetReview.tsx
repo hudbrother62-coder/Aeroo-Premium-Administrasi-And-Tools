@@ -103,6 +103,12 @@ export default function TargetReview(){
   },[]);
 
   useEffect(()=>{
+    if(new URLSearchParams(window.location.search).get('create')==='1'){
+      setShowCreate(true);setTab('manage');
+    }
+  },[]);
+
+  useEffect(()=>{
     if(!selected){setTargets([]);setGroups({});setGroupMonths({});return;}
     const controller=new AbortController();
     setLoading(true);setError('');setDetail(null);
@@ -267,12 +273,12 @@ export default function TargetReview(){
       <div className="tr-section-header"><div><h2>Jelajahi semua target</h2><p>Buka kartu untuk memeriksa deskripsi, asal dokumen, dan jadwal lengkapnya.</p></div><div className="tr-result-count">{filtered.length.toLocaleString('id-ID')} materi</div></div>
       {loading?<div className="tr-empty"><div className="tr-loader"/><strong>Memuat katalog pembelajaran…</strong></div>:
       visible.length>0?<div className="tr-grid">{visible.map(t=>{
-        const source=t.source_metadata||{};
+        const source=t.source_metadata;
         const schedule=uniqueMonths(t);
         return <button className="tr-target" key={t.id} type="button" onClick={()=>openTarget(t)}>
           <div className="tr-item-top"><span className="tr-level-tag">{t.levels?.name==='Remaja'?'Remaja / Muda-Mudi':t.levels?.name||'Tanpa jenjang'}</span><span className="tr-item-code">{t.code||'Target'}</span></div>
           <h3>{t.title}</h3>
-          <div className="tr-breadcrumb">{[source.aspect,source.subject,source.parent].filter(Boolean).join(' / ')||'Materi pembelajaran'}</div>
+          <div className="tr-breadcrumb">{[source?.aspect,source?.subject,source?.parent].filter(Boolean).join(' / ')||'Materi pembelajaran'}</div>
           <div className="tr-item-bottom"><span><CalendarDays size={14}/>{schedule.length?schedule.map(monthName).join(', '):'Sepanjang semester'}</span><span className="tr-open">Lihat detail <ChevronRight size={17}/></span></div>
         </button>;
       })}</div>:<div className="tr-empty"><Search size={32}/><strong>Target tidak ditemukan</strong><p>Ubah kata kunci atau kosongkan filter untuk menampilkan target lainnya.</p><button type="button" onClick={resetFilter}>Reset filter</button></div>}
