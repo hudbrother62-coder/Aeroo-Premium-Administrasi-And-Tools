@@ -473,7 +473,7 @@ export default function TargetReview(){
           </dl></div>
           <div className="tr-detail-hint"><CheckCircle2 size={18}/> Rincian ini merupakan acuan pembelajaran. Progres individu dinilai melalui jurnal, bukan diubah dari halaman tinjauan.</div>
         </div>
-        <div className="tr-modal-footer"><button type="button" className="tr-close-btn" onClick={()=>setDetail(null)}>Kembali</button><button type="button" className="tr-copy-btn" onClick={()=>{void copyDetail()}}><Copy size={16}/>{copied?'Tersalin':'Salin rincian'}</button></div>
+        <div className="tr-modal-footer"><button type="button" className="tr-close-btn" onClick={()=>setDetail(null)}>Kembali</button><button type="button" className="tr-copy-btn" onClick={()=>{void copyDetail()}}><Copy size={16}/>{copied?'Tersalin':'Salin rincian'}</button>{role!=='VIEWER'&&<a className="tr-use-target" href={'/jurnal/cepat?target_id='+encodeURIComponent(detail.id)}><BookOpen size={16}/> Gunakan target</a>}</div>
       </section>
     </div></div>,document.body)}
   </main>;
