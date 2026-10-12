@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import {FormEvent,useEffect,useState} from 'react';
-import {Archive,FileSearch,ShieldCheck,Upload,Users,Activity} from 'lucide-react';
+import {Archive,FileSearch,ShieldCheck,Upload,Users,Activity,BrainCircuit,KeyRound} from 'lucide-react';
 
 type Login={id:number;username:string;success:boolean;user_agent?:string;created_at:string};
 type Health={checked_at:string;summary:any;checks:Array<{key:string;label:string;status:'OK'|'WARN'|'ERROR';detail:string}>};
@@ -14,8 +14,18 @@ export default function SettingsPage(){
   const[health,setHealth]=useState<Health|null>(null);
   const[saved,setSaved]=useState('');
   const[error,setError]=useState('');
+  const[isAdmin,setIsAdmin]=useState(false);
+  const[groq,setGroq]=useState({configured:false,model:'openai/gpt-oss-20b',enabled:true,updated_at:null as string|null,models:[] as Array<{id:string;label:string}>});
+  const[groqKey,setGroqKey]=useState('');
+  const[groqBusy,setGroqBusy]=useState(false);
+  const[groqNotice,setGroqNotice]=useState('');
 
   useEffect(()=>{
+    fetch('/api/auth/me').then(r=>r.json()).then(u=>{
+      if(u.role==='ADMIN'){setIsAdmin(true);fetch('/api/ai/config',{cache:'no-store'}).then(r=>r.json()).then(v=>{
+        if(!v.error)setGroq(v);
+      }).catch(()=>{})}
+    }).catch(()=>{});
     Promise.all([fetch('/api/settings').then(r=>r.json()),fetch('/api/login-history').then(r=>r.json()),fetch('/api/system-health').then(r=>r.ok?r.json():null)]).then(([s,l,h])=>{
       if(s.group_info)setGroup({...group,...s.group_info});
       if(s.usage_manual)setManual({...manual,...s.usage_manual});
@@ -24,6 +34,19 @@ export default function SettingsPage(){
     });
   },[]);
 
+  async function saveGroq(e:FormEvent){
+    e.preventDefault();setGroqBusy(true);setGroqNotice('');
+    try{
+      const r=await fetch('/api/ai/config',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({api_key:groqKey,model:groq.model,enabled:groq.enabled})});
+      const v=await r.json();if(!r.ok)throw Error(v.error||'Pengaturan AI gagal disimpan.');
+      setGroq(v);setGroqKey('');setGroqNotice('Pengaturan Groq tersimpan dengan aman.');
+    }catch(e){setGroqNotice((e as Error).message)}finally{setGroqBusy(false)}
+  }
+  async function testGroq(){
+    setGroqBusy(true);setGroqNotice('');
+    try{const r=await fetch('/api/ai/config',{method:'POST'});const v=await r.json();if(!r.ok)throw Error(v.error||'Tes gagal');setGroqNotice(v.message)}
+    catch(e){setGroqNotice((e as Error).message)}finally{setGroqBusy(false)}
+  }
   async function save(e:FormEvent){e.preventDefault();setSaved('');setError('');const r=await fetch('/api/settings',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({group_info:group,usage_manual:manual})});const j=await r.json();if(!r.ok){setError(j.error||'Gagal menyimpan.');return}setSaved('Pengaturan tersimpan.');}
 
   return <>
@@ -38,6 +61,20 @@ export default function SettingsPage(){
         <button type="button" className="adminControlItem" onClick={async()=>{const r=await fetch('/api/system-health',{cache:'no-store'});if(r.ok)setHealth(await r.json())}}><Activity size={18}/><span><strong>Periksa Sistem</strong><small>Refresh status layanan sekarang</small></span></button>
       </div>
     </section>
+    {isAdmin&&<form className="card section" onSubmit={saveGroq} autoComplete="off">
+      <div className="cardHead"><div><h2><BrainCircuit size={20} style={{verticalAlign:'middle',marginRight:8}}/>AI Groq untuk Jurnal</h2><p>Hanya admin utama yang mengatur API key. Guru cukup menulis jurnal; sistem mencocokkannya dengan target tanpa memberi nilai otomatis.</p></div><KeyRound size={22}/></div>
+      <div className="formGrid">
+        <label>API Key Groq (disimpan terenkripsi)<input className="input" type="password" name="groq_admin_key" autoComplete="new-password" placeholder={groq.configured?'Sudah tersimpan — kosongkan untuk mempertahankan':'Masukkan key berawalan gsk_'} value={groqKey} onChange={e=>setGroqKey(e.target.value)}/></label>
+        <label>Model AI<select className="select" value={groq.model} onChange={e=>setGroq(v=>({...v,model:e.target.value}))}>{(groq.models.length?groq.models:[{id:'openai/gpt-oss-20b',label:'GPT-OSS 20B'}]).map(m=><option value={m.id} key={m.id}>{m.label}</option>)}</select></label>
+        <label className="span2"><input type="checkbox" checked={groq.enabled} onChange={e=>setGroq(v=>({...v,enabled:e.target.checked}))}/> Aktifkan analisis jurnal menggunakan AI</label>
+      </div>
+      <div className="formActions" style={{flexWrap:'wrap'}}>
+        <button className="btn" type="submit" disabled={groqBusy}>{groqBusy?'Memproses…':'Simpan pengaturan Groq'}</button>
+        <button className="btn ghost" type="button" disabled={groqBusy||!groq.configured} onClick={()=>void testGroq()}>Tes koneksi</button>
+      </div>
+      <p className="journalFieldHint">Status: {groq.configured?'API key sudah tersimpan':'Belum dikonfigurasi'} · API key tidak ditampilkan kembali setelah disimpan.</p>
+      {groqNotice&&<div className="notice" role="status">{groqNotice}</div>}
+    </form>}
     <form className="card section" onSubmit={save}>
       <h2>Identitas Kelompok</h2>
       <div className="formGrid">
