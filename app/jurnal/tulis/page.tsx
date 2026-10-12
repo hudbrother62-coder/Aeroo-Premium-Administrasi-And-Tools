@@ -13,7 +13,7 @@ type EventRow={id:string;event_date:string;title:string;audience:string;class_id
 type TargetMatch={target_id:string;title:string;reason:string;quote:string;relation:string};
 type Analysis={summary:string;suggestion:string;matches:TargetMatch[];created_at:string;status:string};
 const journalKinds=[
-  {value:'KELOMPOK',label:'Pengajian kelompok',audience:'KELOMPOK'},
+  {value:'KELOMPOK',label:'Kegiatan Kelompok',audience:'KELOMPOK'},
   {value:'CABERAWIT_CLASS',label:'Pembelajaran Caberawit',audience:'CABERAWIT'},
   {value:'MUDA_MUDI_CLASS',label:'Pembelajaran Muda-Mudi',audience:'MUDA_MUDI'},
   {value:'IBU_IBU',label:'Kegiatan ibu-ibu',audience:'IBU_IBU'},
@@ -109,7 +109,7 @@ export default function TulisJurnal(){
 
   return <main className="fj-shell">
     <Link href="/jurnal" className="fj-back"><ArrowLeft size={17}/> Kembali ke Jurnal</Link>
-    <header className="fj-header"><span><BookOpen size={18}/> CATATAN GURU</span><h1>Tulis Jurnal</h1><p>Tulis kegiatan seperti biasa dengan bahasa sendiri. Tidak perlu memilih target atau menghitung nilai. AI akan membantu mencocokkan dengan target setelah disimpan.</p></header>
+    <header className="fj-header"><span><BookOpen size={18}/> CATATAN GURU</span><h1>Tulis Jurnal</h1></header>
     {!savedId?<section className="fj-panel">
       <div className="fj-row">
         <label>Jenis kegiatan<select value={kind} onChange={e=>{setKind(e.target.value);setClassId('');setActivityId('');setSelectedEvent('')}}>{options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>

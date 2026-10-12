@@ -9,7 +9,7 @@ import {readScopesForRole,writeScopesForRole,type Audience} from '@/lib/access';
 type Journal={id:string;class_id?:string;journal_date:string;journal_kind:string;title:string;state?:string;follow_up?:string;classes?:{id?:string;name?:string;level_id?:string};assessment?:{class_assessment?:{level_id?:string}};journal_progress?:Array<{member_id?:string;participant_key?:string;target_id?:string;progress_value?:number|null}>};
 type Level={id:string;name:string};
 type ClassRow={id:string;name:string;level_id?:string;audience:string};
-const kindLabels:Record<string,string>={PENGKAJIAN:'Pengkajian',KELOMPOK:'Kelompok',IBU_IBU:'Ibu-Ibu',PENGURUS:'Musyawarah',CABERAWIT_CLASS:'Caberawit Kelas',CABERAWIT_INDIVIDUAL:'Caberawit Individu',MUDA_MUDI_CLASS:'Muda-Mudi Kelas',MUDA_MUDI_INDIVIDUAL:'Muda-Mudi Individu'};
+const kindLabels:Record<string,string>={PENGKAJIAN:'Pengkajian',KELOMPOK:'Kelompok',IBU_IBU:'Ibu-Ibu',PENGURUS:'Musyawarah',CABERAWIT_CLASS:'Caberawit Kelas',MUDA_MUDI_CLASS:'Muda-Mudi Kelas'};
 const audienceFor=(kind:string):Audience=>(kind==='PENGKAJIAN'?'KELOMPOK':kind.startsWith('CABERAWIT')?'CABERAWIT':kind.startsWith('MUDA_MUDI')?'MUDA_MUDI':kind) as Audience;
 const monthLabel=(month:string)=>new Date(Number(month.slice(0,4)),Number(month.slice(5,7))-1,1).toLocaleDateString('id-ID',{month:'long',year:'numeric'});
 
@@ -80,7 +80,7 @@ export default function JournalDashboard(){
   const canCreate=writable.length>0;
   return <div className="journalWorkspace">
     <header className="pageHeader journalMainHeader">
-      <div><span className="journalEyebrow"><BookOpenText size={15}/> Pencatatan kegiatan & pembinaan</span><h1>Dashboard Jurnal</h1><p>Catat kegiatan sesuai jenjang. Jurnal menjadi sumber observasi, evaluasi, progres target dan laporan.</p></div>
+      <div><span className="journalEyebrow"><BookOpenText size={15}/> Pencatatan kegiatan & pembinaan</span><h1>Dashboard Jurnal</h1></div>
       <div className="journalHeaderActions"><Link className="btn ghost" href="/jurnal/riwayat"><History size={16}/> Riwayat Jurnal</Link>{canCreate&&<Link className="btn" href="/jurnal/tulis"><Plus size={16}/> Tulis Jurnal</Link>}</div>
     </header>
 
@@ -89,7 +89,7 @@ export default function JournalDashboard(){
     </nav>
 
     {writable.length>0&&<section className="journalEasyEntry" aria-label="Mulai jurnal tanpa target manual">
-      <div className="journalEasyEntryIntro"><strong>Cukup tulis jurnal seperti biasa</strong><p>Guru menuliskan apa yang diajarkan dan hasilnya. AI yang membantu mencari kaitan dengan target setelah disimpan.</p></div>
+      <div className="journalEasyEntryIntro"><strong>Tulis jurnal per pertemuan</strong></div>
       <div className="journalEasyEntryActions">
         <Link href="/jurnal/tulis"><BookOpenText size={20}/><span><strong>Tulis jurnal</strong><small>Langsung ketik catatan kegiatan</small></span><ArrowRight size={18}/></Link>
         <Link href="/jurnal/riwayat"><History size={20}/><span><strong>Jurnal tersimpan</strong><small>Lihat hasil dan saran AI</small></span><ArrowRight size={18}/></Link>
@@ -108,7 +108,7 @@ export default function JournalDashboard(){
       <article className="card journalMetric"><span><BookOpenText size={17}/> Total jurnal</span><strong>{loading?'…':filtered.length}</strong><small>{monthLabel(month)}</small></article>
       <article className="card journalMetric"><span><CheckCheck size={17}/> Jurnal selesai</span><strong>{loading?'…':done}</strong><small>{loading?'Memuat…':filtered.length?Math.round(done/filtered.length*100)+'% dari jurnal':'Belum ada data'}</small></article>
       <article className="card journalMetric"><span><ClipboardList size={17}/> Perlu dilengkapi</span><strong>{loading?'…':drafts}</strong><small>Jurnal berstatus draf</small></article>
-      <article className="card journalMetric"><span><UsersRound size={17}/> Individu terobservasi</span><strong>{loading?'…':observed}</strong><small>{targetLinks} penilaian terhubung target</small></article>
+      <article className="card journalMetric"><span><UsersRound size={17}/> Jurnal terhubung target</span><strong>{loading?'…':targetLinks}</strong><small>{targetLinks} penilaian terhubung target</small></article>
     </div>
 
     <div className="journalContentGrid section">
@@ -134,6 +134,6 @@ export default function JournalDashboard(){
       <div className="cardHead"><div><h2>Jurnal terbaru</h2><p>Ringkasan pencatatan sesuai filter yang aktif.</p></div><Link className="btn ghost" href="/jurnal/riwayat">Lihat riwayat <ArrowRight size={16}/></Link></div>
       {loading?<div className="emptyState">Memuat jurnal…</div>:recent.length?<div className="journalRecentList">{recent.map(j=><div className="journalRecentItem" key={j.id}><div className="journalRecentIcon"><BookOpenText size={18}/></div><div className="journalRecentText"><strong>{j.title}</strong><span>{kindLabels[j.journal_kind]||j.journal_kind} · {j.classes?.name||classes.find(c=>c.id===j.class_id)?.name||'Lintas kelas'} · {j.journal_date}</span></div><span className="badge">{j.state==='COMPLETED'?'Selesai':j.state==='ARCHIVED'?'Arsip':'Draf'}</span><Link className="btn ghost" href={writable.includes(audienceFor(j.journal_kind))?'/jurnal/buat?journal_id='+j.id:'/jurnal/riwayat'}>Lihat <ArrowRight size={14}/></Link></div>)}</div>:<div className="journalEmpty"><BookOpenText size={27}/><strong>Belum ada jurnal untuk filter ini</strong><p>Jurnal yang disimpan akan otomatis muncul di sini dan masuk ke riwayat.</p>{canCreate&&<Link href="/jurnal/buat" className="btn">Tambah jurnal pertama</Link>}</div>}
     </section>
-    <div className="journalIntegration"><Target size={18}/><span><strong>Terhubung dengan Target & Progres.</strong> Penilaian individu yang ditautkan ke target dapat dipakai untuk analisis perkembangan. <Link href="/target">Buka Target & Progres <ArrowRight size={13}/></Link></span></div>
+    <div className="journalIntegration"><Target size={18}/><span><strong>Terhubung dengan Target & Progres.</strong> Jurnal kelas menjadi sumber analisis kesesuaian target. <Link href="/target">Buka Target & Progres <ArrowRight size={13}/></Link></span></div>
   </div>;
 }
