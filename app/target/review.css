@@ -171,3 +171,9 @@ html[data-theme="dark"] .tr-form-actions button{color:var(--bg)}
   .tr-overlay-root .tr-modal-backdrop{align-items:center;padding:12px}
   .tr-overlay-root .tr-modal{max-height:calc(100dvh - 24px);border-radius:17px;width:100%}
 }
+
+.tr-modal-footer{flex-wrap:wrap}
+.tr-use-target{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:10px 16px;text-decoration:none;border-radius:9px;font-size:12px;font-weight:800;background:var(--tr-accent-strong);color:var(--surface)!important}
+html[data-theme="dark"] .tr-use-target{color:var(--bg)!important}
+.tr-use-target:hover{filter:brightness(.96)}
+@media(max-width:520px){.tr-use-target{flex:1 1 100%}}
