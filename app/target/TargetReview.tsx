@@ -50,7 +50,10 @@ const targetSummary=(t:Target)=>[
   'Mata pelajaran: '+clean(t.source_metadata?.subject||'-'),
   'Materi induk: '+clean(t.source_metadata?.parent||'-'),
   'Uraian asli: '+clean(t.description||'-'),
-  'Panduan guru (contoh, bukan dokumen sumber): '+teacherGuidance({title:t.title,subject:t.source_metadata?.subject,parent:t.source_metadata?.parent,level:t.levels?.name}).focus,
+  'Panduan guru (contoh, bukan dokumen sumber):',
+  'Gambaran: '+teacherGuidance({title:t.title,subject:t.source_metadata?.subject,parent:t.source_metadata?.parent,level:t.levels?.name}).focus,
+  'Contoh kegiatan: '+teacherGuidance({title:t.title,subject:t.source_metadata?.subject,parent:t.source_metadata?.parent,level:t.levels?.name}).activity,
+  'Hal yang diamati: '+teacherGuidance({title:t.title,subject:t.source_metadata?.subject,parent:t.source_metadata?.parent,level:t.levels?.name}).evidence,
   'Jadwal sumber: '+(uniqueMonths(t).map(monthName).join(', ')||'Sepanjang semester'),
   'Sumber: '+clean(t.source_metadata?.source_file||'-'),
   'Sheet/baris: '+clean(t.source_metadata?.source_sheet||'-')+' / '+clean(t.source_metadata?.source_row||'-')
