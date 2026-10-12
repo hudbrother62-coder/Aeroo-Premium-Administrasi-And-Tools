@@ -142,7 +142,7 @@ export default function TulisJurnal(){
         {analysis.suggestion&&<p className="fj-suggestion"><strong>Saran tindak lanjut:</strong> {analysis.suggestion}</p>}
         <small>Analisis AI adalah bantuan membaca jurnal. Tidak memberi nilai, tidak menyatakan anak sudah tuntas, dan dapat diperiksa kembali oleh guru.</small>
       </div>}
-      <div className="fj-actions"><Link className="fj-secondary" href="/jurnal/riwayat">Riwayat jurnal</Link><Link className="fj-primary" href="/jurnal/tulis">Tulis jurnal baru</Link></div>
+      <div className="fj-actions"><Link className="fj-secondary" href={"/jurnal/hasil/"+savedId}>Lihat hasil dan AI</Link><Link className="fj-secondary" href="/jurnal/riwayat">Riwayat</Link><Link className="fj-primary" href="/jurnal/tulis">Tulis jurnal baru</Link></div>
     </section>}
   </main>;
 }
