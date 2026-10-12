@@ -3,7 +3,7 @@
 import {FormEvent,useEffect,useMemo,useState} from 'react';
 
 type Version={id:string;title:string;version:number;period_start?:string;period_end?:string;source_file_name?:string;analysis?:any;created_at:string};
-type Target={id:string;code?:string;title:string;target_month?:string|null;description?:string;target_value?:number;target_unit?:string;levels?:{name?:string};classes?:{name?:string};source_metadata?:{aspect?:string;subject?:string;parent?:string;program?:string;source_file?:string;planned_month_numbers?:number[]}};
+type Target={id:string;code?:string;title:string;target_month?:string|null;description?:string;target_value?:number;target_unit?:string;levels?:{name?:string};classes?:{name?:string};source_metadata?:{aspect?:string;subject?:string;parent?:string;program?:string;source_file?:string;source_row?:number;planned_month_numbers?:number[]}};
 type Overview={targets:Target[];individual:Array<{id:string;name:string;class_name:string;level_name:string;targets:number;assessed:number;percentage:number|null}>;classes:Array<{name:string;count:number;percentage:number|null}>};
 
 export default function TargetPage(){
@@ -17,6 +17,7 @@ export default function TargetPage(){
   const[month,setMonth]=useState(()=>new Date().toISOString().slice(0,7));
   const[personSearch,setPersonSearch]=useState('');
   const[targetSearch,setTargetSearch]=useState(''),[levelFilter,setLevelFilter]=useState(''),[page,setPage]=useState(1);
+  const[sourceGroups,setSourceGroups]=useState<Record<string,Array<[number,string,string]>>>({});
   const[showCreate,setShowCreate]=useState(false),[levels,setLevels]=useState<any[]>([]),[classes,setClasses]=useState<any[]>([]),[role,setRole]=useState('VIEWER');
   const[targetForm,setTargetForm]=useState({level_id:'',class_id:'',code:'',title:'',description:'',target_value:'',target_unit:'',target_month:new Date().toISOString().slice(0,7)});
 
@@ -27,6 +28,7 @@ export default function TargetPage(){
   useEffect(()=>{void load()},[selected]);
   useEffect(()=>{Promise.all([fetch('/api/levels').then(r=>r.json()),fetch('/api/classes').then(r=>r.json()),fetch('/api/auth/me').then(r=>r.json())]).then(([l,c,u])=>{setLevels(Array.isArray(l)?l:[]);setClasses(Array.isArray(c)?c:[]);setRole(u?.role||'VIEWER')});if(new URLSearchParams(window.location.search).get('create')==='1')setShowCreate(true)},[]);
   useEffect(()=>{fetch('/api/targets/overview?month='+month+(selected?'&version_id='+selected:'')).then(r=>r.json()).then(setOverview).catch(()=>setOverview(null))},[month,selected]);
+  useEffect(()=>{if(!selected){setSourceGroups({});return;}let active=true;fetch('/api/targets/catalog?version_id='+encodeURIComponent(selected)).then(async r=>{const data=await r.json();if(!r.ok)throw Error(data.error||'Katalog gagal dimuat');return data}).then(data=>{if(active)setSourceGroups(data.group_rows||{})}).catch(()=>{if(active)setSourceGroups({})});return()=>{active=false};},[selected]);
 
   async function upload(e:FormEvent<HTMLFormElement>){
     e.preventDefault();setUploading(true);setError('');setResult('');
@@ -96,6 +98,22 @@ export default function TargetPage(){
     {targets.some(t=>!!t.target_month)&&<section className="card section"><div className="cardHead"><div><h2>Rencana enam bulan</h2><p>Mulai bulan yang dipilih.</p></div><input className="input compactSelect" type="month" value={month} onChange={e=>setMonth(e.target.value)}/></div><div className="targetMonths">{Array.from({length:6},(_,i)=>{const d=new Date(Number(month.slice(0,4)),Number(month.slice(5,7))-1+i,1);const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;const rows=(overview?.targets??[]).filter(t=>t.target_month?.startsWith(key));return <div className="targetMonth" key={key}><strong>{d.toLocaleDateString('id-ID',{month:'long',year:'numeric'})}</strong><span>{rows.length} target</span>{rows.slice(0,4).map(t=><small key={t.id}>{t.title} · {t.levels?.name}</small>)}{rows.length>4&&<small>+{rows.length-4} lainnya</small>}</div>})}</div></section>}
     <section className="section"><div className="cardHead"><div><h2>Ketercapaian per kelas</h2><p>Rata-rata semua individu berdasarkan target yang berlaku pada jenjang dan kelasnya.</p></div></div><div className="levelGrid">{overview?.classes.map(c=><div className="levelCard" key={c.name}><strong>{c.name}</strong><span>{c.count} anggota</span><b>{c.percentage===null?'Belum dinilai':c.percentage+'% dari yang dinilai'}</b></div>)}</div></section>
     <section className="card section"><div className="cardHead"><div><h2>Per individu</h2><p>Progres setiap orang dihitung dari target semester sesuai jenjang dan penilaian jurnal.</p></div><input className="input compactSelect" placeholder="Cari nama…" value={personSearch} onChange={e=>setPersonSearch(e.target.value)}/></div><div className="tableWrap"><table className="table"><thead><tr><th>Nama</th><th>Kelas</th><th>Dinilai / target</th><th>Ketercapaian</th></tr></thead><tbody>{overview?.individual.filter(p=>p.name.toLowerCase().includes(personSearch.toLowerCase())).map(p=><tr key={p.id}><td>{p.name}</td><td>{p.class_name||p.level_name}</td><td>{p.assessed} / {p.targets}</td><td><strong>{p.percentage===null?'Belum dinilai':p.percentage+'%'}</strong></td></tr>)}{!overview?.individual.length&&<tr><td colSpan={4}>Belum ada data progres.</td></tr>}</tbody></table></div></section>
+    {Object.keys(sourceGroups).length>0&&<section className="card section">
+      <div className="cardHead"><div><h2>Struktur Materi Lengkap dari Excel</h2>
+        <p>Judul induk dan topik pembelajaran tetap ditampilkan sesuai nomor baris sumber; rincian yang dapat dinilai ada pada Daftar Target dan jurnal individu.</p>
+      </div></div>
+      {Object.entries(sourceGroups).filter(([name])=>!levelFilter||(name==='Muda-Mudi'?'Remaja':name)===levelFilter).map(([name,headings])=>
+        <details key={name} className="section">
+          <summary><strong>{name==='Muda-Mudi'?'Remaja (Muda-Mudi)':name}</strong> — {headings.length} judul materi induk / baris yang ditinjau</summary>
+          <div className="list section">
+            {headings.map(([sourceRow,subject,title])=><div className="item" key={name+'-'+sourceRow}>
+              <strong>{title}</strong>
+              <div className="itemMeta">{subject} · baris Excel {sourceRow} · {targets.some(t=>t.levels?.name===(name==='Muda-Mudi'?'Remaja':name)&&Number(t.source_metadata?.source_row)===Number(sourceRow))?'Sudah tersedia sebagai target individu':'Judul induk / pengelompokan'}</div>
+            </div>)}
+          </div>
+        </details>
+      )}
+    </section>}
     <section className="section">
       <div className="cardHead"><div><h2>Daftar Target</h2><p>{filteredTargets.length} dari {targets.length} target aktif.</p></div></div>
       <div className="formGrid">
