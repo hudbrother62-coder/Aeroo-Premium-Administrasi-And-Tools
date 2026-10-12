@@ -1,6 +1,7 @@
 'use client';
 
 import {FormEvent,useEffect,useMemo,useState} from 'react';
+import {createPortal} from 'react-dom';
 import {
   BookOpen,BookMarked,Search,Filter,Layers3,CalendarDays,ChevronRight,
   ChevronLeft,X,ClipboardList,UsersRound,FileSpreadsheet,FileText,
@@ -148,11 +149,24 @@ export default function TargetReview(){
 
   useEffect(()=>{
     if(!detail&&!headingDetail)return;
+    // The overlay is portaled outside the scrolling app shell, so it always opens
+    // against the visible viewport even when a parent has transform/overflow.
+    const previousBodyOverflow=document.body.style.overflow;
+    const previousRootOverflow=document.documentElement.style.overflow;
+    const previousFocus=document.activeElement instanceof HTMLElement?document.activeElement:null;
+    document.body.style.overflow='hidden';
+    document.documentElement.style.overflow='hidden';
+    document.querySelector<HTMLButtonElement>('.tr-overlay-root .tr-modal-head button')?.focus();
     const close=(e:KeyboardEvent)=>{
       if(e.key==='Escape'){setDetail(null);setHeadingDetail(null);}
     };
     window.addEventListener('keydown',close);
-    return()=>window.removeEventListener('keydown',close);
+    return()=>{
+      document.body.style.overflow=previousBodyOverflow;
+      document.documentElement.style.overflow=previousRootOverflow;
+      window.removeEventListener('keydown',close);
+      previousFocus?.focus({preventScroll:true});
+    };
   },[detail,headingDetail]);
 
   const current=versions.find(v=>v.id===selected);
@@ -385,7 +399,7 @@ export default function TargetReview(){
     </section>}
 
 
-    {headingDetail&&<div className="tr-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setHeadingDetail(null)}}>
+    {headingDetail&&typeof document!=='undefined'&&createPortal(<div className="tr-shell tr-overlay-root"><div className="tr-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setHeadingDetail(null)}}>
       <section className="tr-modal" role="dialog" aria-modal="true" aria-labelledby="tr-heading-title">
         <div className="tr-modal-head"><span><FolderTree size={17}/> PANDUAN MATERI INDUK</span>
           <button type="button" aria-label="Tutup panduan" onClick={()=>setHeadingDetail(null)}><X size={21}/></button></div>
@@ -415,8 +429,8 @@ export default function TargetReview(){
         </div>
         <div className="tr-modal-footer"><button type="button" className="tr-close-btn" onClick={()=>setHeadingDetail(null)}>Kembali ke struktur</button></div>
       </section>
-    </div>}
-    {detail&&<div className="tr-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setDetail(null)}}>
+    </div></div>,document.body)}
+    {detail&&typeof document!=='undefined'&&createPortal(<div className="tr-shell tr-overlay-root"><div className="tr-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setDetail(null)}}>
       <section className="tr-modal" role="dialog" aria-modal="true" aria-labelledby="tr-detail-title">
         <div className="tr-modal-head"><span><BookOpen size={17}/> DETAIL TARGET PEMBELAJARAN</span><button type="button" aria-label="Tutup detail" onClick={()=>setDetail(null)}><X size={21}/></button></div>
         <div className="tr-modal-body">
@@ -455,6 +469,6 @@ export default function TargetReview(){
         </div>
         <div className="tr-modal-footer"><button type="button" className="tr-close-btn" onClick={()=>setDetail(null)}>Kembali</button><button type="button" className="tr-copy-btn" onClick={()=>{void copyDetail()}}><Copy size={16}/>{copied?'Tersalin':'Salin rincian'}</button></div>
       </section>
-    </div>}
+    </div></div>,document.body)}
   </main>;
 }
