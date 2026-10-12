@@ -22,10 +22,15 @@ export async function POST(_:Request,{params}:{params:Promise<{id:string}>}){
     const story=[journal.material,journal.summary,journal.result,journal.notes,journal.achievement,journal.obstacles,journal.follow_up].filter(Boolean).join('\n').slice(0,10000);
     if(story.trim().length<12)return NextResponse.json({error:'Tuliskan dahulu materi dan hasil pembelajaran agar AI punya bahan yang cukup.'},{status:400,headers});
     const levelResult=journal.class_id?await s.from('classes').select('level_id').eq('id',journal.class_id).maybeSingle():null;
-    const levelId=journal.assessment?.class_assessment?.level_id||levelResult?.data?.level_id||null;
+    const directLevel=journal.assessment?.class_assessment?.level_id||levelResult?.data?.level_id||null;
+    const membershipLevels=journal.class_id?await s.from('member_memberships').select('level_id')
+      .eq('class_id',journal.class_id).lte('valid_from',journal.journal_date)
+      .or('valid_to.is.null,valid_to.gte.'+journal.journal_date):null;
+    if(membershipLevels?.error)throw Error(membershipLevels.error.message);
+    const levelIds=[...new Set([directLevel,...(membershipLevels?.data||[]).map(m=>m.level_id)].filter((id):id is string=>!!id))];
     let candidates:Array<{id:string;title:string;subject:string;aspect:string}>=[];
-    if(levelId){
-      const {data,error}=await s.from('learning_targets').select('id,title,source_metadata').eq('active',true).eq('level_id',levelId).limit(350);
+    if(levelIds.length){
+      const {data,error}=await s.from('learning_targets').select('id,title,source_metadata').eq('active',true).in('level_id',levelIds).limit(350);
       if(error)throw Error(error.message);
       const rows=(data||[]).map(x=>({id:x.id,title:x.title,subject:x.source_metadata?.subject||'',aspect:x.source_metadata?.aspect||''}));
       const words=tokenize(story);

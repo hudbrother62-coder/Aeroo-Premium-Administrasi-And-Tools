@@ -42,8 +42,11 @@ export async function publicTargetOverview(req:NextRequest){
  const [classes,members,journals]=await Promise.all([publicRows('classes'),readRows('members'),readRows('journals')]);
  const records=journals.filter((j:any)=>j.state==='COMPLETED'&&j.journal_date?.startsWith(month)&&['CABERAWIT_CLASS','MUDA_MUDI_CLASS'].includes(j.journal_kind));
  const summaries=classes.filter((c:any)=>c.active!==false&&['CABERAWIT','MUDA_MUDI'].includes(c.audience)).map((c:any)=>{
-   const memberCount=members.filter((p:any)=>(p.member_memberships||[]).some((m:any)=>m.effective&&m.class_id===c.id)).length;
-   const assigned=targets.filter((t:any)=>(!t.class_id||t.class_id===c.id)&&(!t.level_id||t.level_id===c.level_id)&&(!t.target_month||t.target_month.slice(0,7)===month));
+   const membershipRows=members.flatMap((p:any)=>(p.member_memberships||[]).filter((m:any)=>m.effective&&m.class_id===c.id));
+   const memberCount=new Set(membershipRows.map((m:any)=>m.member_id).filter(Boolean)).size||members.filter((p:any)=>(p.member_memberships||[]).some((m:any)=>m.effective&&m.class_id===c.id)).length;
+   const levelIds=new Set(membershipRows.map((m:any)=>m.level_id).filter(Boolean));
+   if(c.level_id)levelIds.add(c.level_id);
+   const assigned=targets.filter((t:any)=>(!t.class_id||t.class_id===c.id)&&(!t.level_id||levelIds.has(t.level_id))&&(!t.target_month||t.target_month.slice(0,7)===month));
    const assignedIds=new Set(assigned.map((t:any)=>t.id));
    const meetings=records.filter((j:any)=>j.class_id===c.id);
    const confirmed=new Set<string>(),indications=new Set<string>();
