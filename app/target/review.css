@@ -177,3 +177,15 @@ html[data-theme="dark"] .tr-form-actions button{color:var(--bg)}
 html[data-theme="dark"] .tr-use-target{color:var(--bg)!important}
 .tr-use-target:hover{filter:brightness(.96)}
 @media(max-width:520px){.tr-use-target{flex:1 1 100%}}
+
+/* Readable score vs. coverage semantics for non-technical supervisors. */
+.tr-progress-explain{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0 16px}
+.tr-progress-explain>div{background:var(--surface);border:1px solid var(--tr-stroke);border-radius:12px;padding:14px 16px}
+.tr-progress-explain strong{font-size:13px}.tr-progress-explain p{font-size:12px;line-height:1.6;margin:6px 0 0}
+.tr-progress-explain>.tr-progress-note{grid-column:1/-1;font-size:11px;line-height:1.6;margin:0;padding:3px 2px;color:var(--muted)}
+.tr-progress-card>b small{font-size:11px;font-weight:550;letter-spacing:0;color:var(--muted)}
+.tr-progress-card .tr-coverage{font-size:11px;line-height:1.6;margin:11px 0 0;color:var(--muted)}
+.tr-progress-report-link{display:flex;justify-content:flex-end;margin:4px 0 20px}
+.tr-progress-report-link a{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:750;padding:9px 13px;border:1px solid var(--tr-stroke);border-radius:9px;text-decoration:none;color:var(--tr-accent-strong)}
+.tr-progress-report-link a:hover{background:var(--tr-tint)}
+@media(max-width:600px){.tr-progress-explain{grid-template-columns:1fr}.tr-progress-explain>.tr-progress-note{grid-column:auto}}
