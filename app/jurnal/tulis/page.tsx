@@ -1,0 +1,148 @@
+'use client';
+
+import Link from 'next/link';
+import {useEffect,useMemo,useState} from 'react';
+import {ArrowLeft,BookOpen,CheckCircle2,FileText,LoaderCircle,RefreshCw,Sparkles} from 'lucide-react';
+import {jakartaDate} from '@/lib/domain';
+import {writeScopesForRole,type Audience} from '@/lib/access';
+import './tulis.css';
+
+type ClassRow={id:string;name:string;level_id?:string|null;audience:string};
+type Activity={id:string;name:string;audience:string};
+type EventRow={id:string;event_date:string;title:string;audience:string;class_id?:string|null;activity_type_id?:string|null;agenda_id?:string|null;state?:string};
+type TargetMatch={target_id:string;title:string;reason:string;quote:string;relation:string};
+type Analysis={summary:string;suggestion:string;matches:TargetMatch[];created_at:string;status:string};
+const journalKinds=[
+  {value:'KELOMPOK',label:'Pengajian kelompok',audience:'KELOMPOK'},
+  {value:'CABERAWIT_CLASS',label:'Pembelajaran Caberawit',audience:'CABERAWIT'},
+  {value:'MUDA_MUDI_CLASS',label:'Pembelajaran Muda-Mudi',audience:'MUDA_MUDI'},
+  {value:'IBU_IBU',label:'Kegiatan ibu-ibu',audience:'IBU_IBU'},
+  {value:'PENGURUS',label:'Rapat atau kegiatan pengurus',audience:'PENGURUS'}
+];
+export default function TulisJurnal(){
+  const [role,setRole]=useState('VIEWER');
+  const [scopes,setScopes]=useState<Audience[]>([]);
+  const [classes,setClasses]=useState<ClassRow[]>([]);
+  const [activities,setActivities]=useState<Activity[]>([]);
+  const [events,setEvents]=useState<EventRow[]>([]);
+  const [ready,setReady]=useState(false);
+  const [date,setDate]=useState(jakartaDate());
+  const [kind,setKind]=useState('KELOMPOK');
+  const [classId,setClassId]=useState('');
+  const [activityId,setActivityId]=useState('');
+  const [selectedEvent,setSelectedEvent]=useState('');
+  const [title,setTitle]=useState('');
+  const [material,setMaterial]=useState('');
+  const [summary,setSummary]=useState('');
+  const [obstacles,setObstacles]=useState('');
+  const [followUp,setFollowUp]=useState('');
+  const [saving,setSaving]=useState(false);
+  const [analyzing,setAnalyzing]=useState(false);
+  const [error,setError]=useState('');
+  const [aiError,setAiError]=useState('');
+  const [savedId,setSavedId]=useState('');
+  const [analysis,setAnalysis]=useState<Analysis|null>(null);
+  const scope=(journalKinds.find(x=>x.value===kind)?.audience||'KELOMPOK') as Audience;
+  const options=journalKinds.filter(k=>scopes.includes(k.audience as Audience));
+  const availableClasses=classes.filter(c=>c.audience===scope);
+  const availableActivities=activities.filter(a=>a.audience===scope);
+  useEffect(()=>{
+    Promise.all([
+      fetch('/api/auth/me').then(r=>r.json()),
+      fetch('/api/classes').then(r=>r.json()),
+      fetch('/api/activity-types').then(r=>r.json())
+    ]).then(([u,c,a])=>{
+      setRole(u.role||'VIEWER');
+      const allowed=(Array.isArray(u.write_scopes)?u.write_scopes:writeScopesForRole(u.role||'VIEWER')) as Audience[];
+      setScopes(allowed);setClasses(Array.isArray(c)?c:[]);setActivities(Array.isArray(a)?a:[]);
+      const requested=new URLSearchParams(window.location.search).get('kind');
+      const first=journalKinds.find(x=>x.value===requested&&allowed.includes(x.audience as Audience))||
+        journalKinds.find(x=>allowed.includes(x.audience as Audience));
+      if(first)setKind(first.value);
+      setReady(true);
+    }).catch(()=>{setError('Data awal tidak dapat dimuat.');setReady(true)});
+  },[]);
+  useEffect(()=>{
+    let alive=true;
+    setSelectedEvent('');
+    if(!date||!scope){setEvents([]);return;}
+    fetch('/api/attendance?'+new URLSearchParams({from:date,to:date,audience:scope}),{cache:'no-store'})
+      .then(async r=>{const v=await r.json();if(!r.ok)throw Error(v.error||'Presensi gagal dimuat');return v})
+      .then(v=>{if(alive)setEvents(Array.isArray(v)?v:[])}).catch(()=>{if(alive)setEvents([])});
+    return()=>{alive=false};
+  },[date,scope]);
+  const matching=useMemo(()=>events.filter(e=>e.state!=='CANCELLED'&&(!classId||e.class_id===classId)&&(!activityId||!e.activity_type_id||e.activity_type_id===activityId)),[events,classId,activityId]);
+  const event=matching.find(x=>x.id===selectedEvent)||matching.length===1?matching.find(x=>x.id===selectedEvent)||matching[0]:null;
+  const classRequired=scope==='CABERAWIT'||scope==='MUDA_MUDI';
+  async function analyze(id:string){
+    setAnalyzing(true);setAiError('');
+    try{
+      const r=await fetch('/api/journals/'+id+'/analyze',{method:'POST'});
+      const v=await r.json();if(!r.ok)throw Error(v.error||'Analisis belum bisa dijalankan.');
+      setAnalysis(v.analysis);
+    }catch(e){setAiError((e as Error).message)}finally{setAnalyzing(false)}
+  }
+  async function save(){
+    if(saving||!scopes.includes(scope))return;
+    if(!date||!summary.trim()&&!material.trim()){setError('Tuliskan isi jurnal atau materi kegiatan terlebih dahulu.');return;}
+    if(classRequired&&!classId){setError('Pilih kelas supaya jurnal sesuai dengan peserta dan target.');return;}
+    if(matching.length>1&&!selectedEvent){setError('Ada beberapa presensi di hari itu. Pilih pertemuan yang tepat.');return;}
+    setSaving(true);setError('');
+    try{
+      const e=event;
+      const classroom=availableClasses.find(c=>c.id===classId);
+      const body={
+        journal_kind:kind,journal_date:date,title:title.trim()||'Jurnal '+(journalKinds.find(x=>x.value===kind)?.label||'kegiatan')+' - '+date,
+        event_id:e?.id||null,agenda_id:e?.agenda_id||null,class_id:classId||null,activity_type_id:e?.activity_type_id||activityId||null,
+        material:material.trim()||null,summary:summary.trim()||null,obstacles:obstacles.trim()||null,follow_up:followUp.trim()||null,
+        assessment:{free_form:true,source:'TEACHER_TEXT',class_assessment:{level_id:classroom?.level_id||null}},
+        progress:[],revision:0,state:'COMPLETED'
+      };
+      const response=await fetch('/api/journals',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+      const result=await response.json();if(!response.ok)throw Error(result.error||'Jurnal gagal disimpan.');
+      if(!result.id)throw Error('Respons penyimpanan belum memberi ID. Periksa riwayat sebelum mengulangi.');
+      setSavedId(result.id);await analyze(result.id);
+    }catch(e){setError((e as Error).message)}finally{setSaving(false)}
+  }
+  if(!ready)return <div className="fj-shell"><div className="card section">Memuat formulir jurnal…</div></div>;
+  if(!options.length)return <div className="fj-shell"><p className="notice">Akun ini belum diberi izin menulis jurnal.</p><Link href="/jurnal">Kembali ke Jurnal</Link></div>;
+
+  return <main className="fj-shell">
+    <Link href="/jurnal" className="fj-back"><ArrowLeft size={17}/> Kembali ke Jurnal</Link>
+    <header className="fj-header"><span><BookOpen size={18}/> CATATAN GURU</span><h1>Tulis Jurnal</h1><p>Tulis kegiatan seperti biasa dengan bahasa sendiri. Tidak perlu memilih target atau menghitung nilai. AI akan membantu mencocokkan dengan target setelah disimpan.</p></header>
+    {!savedId?<section className="fj-panel">
+      <div className="fj-row">
+        <label>Jenis kegiatan<select value={kind} onChange={e=>{setKind(e.target.value);setClassId('');setActivityId('');setSelectedEvent('')}}>{options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
+        <label>Tanggal<input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label>
+        {classRequired&&<label>Kelas<select value={classId} onChange={e=>{setClassId(e.target.value);setSelectedEvent('')}}><option value="">Pilih kelas</option>{availableClasses.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
+        <label>Kegiatan (jika ada)<select value={activityId} onChange={e=>setActivityId(e.target.value)}><option value="">Tanpa jenis khusus</option>{availableActivities.map(a=><option value={a.id} key={a.id}>{a.name}</option>)}</select></label>
+      </div>
+      {matching.length>0&&<div className="fj-attendance">
+        <CheckCircle2 size={18}/><div><strong>Presensi tanggal ini ditemukan</strong><p>{matching.length===1?'Jurnal akan otomatis terhubung dengan presensi tersebut.':'Ada beberapa pertemuan. Pilih satu yang sesuai.'}</p></div>
+        {matching.length>1&&<select aria-label="Pilih presensi terkait" value={selectedEvent} onChange={e=>setSelectedEvent(e.target.value)}><option value="">Pilih pertemuan</option>{matching.map(e=><option value={e.id} key={e.id}>{e.title}</option>)}</select>}
+      </div>}
+      {!matching.length&&<div className="fj-hint">Presensi belum tersedia untuk pilihan ini. Jurnal tetap dapat disimpan tanpa membuat agenda.</div>}
+      <label className="fj-field">Judul jurnal (opsional)<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Misal: Pengajian sore kelas 3"/></label>
+      <label className="fj-field">Materi yang disampaikan (opsional)<textarea rows={2} value={material} onChange={e=>setMaterial(e.target.value)} placeholder="Misal: membaca surat pendek, tata krama menjaga kebersihan"/></label>
+      <label className="fj-field"><strong>Cerita kegiatan dan hasilnya</strong><textarea rows={7} value={summary} onChange={e=>setSummary(e.target.value)} placeholder="Ceritakan dengan kata-kata sendiri: hari ini mengajarkan apa, bagaimana suasananya, anak-anak sudah bisa apa, dan bagian mana yang perlu diulang…"/></label>
+      <details className="fj-optional"><summary>Catatan tambahan (jika diperlukan)</summary>
+        <label className="fj-field">Kendala<textarea rows={2} value={obstacles} onChange={e=>setObstacles(e.target.value)} placeholder="Contoh: beberapa peserta masih sulit mengikuti"/></label>
+        <label className="fj-field">Rencana tindak lanjut<textarea rows={2} value={followUp} onChange={e=>setFollowUp(e.target.value)} placeholder="Contoh: diulang pertemuan berikutnya"/></label>
+      </details>
+      {error&&<div className="fj-error" role="alert">{error}</div>}
+      <div className="fj-actions"><Link href="/jurnal" className="fj-secondary">Batal</Link><button type="button" className="fj-primary" disabled={saving} onClick={()=>void save()}>{saving?<LoaderCircle size={19}/>:<FileText size={19}/>} {saving?'Menyimpan…':'Simpan jurnal'}</button></div>
+    </section>:<section className="fj-panel">
+      <div className="fj-success"><CheckCircle2 size={38}/><h2>Jurnal berhasil disimpan</h2><p>Catatan asli tetap tersimpan. AI hanya memberikan saran materi terkait, bukan mengubah nilai pencapaian anak.</p></div>
+      {analyzing&&<div className="fj-status"><Sparkles size={19}/> Groq sedang membaca jurnal dan mencari target yang relevan…</div>}
+      {aiError&&<div className="fj-hint" role="status">Analisis AI belum tersedia: {aiError} <button type="button" onClick={()=>void analyze(savedId)} disabled={analyzing}><RefreshCw size={15}/> Coba lagi</button></div>}
+      {analysis&&<div className="fj-ai">
+        <h3><Sparkles size={18}/> Hasil pembacaan jurnal oleh AI</h3>
+        <p>{analysis.summary}</p>
+        {analysis.matches.length>0?<div className="fj-matches">{analysis.matches.map(x=><article key={x.target_id}><strong>{x.title}</strong><span>{x.relation==='DIAJARKAN'?'Materi tercatat diajarkan':x.relation==='INDIKASI'?'Kemungkinan terkait':'Belum terbukti'}</span><p>{x.reason}</p><blockquote>“{x.quote}”</blockquote></article>)}</div>:<div className="fj-hint">AI belum menemukan target yang dapat dibuktikan dari isi jurnal. Catatan tetap tersimpan.</div>}
+        {analysis.suggestion&&<p className="fj-suggestion"><strong>Saran tindak lanjut:</strong> {analysis.suggestion}</p>}
+        <small>Analisis AI adalah bantuan membaca jurnal. Tidak memberi nilai, tidak menyatakan anak sudah tuntas, dan dapat diperiksa kembali oleh guru.</small>
+      </div>}
+      <div className="fj-actions"><Link className="fj-secondary" href="/jurnal/riwayat">Riwayat jurnal</Link><Link className="fj-primary" href="/jurnal/tulis">Tulis jurnal baru</Link></div>
+    </section>}
+  </main>;
+}
