@@ -14,7 +14,6 @@ type EventRow={
   attendance_records?:Array<{status:'H'|'I'|'A'|null;class_id_snapshot?:string|null;level_id_snapshot?:string|null}>;
 };
 type ClassRow={id:string;name:string;audience:string;level_id?:string|null};
-type LevelRow={id:string;name:string};
 type Tab='baru'|'riwayat'|'rekap';
 const labelDate=(s:string)=>new Date(s+'T12:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 const statusCount=(e:EventRow,s:'H'|'I'|'A')=>(e.attendance_records||[]).filter(r=>r.status===s).length;
@@ -23,23 +22,22 @@ function HistoryView({onRecap}:{onRecap:(id:string,date:string)=>void}){
  const [month,setMonth]=useState(jakartaDate().slice(0,7));
  const [selected,setSelected]=useState(jakartaDate());
  const [audience,setAudience]=useState('');
- const [level,setLevel]=useState('');
  const [classId,setClassId]=useState('');
  const [events,setEvents]=useState<EventRow[]>([]);
  const [classes,setClasses]=useState<ClassRow[]>([]);
- const [levels,setLevels]=useState<LevelRow[]>([]);
  const [readable,setReadable]=useState<Audience[]>([]);
  const [writable,setWritable]=useState<Audience[]>([]);
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState('');
  useEffect(()=>{let live=true;
-   Promise.all([fetch('/api/classes'),fetch('/api/levels'),fetch('/api/auth/me')]).then(async responses=>{
+   Promise.all([fetch('/api/classes'),fetch('/api/auth/me')]).then(async responses=>{
      if(responses.some(r=>!r.ok))throw Error('Gagal memuat hak akses.');
-     const [c,l,u]=await Promise.all(responses.map(r=>r.json()));
+     const [c,u]=await Promise.all(responses.map(r=>r.json()));
      if(!live)return;
-     setClasses(Array.isArray(c)?c:[]);setLevels(Array.isArray(l)?l:[]);
+     setClasses(Array.isArray(c)?c:[]);
      const role=(u.role||'VIEWER') as Role;
-     setReadable(Array.isArray(u.read_scopes)?u.read_scopes:readScopesForRole(role));
+     const access=(Array.isArray(u.read_scopes)?u.read_scopes:readScopesForRole(role)) as Audience[];
+     setReadable(access);setAudience(access.length===1?access[0]:'');
      setWritable(Array.isArray(u.write_scopes)?u.write_scopes:writeScopesForRole(role));
    }).catch(()=>{if(live)setError('Hak akses belum dapat dimuat.');});
    return()=>{live=false};
@@ -55,18 +53,17 @@ function HistoryView({onRecap}:{onRecap:(id:string,date:string)=>void}){
    return()=>{live=false};
  },[month,audience,classId]);
  useEffect(()=>{if(!selected.startsWith(month))setSelected(month+'-01');},[month,selected]);
- const scoped=useMemo(()=>events.filter(e=>!level||e.level_id===level||(e.attendance_records||[]).some(r=>r.level_id_snapshot===level)),[events,level]);
+ const scoped=events;
  const dates=useMemo(()=>{const m=new Map<string,EventRow[]>();scoped.forEach(e=>m.set(e.event_date,[...(m.get(e.event_date)||[]),e]));return m;},[scoped]);
  const selectedEvents=dates.get(selected)||[];
  const days=useMemo(()=>{const year=Number(month.slice(0,4)),mo=Number(month.slice(5,7));const first=(new Date(year,mo-1,1).getDay()+6)%7;const total=new Date(year,mo,0).getDate();return [...Array(first).fill(null),...Array.from({length:total},(_,i)=>month+'-'+String(i+1).padStart(2,'0'))] as Array<string|null>;},[month]);
- const filteredClasses=classes.filter(c=>(!audience||c.audience===audience)&&(!level||c.level_id===level));
+ const filteredClasses=classes.filter(c=>!audience||c.audience===audience);
  const changeMonth=(n:number)=>{const d=new Date(Number(month.slice(0,4)),Number(month.slice(5,7))-1+n,1);setMonth(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));};
  return <div className="attendanceWorkspace">
    <section className="attendancePanel">
-     <div className="attendancePanelHead"><div><h2>Riwayat Presensi</h2><p>Pilih tanggal yang bertanda, kemudian buka pertemuan untuk melihat atau mengubah absensi.</p></div><span className="attendanceSubtle">{scoped.length} pertemuan</span></div>
+     <div className="attendancePanelHead"><div><h2>Riwayat Presensi</h2></div><span className="attendanceSubtle">{scoped.length} pertemuan</span></div>
      <div className="attendanceFilters">
-       <label>Lingkup<select className="select" value={audience} onChange={e=>{setAudience(e.target.value);setLevel('');setClassId('');}}><option value="">Semua lingkup</option>{readable.map(a=><option key={a} value={a}>{audienceLabels[a]}</option>)}</select></label>
-       <label>Jenjang<select className="select" value={level} onChange={e=>{setLevel(e.target.value);setClassId('');}}><option value="">Semua jenjang</option>{levels.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
+       <label>Lingkup<select className="select" value={audience} onChange={e=>{setAudience(e.target.value);setClassId('');}}><option value="">Semua lingkup</option>{readable.map(a=><option key={a} value={a}>{audienceLabels[a]}</option>)}</select></label>
        <label>Kelas<select className="select" value={classId} onChange={e=>setClassId(e.target.value)}><option value="">Semua kelas</option>{filteredClasses.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
      </div>
      <div className="attendanceMonthHead"><button type="button" className="smallAction" onClick={()=>changeMonth(-1)} aria-label="Bulan sebelumnya"><ChevronLeft size={18}/></button><strong>{new Date(month+'-01T12:00:00').toLocaleDateString('id-ID',{month:'long',year:'numeric'})}</strong><button type="button" className="smallAction" onClick={()=>changeMonth(1)} aria-label="Bulan selanjutnya"><ChevronRight size={18}/></button></div>
@@ -88,7 +85,7 @@ export default function PresensiPage(){
  useEffect(()=>{const read=()=>{const p=new URLSearchParams(window.location.search);const current=p.get('tab');setTab(current==='riwayat'||current==='rekap'?current:'baru');setFocusEvent(p.get('event_id')||'');};read();window.addEventListener('popstate',read);return()=>window.removeEventListener('popstate',read);},[]);
  function select(next:Tab,event='',date=''){setTab(next);setFocusEvent(event);const p=new URLSearchParams();if(next!=='baru')p.set('tab',next);if(event)p.set('event_id',event);if(date)p.set('month',date.slice(0,7));window.history.pushState(null,'','/presensi'+(p.size?'?'+p.toString():''));}
  return <div className="attendancePage">
-  <div className="pageHeader"><div><h1>Presensi</h1><p>Mulai absensi, perbaiki riwayat, atau lihat rekap dari data yang sama.</p></div></div>
+  <div className="pageHeader"><div><h1>Presensi</h1></div></div>
   <nav className="attendanceNav" aria-label="Subnavigasi presensi">
    <button type="button" onClick={()=>select('baru')} className={tab==='baru'?'active':''} aria-current={tab==='baru'?'page':undefined}><ClipboardCheck size={18}/><span>Absensi Baru</span></button>
    <button type="button" onClick={()=>select('riwayat')} className={tab==='riwayat'?'active':''} aria-current={tab==='riwayat'?'page':undefined}><History size={18}/><span>Riwayat</span></button>

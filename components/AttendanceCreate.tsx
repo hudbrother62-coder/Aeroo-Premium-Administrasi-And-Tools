@@ -7,7 +7,6 @@ import {jakartaDate} from '@/lib/domain';
 import '@/app/presensi/routine.css';
 
 type Activity={id:string;name:string;audience:string};
-type Level={id:string;name:string};
 type ClassRow={id:string;name:string;audience:string;level_id?:string};
 type AgendaRow={id:string;title:string;starts_at:string;audience:Audience;class_id?:string|null;level_id?:string|null;status?:string;attendance_enabled?:boolean;attendance_event_id?:string|null};
 type Participant={id:string;name:string;type:'member';meta:string;gender?:'L'|'P'|null};
@@ -17,7 +16,6 @@ type Preset='KELOMPOK'|'CABERAWIT'|'CUSTOM';
 
 export default function Page({embedded=false}:{embedded?:boolean}){
   const[activities,setActivities]=useState<Activity[]>([]);
-  const[levels,setLevels]=useState<Level[]>([]);
   const[classes,setClasses]=useState<ClassRow[]>([]);
   const[agendas,setAgendas]=useState<AgendaRow[]>([]);
   const[agendaLoading,setAgendaLoading]=useState(false);
@@ -32,19 +30,17 @@ export default function Page({embedded=false}:{embedded?:boolean}){
   const[useAgenda,setUseAgenda]=useState(false);
   const[genderFilter,setGenderFilter]=useState<'ALL'|'L'|'P'>('ALL');
   const today=jakartaDate();
-  const[form,setForm]=useState({title:'',event_date:today,event_time:'',audience:'KELOMPOK' as Audience,activity_type_id:'',level_id:'',class_id:'',agenda_id:'',teacher_name:'',notes:''});
+  const[form,setForm]=useState({title:'Kegiatan Kelompok',event_date:today,event_time:'',audience:'KELOMPOK' as Audience,activity_type_id:'',level_id:'',class_id:'',agenda_id:'',teacher_name:'',notes:''});
 
   const allowed=useMemo(()=>scopedWrite??writeScopesForRole(role),[role,scopedWrite]);
 
   useEffect(()=>{
     Promise.all([
       fetch('/api/activity-types').then(r=>r.json()),
-      fetch('/api/levels').then(r=>r.json()),
       fetch('/api/classes').then(r=>r.json()),
       fetch('/api/auth/me').then(r=>r.json())
-    ]).then(([a,l,c,u])=>{
+    ]).then(([a,c,u])=>{
       setActivities(Array.isArray(a)?a:[]);
-      setLevels(Array.isArray(l)?l:[]);
       setClasses(Array.isArray(c)?c:[]);
       const nextRole=(u.role??'VIEWER') as Role;
       setRole(nextRole);setScopedWrite(Array.isArray(u.write_scopes)?u.write_scopes:null);
@@ -52,11 +48,11 @@ export default function Page({embedded=false}:{embedded?:boolean}){
       const requested=new URLSearchParams(window.location.search).get('preset');
       if(requested==='kelompok'&&scopes.includes('KELOMPOK')){
         const activity=(Array.isArray(a)?a:[]).find((x:Activity)=>x.audience==='KELOMPOK'&&x.name==='Pengajian Kelompok');
-        setPreset('KELOMPOK');setForm(v=>({...v,audience:'KELOMPOK',activity_type_id:activity?.id||'',title:'Pengajian Kelompok',level_id:'',class_id:'',teacher_name:''}));
+        setPreset('KELOMPOK');setForm(v=>({...v,audience:'KELOMPOK',activity_type_id:activity?.id||'',title:'Kegiatan Kelompok',level_id:'',class_id:'',teacher_name:''}));
       }else if(requested==='caberawit'&&scopes.includes('CABERAWIT')){
         const activity=(Array.isArray(a)?a:[]).find((x:Activity)=>x.audience==='CABERAWIT'&&x.name==='Pengajian Caberawit');
         setPreset('CABERAWIT');setForm(v=>({...v,audience:'CABERAWIT',activity_type_id:activity?.id||'',title:'Pengajian Caberawit',level_id:'',class_id:'',teacher_name:''}));
-      }else if(scopes.length)setForm(v=>({...v,audience:scopes[0]}));
+      }else if(scopes.length){const group=scopes[0]==='KELOMPOK';const activity=(Array.isArray(a)?a:[]).find((x:Activity)=>x.audience==='KELOMPOK'&&x.name==='Pengajian Kelompok');setForm(v=>({...v,audience:scopes[0],title:group?'Kegiatan Kelompok':'',activity_type_id:group?(activity?.id||''):''}));}
       setReady(true);
     }).catch(()=>{setError('Akses presensi belum dapat dimuat.');setReady(true)});
   },[]);
@@ -99,7 +95,7 @@ export default function Page({embedded=false}:{embedded?:boolean}){
   const matchingAgendas=useMemo(()=>agendas.filter(a=>a.audience===form.audience&&a.attendance_enabled!==false&&a.status!=='CANCELLED'&&(!form.level_id||!a.level_id||a.level_id===form.level_id)&&(!form.class_id?!a.class_id:a.class_id===form.class_id)),[agendas,form.audience,form.level_id,form.class_id]);
   const selectedAgenda=matchingAgendas.find(a=>a.id===form.agenda_id);
   const routineAllowed=form.audience==='KELOMPOK'||form.audience==='CABERAWIT';
-  const requiredAgenda=!routineAllowed||useAgenda;
+  const requiredAgenda=form.audience==='KELOMPOK'?false:!routineAllowed||useAgenda;
   useEffect(()=>{if(form.agenda_id&&!matchingAgendas.some(a=>a.id===form.agenda_id))setForm(v=>({...v,agenda_id:''}));},[form.agenda_id,matchingAgendas]);
   const routineDay=useMemo(()=>new Date(form.event_date+'T12:00:00+07:00').getDay(),[form.event_date]);
   const onRoutine=preset==='KELOMPOK'?(routineDay===1||routineDay===5):preset==='CABERAWIT'?(routineDay>=1&&routineDay<=6):true;
@@ -107,7 +103,7 @@ export default function Page({embedded=false}:{embedded?:boolean}){
     setPreset(next);
     if(next==='KELOMPOK'){
       const activity=activities.find(a=>a.audience==='KELOMPOK'&&a.name==='Pengajian Kelompok');
-      setForm(v=>({...v,audience:'KELOMPOK',activity_type_id:activity?.id||'',title:'Pengajian Kelompok',level_id:'',class_id:'',teacher_name:''}));
+      setForm(v=>({...v,audience:'KELOMPOK',activity_type_id:activity?.id||'',title:'Kegiatan Kelompok',level_id:'',class_id:'',teacher_name:''}));
     }else if(next==='CABERAWIT'){
       const activity=activities.find(a=>a.audience==='CABERAWIT'&&a.name==='Pengajian Caberawit');
       setForm(v=>({...v,audience:'CABERAWIT',activity_type_id:activity?.id||'',title:'Pengajian Caberawit',level_id:'',class_id:'',teacher_name:''}));
@@ -126,7 +122,7 @@ export default function Page({embedded=false}:{embedded?:boolean}){
       const activity=matching.find(a=>a.id===form.activity_type_id);
       const payload=requiredAgenda?{agenda_id:selectedAgenda!.id}:{
         event_date:form.event_date,audience:form.audience,activity_type_id:form.activity_type_id||null,
-        class_id:form.class_id||null,level_id:form.level_id||null,
+        class_id:form.class_id||null,level_id:null,
         title:form.title.trim()||activity?.name||(form.audience==='CABERAWIT'?'Pembelajaran Caberawit':'Pengajian Kelompok'),
         teacher_name:form.teacher_name||null
       };
@@ -147,34 +143,30 @@ export default function Page({embedded=false}:{embedded?:boolean}){
   }
 
   return <>
-    {!embedded&&<div className="pageHeader"><div><h1>{eventId?'Edit Presensi':'Absensi Baru'}</h1><p>{eventId?'Perbaiki status peserta, perubahan disimpan otomatis.':'Pilih tanggal dan kegiatan. Pengajian Kelompok dan Caberawit bisa langsung diabsen tanpa menunggu agenda.'}</p></div></div>}
-    {!eventId&&<section className="attendanceStartIntro"><div className="attendanceStartIcon"><span>01</span></div><div><h2>Mulai Absensi</h2><p>Untuk Kelompok atau Caberawit cukup pilih tanggal dan kegiatan. Kegiatan lain tetap menggunakan agenda.</p></div></section>}
+    {!embedded&&<div className="pageHeader"><div><h1>{eventId?'Edit Presensi':'Absensi Baru'}</h1></div></div>}
+    {!eventId&&<section className="attendanceStartIntro"><div className="attendanceStartIcon"><span>01</span></div><div><h2>Mulai Absensi</h2></div></section>}
     <form onSubmit={e=>{if(eventId)e.preventDefault();else void save(e)}} className="section">
       {!eventId?<section className="card attendanceStartCard">
         <div className="attendanceSteps"><span>1. Tanggal</span><span>2. Kegiatan & kelas</span><span>3. Buka daftar</span><span>4. Tandai presensi</span></div>
         <div className="formGrid attendanceFormGrid">
           <label>1. Tanggal pertemuan<input className="input" type="date" required value={form.event_date} onChange={e=>setForm(v=>({...v,event_date:e.target.value,agenda_id:''}))}/></label>
-          <label>2. Lingkup / kategori<select className="select" value={form.audience} onChange={e=>setForm(v=>({...v,audience:e.target.value as Audience,level_id:'',class_id:'',agenda_id:''}))}>
+          <label>2. Lingkup / kategori<select className="select" value={form.audience} onChange={e=>setForm(v=>({...v,audience:e.target.value as Audience,level_id:'',class_id:'',agenda_id:'',title:e.target.value==='KELOMPOK'?'Kegiatan Kelompok':'',activity_type_id:e.target.value==='KELOMPOK'?(activities.find(a=>a.audience==='KELOMPOK'&&a.name==='Pengajian Kelompok')?.id||''):''}))}>
             {allowed.map(v=><option key={v} value={v}>{audienceLabels[v]}</option>)}
           </select></label>
-          {(form.audience==='CABERAWIT'||form.audience==='MUDA_MUDI')&&<>
-            <label>Jenjang<select className="select" value={form.level_id} onChange={e=>setForm(v=>({...v,level_id:e.target.value,class_id:'',agenda_id:''}))}>
-              <option value="">Semua jenjang</option>{levels.map(l=><option value={l.id} key={l.id}>{l.name}</option>)}
-            </select></label>
-            <label>Kelas<select className="select" required={form.audience==='CABERAWIT'} value={form.class_id} onChange={e=>setForm(v=>({...v,class_id:e.target.value,agenda_id:''}))}>
-              <option value="">{form.audience==='CABERAWIT'?'Pilih kelas':'Semua kelas'}</option>
-              {classOptions.filter(c=>!form.level_id||c.level_id===form.level_id).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-            </select></label>
-          </>}
-          {routineAllowed&&<div className="span2 attendanceRoutineChoice">
+          {(form.audience==='CABERAWIT'||form.audience==='MUDA_MUDI')&&
+             <label>Kelas<select className="select" required={form.audience==='CABERAWIT'} value={form.class_id} onChange={e=>setForm(v=>({...v,class_id:e.target.value,level_id:'',agenda_id:''}))}>
+               <option value="">{form.audience==='CABERAWIT'?'Pilih kelas':'Semua kelas'}</option>
+               {classOptions.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
+             </select></label>}
+          {routineAllowed&&form.audience!=='KELOMPOK'&&<div className="span2 attendanceRoutineChoice">
             <strong>Bagaimana membuka presensi?</strong>
             <div className="attendanceGenderTabs" role="group" aria-label="Sumber kegiatan">
               <button type="button" className={!useAgenda?'active':''} onClick={()=>setUseAgenda(false)}>Kegiatan rutin (tanpa agenda)</button>
               <button type="button" className={useAgenda?'active':''} onClick={()=>setUseAgenda(true)}>Dari agenda</button>
             </div>
-            <p>Untuk Kelompok dan Caberawit, presensi rutin dapat dibuat langsung. Pertemuan yang sama akan terbuka kembali jika dipilih ulang.</p>
+            
           </div>}
-          {!requiredAgenda&&<label className="span2">Kegiatan rutin<select className="select" value={form.activity_type_id} onChange={e=>setForm(v=>({...v,activity_type_id:e.target.value,title:matching.find(a=>a.id===e.target.value)?.name||v.title}))}>
+          {!requiredAgenda&&form.audience!=='KELOMPOK'&&<label className="span2">Kegiatan rutin<select className="select" value={form.activity_type_id} onChange={e=>setForm(v=>({...v,activity_type_id:e.target.value,title:matching.find(a=>a.id===e.target.value)?.name||v.title}))}>
             <option value="">Kegiatan {form.audience==='CABERAWIT'?'Caberawit':'Kelompok'}</option>
             {matching.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
           </select></label>}
@@ -184,7 +176,7 @@ export default function Page({embedded=false}:{embedded?:boolean}){
           </select></label>}
         </div>
         {requiredAgenda&&(selectedAgenda?<div className="attendanceSelectedAgenda"><ClipboardCheck size={19}/><div><strong>{selectedAgenda.title}</strong><span>{new Date(selectedAgenda.starts_at).toLocaleString('id-ID',{timeZone:'Asia/Jakarta',weekday:'long',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'})} · Peserta akan mengikuti data agenda.</span></div></div>:!agendaLoading&&<div className="attendanceAgendaHint"><strong>{matchingAgendas.length?'Pilih agenda di atas.':'Belum ada agenda sesuai pilihan.'}</strong><span>{matchingAgendas.length?'Data peserta mengikuti agenda yang kamu pilih.':'Buat agenda dengan tanggal, lingkup dan kelas yang sama terlebih dahulu.'}</span><a href="/agenda">Kelola agenda →</a></div>)}
-        {!requiredAgenda&&<div className="attendanceSelectedAgenda"><ClipboardCheck size={19}/><div><strong>Siap membuat presensi rutin</strong><span>Tidak perlu agenda. Daftar peserta diambil dari database berdasarkan tanggal dan kategori kegiatan.</span></div></div>}
+        {!requiredAgenda&&<div className="attendanceSelectedAgenda"><ClipboardCheck size={19}/><div><strong>Siap membuat presensi rutin</strong></div></div>}
         <div className="attendanceStartActions"><button className="btn" disabled={saving||(requiredAgenda&&(!selectedAgenda||agendaLoading))} type="submit">{saving?'Membuka daftar…':requiredAgenda&&selectedAgenda?.attendance_event_id?'Buka absensi yang sudah ada':'Lanjut ke daftar peserta'} <span aria-hidden="true">→</span></button></div>
       </section>:<section className="card attendanceActiveHeader"><div><span className="attendanceEyebrow">Pertemuan aktif</span><h2>{form.title}</h2><p>{new Date(form.event_date+'T12:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})} · {audienceLabels[form.audience]}{classes.find(c=>c.id===form.class_id)?.name?' · '+classes.find(c=>c.id===form.class_id)?.name:''}</p></div><a href="/presensi?tab=riwayat" className="btn ghost">Kembali ke Riwayat</a></section>}
 
