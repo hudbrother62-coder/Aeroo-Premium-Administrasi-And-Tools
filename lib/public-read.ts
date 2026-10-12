@@ -33,7 +33,46 @@ export async function publicRecap(req:NextRequest){
  if(error)throw new Error(error.message);
  return data;
 }
-export async function publicTargetOverview(req:NextRequest){const month=req.nextUrl.searchParams.get('month')||jakartaDate().slice(0,7);if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))throw Error('Bulan tidak valid');const end=new Date(Number(month.slice(0,4)),Number(month.slice(5,7))+4,1).toISOString().slice(0,10);const versions=await publicRows('versions');const version=req.nextUrl.searchParams.get('version_id')||versions[0]?.id||'__unversioned__';const targets=(await readRows('targets')).filter((t:any)=>t.target_month>=month+'-01'&&t.target_month<=end&&(version==='__unversioned__'?!t.version_id:t.version_id===version));const [members,progress]=await Promise.all([readRows('members'),readRows('progress')]);const individual=members.filter((p:any)=>p.member_categories.some((c:any)=>['caberawit','muda-mudi'].includes(c.categories.slug))).map((p:any)=>{const ids=targets.filter((t:any)=>(p.member_memberships||[]).some((mm:any)=>(mm.active||mm.valid_to)&&mm.level_id===t.level_id&&(!t.class_id||mm.class_id===t.class_id)&&(!t.target_month||(!mm.valid_from||mm.valid_from.slice(0,7)<=t.target_month.slice(0,7))&&(!mm.valid_to||mm.valid_to.slice(0,7)>=t.target_month.slice(0,7))))).map((t:any)=>t.id);const summary=summarizeProgress(ids,progress.filter((r:any)=>r.member_id===p.id));return {id:p.id,name:p.name,class_name:p.classes?.name,level_name:p.levels?.name,targets:summary.assigned,assessed:summary.assessed,percentage:summary.percentage}});const groups=new Map<string,any[]>();for(const p of individual){const name=p.class_name||p.level_name||'Tanpa kelas';groups.set(name,[...(groups.get(name)||[]),p])}return {version_id:version,targets,individual,classes:[...groups].map(([name,ps])=>({name,count:ps.length,percentage:ps.filter(p=>p.percentage!==null).length?Math.round(ps.filter(p=>p.percentage!==null).reduce((s,p)=>s+p.percentage,0)/ps.filter(p=>p.percentage!==null).length):null}))};}
+export async function publicTargetOverview(req:NextRequest){
+ const month=req.nextUrl.searchParams.get('month')||jakartaDate().slice(0,7);
+ if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))throw Error('Bulan tidak valid');
+ const end=new Date(Number(month.slice(0,4)),Number(month.slice(5,7))+4,1).toISOString().slice(0,10);
+ const versions=await publicRows('versions');
+ const version=req.nextUrl.searchParams.get('version_id')||versions[0]?.id||'__unversioned__';
+ const targets=(await readRows('targets')).filter((t:any)=>{
+   if(version==='__unversioned__'?!!t.version_id:t.version_id!==version)return false;
+   // Target semester yang tidak memiliki tahun/bulan pasti tetap tersedia untuk penilaian individu.
+   // Null bukan tanggal fiktif dan tidak dianggap sebagai target bulan berjalan.
+   if(!t.target_month)return true;
+   return t.target_month>=month+'-01'&&t.target_month<=end;
+ });
+ const [members,progress]=await Promise.all([readRows('members'),readRows('progress')]);
+ const individual=members
+   .filter((p:any)=>p.member_categories?.some((c:any)=>['caberawit','muda-mudi'].includes(c.categories?.slug)))
+   .map((p:any)=>{
+     const ids=targets.filter((t:any)=>(p.member_memberships||[]).some((mm:any)=>
+       (mm.effective??(mm.active||!!mm.valid_to))&&
+       mm.level_id===t.level_id&&
+       (!t.class_id||mm.class_id===t.class_id)&&
+       (!t.target_month||(!mm.valid_from||mm.valid_from.slice(0,7)<=t.target_month.slice(0,7))&&
+         (!mm.valid_to||mm.valid_to.slice(0,7)>=t.target_month.slice(0,7)))
+     )).map((t:any)=>t.id);
+     const summary=summarizeProgress(ids,progress.filter((r:any)=>r.member_id===p.id));
+     return {id:p.id,name:p.name,class_name:p.classes?.name,level_name:p.levels?.name,
+       targets:summary.assigned,assessed:summary.assessed,percentage:summary.percentage};
+   });
+ const groups=new Map<string,any[]>();
+ for(const p of individual){
+   const name=p.class_name||p.level_name||'Tanpa kelas';
+   groups.set(name,[...(groups.get(name)||[]),p]);
+ }
+ return {version_id:version,targets,individual,
+   classes:[...groups].map(([name,ps])=>{
+     const scored=ps.filter(p=>p.percentage!==null);
+     return {name,count:ps.length,percentage:scored.length
+       ?Math.round(scored.reduce((s,p)=>s+p.percentage,0)/scored.length):null};
+   })};
+}
 
 export async function readRows(resource:string){
  const s=await db();const{data:role}=await s.rpc('current_app_role');if(!role||role==='VIEWER')return publicRows(resource);
