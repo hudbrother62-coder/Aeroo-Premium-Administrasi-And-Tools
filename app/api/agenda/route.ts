@@ -2,9 +2,20 @@ import {saveAgenda} from '@/lib/agenda-save';
 import {publicProjection} from '@/lib/public-read';
 import { NextRequest, NextResponse } from 'next/server';import { db } from '@/lib/supabase-server';
 export async function GET(req:NextRequest){
+  const s=await db();
+  // Instansiasi jadwal rutin sesuai rentang yang dibuka, tanpa duplikasi.
+  const requestedFrom=req.nextUrl.searchParams.get('from');
+  const requestedTo=req.nextUrl.searchParams.get('to');
+  if(requestedFrom&&requestedTo&&/^\\d{4}-\\d{2}-\\d{2}/.test(requestedFrom)&&/^\\d{4}-\\d{2}-\\d{2}/.test(requestedTo)){
+    const dateFrom=requestedFrom.slice(0,10),dateTo=requestedTo.slice(0,10);
+    const span=(Date.parse(dateTo+'T00:00:00Z')-Date.parse(dateFrom+'T00:00:00Z'))/86400000;
+    if(Number.isFinite(span)&&span>=0&&span<=62){
+      const {error:routineError}=await s.rpc('ensure_simpul_routine_agenda',{p_from:dateFrom,p_to:dateTo});
+      if(routineError)return NextResponse.json({error:'Agenda rutin belum dapat disiapkan: '+routineError.message},{status:500});
+    }
+  }
   const projection=await publicProjection(req,'agenda');
   if(projection)return projection;
-  const s=await db();
   const from=req.nextUrl.searchParams.get('from'),to=req.nextUrl.searchParams.get('to');
   let q=s.from('agenda').select('*,activity_types(id,name,audience)').order('starts_at');
   if(from)q=q.gte('starts_at',from);
