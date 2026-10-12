@@ -51,7 +51,7 @@ export default function TargetPage(){
   const visibleTargets=filteredTargets.slice((Math.min(page,pages)-1)*pageSize,Math.min(page,pages)*pageSize);
   const semesterTargets=targets.filter(t=>!t.target_month);
   const scheduledInSource=semesterTargets.filter(t=>(t.source_metadata?.planned_month_numbers?.length||0)>0);
-  const plannedMonths=Array.from({length:6},(_,i)=>{const n=i+7;return {
+  const plannedMonths=Array.from({length:5},(_,i)=>{const n=i+7;return {
     n,label:new Date(Date.UTC(2024,n-1,1)).toLocaleDateString('id-ID',{month:'long',timeZone:'UTC'}),
     rows:scheduledInSource.filter(t=>t.source_metadata?.planned_month_numbers?.includes(n))};});
 
@@ -88,7 +88,7 @@ export default function TargetPage(){
       {semesterTargets.length>0&&<> Sebanyak {semesterTargets.length} target berlaku sepanjang semester, tanpa tenggat bulan/tahun yang ditentukan. Tahun ajaran belum tercantum dalam sumber Excel.</>}
     </div>}
     {scheduledInSource.length>0&&<section className="card section">
-      <div className="cardHead"><div><h2>Jadwal hafalan dan materi sesuai Excel</h2><p>Juli–Desember adalah bulan yang tertulis dalam sumber; tahun ajaran belum ditetapkan.</p></div></div>
+      <div className="cardHead"><div><h2>Jadwal hafalan dan materi sesuai Excel</h2><p>Juli–November adalah bulan pada jadwal rincian sumber; tahun ajaran belum ditetapkan.</p></div></div>
       <div className="targetMonths">{plannedMonths.map(m=><div className="targetMonth" key={m.n}>
         <strong>{m.label}</strong><span>{m.rows.length} materi terjadwal</span>
         {m.rows.slice(0,3).map(t=><small key={t.id}>{t.title} · {t.levels?.name}</small>)}
