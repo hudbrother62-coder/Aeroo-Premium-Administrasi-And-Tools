@@ -369,9 +369,27 @@ export default function TargetReview(){
     </>}
 
     {tab==='progress'&&<section>
-      <div className="tr-section-header"><div><h2>Rekap pencapaian pembelajaran</h2><p>Pencapaian diambil dari jurnal penilaian yang terhubung. Belum dinilai bukan berarti bernilai 0%.</p></div>
-        <label className="tr-compact-label">Periode rekap<input type="month" value={progressMonth} onChange={e=>setProgressMonth(e.target.value)}/></label></div>
-      <div className="tr-progress-grid">{(overview?.classes||[]).map(c=><article className="tr-progress-card" key={c.name}><div><strong>{c.name}</strong><span>{c.count} anggota</span></div><b>{c.percentage===null?'Belum dinilai':c.percentage+'%'}</b><div className="tr-progress-bar"><span style={{width:Math.min(100,Math.max(0,c.percentage||0))+'%'}}/></div></article>)}</div>
+      <div className="tr-section-header"><div><h2>Bagaimana perkembangan anak?</h2><p>Angka berasal dari jurnal penilaian yang sudah selesai. Nilai yang belum diisi tidak dihitung sebagai nol.</p></div>
+        <label className="tr-compact-label">Patokan target bulan<input type="month" value={progressMonth} onChange={e=>setProgressMonth(e.target.value)}/></label></div>
+      <div className="tr-progress-explain">
+        <div><strong>Nilai rata-rata</strong><p>Rata-rata dari target dan anak yang <em>sudah dinilai</em>.</p></div>
+        <div><strong>Cakupan penilaian</strong><p>Menunjukkan berapa anak atau target yang sudah diperiksa oleh guru.</p></div>
+        <p className="tr-progress-note">Tampilan ini menggunakan nilai terbaru dari seluruh jurnal selesai, bukan nilai yang khusus dicatat pada bulan pilihan. Bulan digunakan sebagai patokan target yang berlaku.</p>
+      </div>
+      <div className="tr-progress-grid">{(overview?.classes||[]).map(c=>{
+        const people=(overview?.individual||[]).filter(p=>(p.class_name||p.level_name||'Tanpa kelas')===c.name);
+        const withValue=people.filter(p=>p.percentage!==null).length;
+        const assessed=people.reduce((total,p)=>total+p.assessed,0);
+        const assigned=people.reduce((total,p)=>total+p.targets,0);
+        return <article className="tr-progress-card" key={c.name}>
+          <div><strong>{c.name}</strong><span>{c.count} anggota</span></div>
+          <b>{c.percentage===null?'Belum dinilai':c.percentage+'%'} <small>rata-rata</small></b>
+          <div className="tr-progress-bar"><span style={{width:Math.min(100,Math.max(0,c.percentage||0))+'%'}}/></div>
+          <p className="tr-coverage">{withValue}/{people.length||c.count} anak memiliki penilaian · {assessed}/{assigned} target tercatat</p>
+        </article>;
+      })}</div>
+      {!overview?.classes?.length&&<div className="tr-notice">Belum ada rekap kelas untuk versi target ini. Setelah guru mengisi jurnal penilaian, hasil akan muncul di sini.</div>}
+      {canManage&&<p className="tr-progress-report-link"><a href="/laporan">Lihat dan cetak laporan Caberawit <ArrowUpRight size={15}/></a></p>}
       {role!=='VIEWER'&&<div className="tr-panel">
         <div className="tr-panel-title"><div><h3>Progres per individu</h3><p>Target berlaku sesuai jenjang dan keanggotaan aktif.</p></div><label className="tr-search tr-short"><Search size={17}/><input placeholder="Cari nama anggota" value={personQuery} onChange={e=>setPersonQuery(e.target.value)}/></label></div>
         <div className="tr-table-wrap"><table className="tr-table"><thead><tr><th>Anggota</th><th>Jenjang / Kelas</th><th>Dinilai</th><th>Pencapaian dari penilaian</th></tr></thead><tbody>{(overview?.individual||[]).filter(p=>p.name.toLocaleLowerCase('id-ID').includes(personQuery.toLocaleLowerCase('id-ID'))).map(p=><tr key={p.id}><td><strong>{p.name}</strong></td><td>{p.class_name||p.level_name||'-'}</td><td>{p.assessed} / {p.targets} target</td><td>{p.percentage===null?'Belum dinilai':p.percentage+'%'}</td></tr>)}{!(overview?.individual||[]).length&&<tr><td colSpan={4}>Belum ada data progres untuk periode ini.</td></tr>}</tbody></table></div>
