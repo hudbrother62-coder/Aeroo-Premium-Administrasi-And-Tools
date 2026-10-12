@@ -4,6 +4,7 @@ import {FormEvent,useEffect,useMemo,useRef,useState} from 'react';
 import {ClipboardCheck} from 'lucide-react';
 import {audienceLabels,writeScopesForRole,type Audience,type Role} from '@/lib/access';
 import {jakartaDate} from '@/lib/domain';
+import '@/app/presensi/routine.css';
 
 type Activity={id:string;name:string;audience:string};
 type Level={id:string;name:string};
