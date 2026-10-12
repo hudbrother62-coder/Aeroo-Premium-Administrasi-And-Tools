@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import {
   ArrowLeft,ArrowRight,BookOpenCheck,CalendarDays,Check,CheckCircle2,
   ChevronDown,ClipboardCheck,FileText,HelpCircle,Search,UsersRound,X
@@ -68,6 +68,7 @@ export default function EasyJournalPage(){
   const [followUp,setFollowUp]=useState('');
   const [scores,setScores]=useState<Record<string,Assessment>>({});
   const [showHelp,setShowHelp]=useState(false);
+  const targetFromLink=useRef('');
 
   useEffect(()=>{
     let mounted=true;
@@ -92,6 +93,7 @@ export default function EasyJournalPage(){
       setVersions(Array.isArray(unpack(5))?unpack(5):[]);
       setGroup(g=>approved.includes(g)?g:approved.includes('MUDA_MUDI')?'MUDA_MUDI':'CABERAWIT');
       const q=new URLSearchParams(window.location.search);
+      targetFromLink.current=q.get('target_id')||'';
       const requestedGroup=q.get('audience');
       if((requestedGroup==='CABERAWIT'||requestedGroup==='MUDA_MUDI')&&approved.includes(requestedGroup))setGroup(requestedGroup);
       if(q.get('mode')==='score')setMode('INDIVIDUAL');
@@ -134,6 +136,11 @@ export default function EasyJournalPage(){
       (!classId||!t.class_id||t.class_id===classId))
     .sort((a,b)=>(a.source_metadata?.subject||'').localeCompare(b.source_metadata?.subject||'','id')||a.title.localeCompare(b.title,'id')),
     [targets,versionId,group,targetLevel,classId,date]);
+  useEffect(()=>{
+    if(!targetLevel||!targetFromLink.current)return;
+    const linked=availableTargets.find(t=>t.id===targetFromLink.current);
+    if(linked){setSelectedTarget(linked.id);targetFromLink.current='';}
+  },[targetLevel,availableTargets]);
   const chosen=availableTargets.find(t=>t.id===selectedTarget)||null;
   const searchResult=availableTargets.filter(t=>!search.trim()||
     [t.title,t.source_metadata?.subject,t.source_metadata?.aspect,t.source_metadata?.parent]
