@@ -24,7 +24,7 @@ export function unsealSecret(ciphertext:string){
   decipher.setAuthTag(Buffer.from(tag,'base64url'));
   return Buffer.concat([decipher.update(Buffer.from(payload,'base64url')),decipher.final()]).toString('utf8');
 }
-export type StoredGroq={ciphertext?:string;model?:string;updated_at?:string;enabled?:boolean};
+export type StoredGroq={ciphertext?:string|null;model?:string|null;updated_at?:string|null;enabled?:boolean};
 export async function readGroq(s:any):Promise<StoredGroq>{
   const {data,error}=await s.from('app_settings').select('value').eq('key','groq_provider').maybeSingle();
   if(error)throw Error('Pengaturan Groq tidak dapat dibaca: '+error.message);
