@@ -67,3 +67,16 @@
 .journalFieldHint{color:var(--muted);font-size:11px;line-height:1.6;font-weight:500}
 @media(max-width:1100px){.journalFilterBar{grid-template-columns:repeat(2,minmax(0,1fr))}.journalMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}.journalContentGrid{grid-template-columns:1fr}}
 @media(max-width:600px){.journalMainHeader,.journalFormHeader{display:block}.journalHeaderActions{margin-top:14px}.journalHeaderActions .btn{flex:1}.journalMetrics{gap:9px}.journalMetric{padding:13px;min-height:118px}.journalMetric strong{font-size:29px}.journalFilterBar{gap:10px;padding:13px}.journalRecentItem{flex-wrap:wrap;gap:9px}.journalRecentText{flex-basis:calc(100% - 55px)}.journalRecentItem>.badge{margin-left:0}.journalRecentItem>.btn{margin-left:auto}.journalBars{gap:8px;padding-inline:0}.journalBarCol small{font-size:9px}.journalKindPicker{padding:14px;gap:11px}.journalKindNumber,.journalFormStep>span{width:32px;height:32px}.journalEntryForm{padding:14px}}
+
+
+/* Home screen: one obvious next action for teachers */
+.journalEasyEntry{display:flex;align-items:center;justify-content:space-between;gap:20px;border-radius:18px;padding:21px 24px;margin-bottom:21px;background:var(--surface);border:1px solid var(--border)}
+.journalEasyEntryIntro{max-width:325px}.journalEasyEntryIntro strong{display:block;font-size:17px;margin-bottom:7px;color:var(--text)}
+.journalEasyEntryIntro p{font-size:12px;line-height:1.6;color:var(--muted);margin:0}
+.journalEasyEntryActions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;flex:1;max-width:650px}
+.journalEasyEntryActions a{display:flex;gap:12px;align-items:center;min-height:78px;text-decoration:none;background:var(--teal-soft);color:var(--text);border:1px solid var(--border);border-radius:13px;padding:14px}
+.journalEasyEntryActions a>svg:first-child{flex:none;color:var(--teal)}.journalEasyEntryActions a>span{flex:1;min-width:0}.journalEasyEntryActions strong{display:block;font-size:13px;margin-bottom:5px}
+.journalEasyEntryActions small{display:block;font-size:11px;line-height:1.4;color:var(--muted)}.journalEasyEntryActions a>svg:last-child{flex:none;color:var(--teal)}
+.journalEasyEntryActions a:hover{border-color:var(--teal)}
+@media(max-width:850px){.journalEasyEntry{flex-direction:column;align-items:stretch}.journalEasyEntryIntro{max-width:none}.journalEasyEntryActions{max-width:none}}
+@media(max-width:550px){.journalEasyEntry{padding:15px}.journalEasyEntryActions{grid-template-columns:1fr}.journalEasyEntryActions a{min-height:64px;padding:12px}}
