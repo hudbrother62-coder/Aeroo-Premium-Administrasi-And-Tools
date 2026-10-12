@@ -9,6 +9,7 @@ import {
 import {jakartaDate} from '@/lib/domain';
 import {writeScopesForRole,type Audience} from '@/lib/access';
 import {teacherGuidance} from '@/app/target/targetGuidance';
+import {eligibleForTarget,getAttendanceId,recordedAssessments} from './logic';
 import './cepat.css';
 
 type Group='CABERAWIT'|'MUDA_MUDI';
@@ -36,13 +37,7 @@ const scoreOptions=[
   {value:'75',label:'75% — Hampir mandiri'},
   {value:'100',label:'100% — Sudah bisa'},
 ];
-function getAttendanceId(p:Attendee){return p.participant_key||p.member_id||'';}
 function monthsMatch(target:TargetRow,date:string){return !target.target_month||target.target_month.slice(0,7)===date.slice(0,7);}
-function eligibleForTarget(p:Attendee,t:TargetRow){
-  return p.status==='H'&&Boolean(getAttendanceId(p))&&
-    (!t.level_id||t.level_id===p.level_id_snapshot)&&
-    (!t.class_id||t.class_id===p.class_id_snapshot);
-}
 function safeDateLabel(date:string){if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return date;return new Date(date+'T12:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});}
 
 export default function EasyJournalPage(){
@@ -145,7 +140,7 @@ export default function EasyJournalPage(){
       .some(p=>(p||'').toLocaleLowerCase('id-ID').includes(search.trim().toLocaleLowerCase('id-ID')))).slice(0,80);
   const present=(event?.attendance_records||[]).filter(p=>p.status==='H'&&Boolean(getAttendanceId(p)));
   const assessable=chosen?present.filter(p=>eligibleForTarget(p,chosen)):[];
-  const savedScores=assessable.filter(p=>scores[getAttendanceId(p)]?.value!==''&&scores[getAttendanceId(p)]?.value!==undefined);
+  const savedRows=chosen?recordedAssessments(assessable,scores,chosen.id):[];
   const hints=chosen?teacherGuidance({title:chosen.title,subject:chosen.source_metadata?.subject,parent:chosen.source_metadata?.parent,level:chosen.levels?.name}):null;
 
   function resetGroup(next:Group){setGroup(next);setEventId('');setEvent(null);setClassId('');setLevelId('');setSelectedTarget('');setScores({});setError('')}
@@ -168,18 +163,13 @@ export default function EasyJournalPage(){
   async function save(){
     if(!chosen||!canWrite||saving)return;
     if(mode==='INDIVIDUAL'&&!event){setError('Pertemuan presensi wajib dipilih.');return;}
-    if(mode==='INDIVIDUAL'&&!savedScores.length){setError('Pilih nilai setidaknya untuk satu anak, atau gunakan “Catat kegiatan” bila belum ada penilaian.');return;}
+    if(mode==='INDIVIDUAL'&&!savedRows.length){setError('Pilih nilai setidaknya untuk satu anak, atau gunakan “Catat kegiatan” bila belum ada penilaian.');return;}
     setSaving(true);setError('');
     try{
       const kind=group+'_'+mode;
-      const count=savedScores.length;
+      const count=savedRows.length;
       const title=(mode==='CLASS'?'Pembelajaran: ':'Penilaian: ')+chosen.title;
-      const progress=mode==='INDIVIDUAL'?savedScores.map(p=>({
-        member_id:getAttendanceId(p),target_id:chosen.id,
-        progress_value:Number(scores[getAttendanceId(p)].value),
-        progress_note:scores[getAttendanceId(p)]?.note||'',
-        follow_up:'',source:'JOURNAL'
-      })):[];
+      const progress=mode==='INDIVIDUAL'?savedRows:[];
       const body={
         journal_kind:kind,journal_date:date,title,activity_type_id:event?.activity_type_id||null,
         class_id:classId||null,member_id:null,event_id:event?.id||null,agenda_id:event?.agenda_id||null,
@@ -301,7 +291,7 @@ export default function EasyJournalPage(){
         <button type="button" onClick={()=>setStep(2)}>Ubah</button>
       </div>
       {mode==='INDIVIDUAL'&&<>
-        <div className="ej-score-heading"><h3>Peserta hadir yang sesuai target</h3><span>{savedScores.length} dari {assessable.length} dinilai</span></div>
+        <div className="ej-score-heading"><h3>Peserta hadir yang sesuai target</h3><span>{savedRows.length} dari {assessable.length} dinilai</span></div>
         <div className="ej-score-list">{assessable.map((p,i)=>{
           const id=getAttendanceId(p),answer=scores[id]||{value:'',note:''};
           return <div className="ej-score-row" key={id}>
@@ -340,7 +330,7 @@ export default function EasyJournalPage(){
       <p>Semua data ada dalam Riwayat Jurnal. {mode==='INDIVIDUAL'?'Nilai yang diisi ikut masuk sebagai sumber progres tiap anak.':'Kegiatan kelas tersimpan tanpa memberi nilai otomatis kepada anak.'}</p>
       <div className="ej-success-actions"><Link className="ej-primary" href={'/jurnal/buat?journal_id='+encodeURIComponent(successId)}>Lihat jurnal <ArrowRight size={17}/></Link>
         <Link className="ej-back-btn" href="/jurnal/riwayat">Riwayat jurnal</Link>
-        <Link className="ej-back-btn" href="/target">Lihat progres</Link></div>
+        <Link className="ej-back-btn" href="/target?tab=progress">Lihat progres</Link></div>
       <button type="button" className="ej-again" onClick={()=>{setStep(1);setSuccessId('');setNotes('');setFollowUp('');setScores({});setSelectedTarget('');setSearch('');setError('')}}>+ Isi jurnal lainnya</button>
     </section>}
     <div className="ej-footer-tip"><HelpCircle size={15}/> Butuh kolom lengkap atau mengedit jurnal lama? Gunakan <Link href="/jurnal/buat">formulir lengkap</Link>. <button type="button" onClick={()=>setShowHelp(v=>!v)}>{showHelp?'Tutup bantuan':'Cara menggunakan'}</button></div>
