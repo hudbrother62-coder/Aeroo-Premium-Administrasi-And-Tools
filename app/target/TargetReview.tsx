@@ -7,6 +7,7 @@ import {
   CheckCircle2,ArrowUpRight,Copy,Plus,UploadCloud,GraduationCap,FolderTree
 } from 'lucide-react';
 import './review.css';
+import {teacherGuidance,tidySourceNumber} from './targetGuidance';
 
 type Source={
   aspect?:string|null;subject?:string|null;parent?:string|null;program?:string|null;
@@ -28,6 +29,7 @@ type Overview={
 type GroupRows=Record<string,Array<[number,string,string]>>;
 type MonthRows=Record<string,Record<string,number[]>>;
 type Tab='catalog'|'structure'|'progress'|'manage';
+type HeadingDetail={title:string;subject:string;level:string;row:number;months:number[];children:Target[]};
 type Level={id:string;name:string};
 type ClassItem={id:string;name:string;level_id?:string|null};
 
@@ -47,7 +49,8 @@ const targetSummary=(t:Target)=>[
   'Aspek: '+clean(t.source_metadata?.aspect||'-'),
   'Mata pelajaran: '+clean(t.source_metadata?.subject||'-'),
   'Materi induk: '+clean(t.source_metadata?.parent||'-'),
-  'Uraian: '+clean(t.description||'-'),
+  'Uraian asli: '+clean(t.description||'-'),
+  'Panduan guru (contoh, bukan dokumen sumber): '+teacherGuidance({title:t.title,subject:t.source_metadata?.subject,parent:t.source_metadata?.parent,level:t.levels?.name}).focus,
   'Jadwal sumber: '+(uniqueMonths(t).map(monthName).join(', ')||'Sepanjang semester'),
   'Sumber: '+clean(t.source_metadata?.source_file||'-'),
   'Sheet/baris: '+clean(t.source_metadata?.source_sheet||'-')+' / '+clean(t.source_metadata?.source_row||'-')
@@ -69,6 +72,7 @@ export default function TargetReview(){
   const [month,setMonth]=useState('');
   const [page,setPage]=useState(1);
   const [detail,setDetail]=useState<Target|null>(null);
+  const [headingDetail,setHeadingDetail]=useState<HeadingDetail|null>(null);
   const [copied,setCopied]=useState(false);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
@@ -111,7 +115,7 @@ export default function TargetReview(){
   useEffect(()=>{
     if(!selected){setTargets([]);setGroups({});setGroupMonths({});return;}
     const controller=new AbortController();
-    setLoading(true);setError('');setDetail(null);
+    setLoading(true);setError('');setDetail(null);setHeadingDetail(null);
     fetch('/api/targets/catalog?version_id='+encodeURIComponent(selected),{signal:controller.signal,cache:'no-store'})
       .then(async response=>{
         const data=await response.json();
@@ -140,13 +144,22 @@ export default function TargetReview(){
   },[tab,selected,progressMonth]);
 
   useEffect(()=>{
-    if(!detail)return;
-    const close=(e:KeyboardEvent)=>{if(e.key==='Escape')setDetail(null);};
+    if(!detail&&!headingDetail)return;
+    const close=(e:KeyboardEvent)=>{
+      if(e.key==='Escape'){setDetail(null);setHeadingDetail(null);}
+    };
     window.addEventListener('keydown',close);
     return()=>window.removeEventListener('keydown',close);
-  },[detail]);
+  },[detail,headingDetail]);
 
   const current=versions.find(v=>v.id===selected);
+  const detailGuidance=detail?teacherGuidance({
+    title:detail.title,subject:detail.source_metadata?.subject,
+    parent:detail.source_metadata?.parent,level:detail.levels?.name
+  }):null;
+  const headingGuidance=headingDetail?teacherGuidance({
+    title:headingDetail.title,subject:headingDetail.subject,level:headingDetail.level
+  }):null;
   const levelNames=useMemo(()=>[...new Set(targets.map(t=>t.levels?.name||'').filter(Boolean))]
     .sort((a,b)=>levelRank(a)-levelRank(b)||a.localeCompare(b,'id')),[targets]);
   const subjects=useMemo(()=>[...new Set(targets.map(t=>clean(t.source_metadata?.subject)).filter(Boolean))]
@@ -179,7 +192,18 @@ export default function TargetReview(){
     return map;
   },[targets]);
 
-  function openTarget(t:Target){setCopied(false);setDetail(t);}
+  function openTarget(t:Target){setCopied(false);setHeadingDetail(null);setDetail(t);}
+  function openHeading(levelName:string,subject:string,title:string,row:number,nextRow:number,months:number[]){
+    const children=targets.filter(t=>
+      t.levels?.name===levelName &&
+      t.source_metadata?.subject===subject &&
+      t.source_metadata?.source_kind==='curriculum_item' &&
+      Number(t.source_metadata?.source_row)>row &&
+      Number(t.source_metadata?.source_row)<nextRow
+    ).sort((a,b)=>Number(a.source_metadata?.source_row||0)-Number(b.source_metadata?.source_row||0));
+    setDetail(null);
+    setHeadingDetail({level:levelName,title,subject,row,months,children});
+  }
   function resetFilter(){setQuery('');setLevel('');setSubject('');setMonth('');setPage(1);}
   async function copyDetail(){
     if(!detail)return;
@@ -272,12 +296,16 @@ export default function TargetReview(){
     {tab==='catalog'&&<>
       <div className="tr-section-header"><div><h2>Jelajahi semua target</h2><p>Buka kartu untuk memeriksa deskripsi, asal dokumen, dan jadwal lengkapnya.</p></div><div className="tr-result-count">{filtered.length.toLocaleString('id-ID')} materi</div></div>
       {loading?<div className="tr-empty"><div className="tr-loader"/><strong>Memuat katalog pembelajaran…</strong></div>:
-      visible.length>0?<div className="tr-grid">{visible.map(t=>{
+      visible.length>0?<div className="tr-grid">{visible.map((t,index)=>{
         const source=t.source_metadata;
         const schedule=uniqueMonths(t);
         return <button className="tr-target" key={t.id} type="button" onClick={()=>openTarget(t)}>
-          <div className="tr-item-top"><span className="tr-level-tag">{t.levels?.name==='Remaja'?'Remaja / Muda-Mudi':t.levels?.name||'Tanpa jenjang'}</span><span className="tr-item-code">{t.code||'Target'}</span></div>
+          <div className="tr-item-top"><span className="tr-level-tag">{t.levels?.name==='Remaja'?'Remaja / Muda-Mudi':t.levels?.name||'Tanpa jenjang'}</span><span className="tr-item-code">No. {(Math.min(page,pages)-1)*pageSize+index+1}</span></div>
           <h3>{t.title}</h3>
+          {(t.title.length<65||!t.description||t.description===source?.parent)&&
+            <p className="tr-guidance-preview">{teacherGuidance({
+              title:t.title,subject:source?.subject,parent:source?.parent,level:t.levels?.name
+            }).focus}</p>}
           <div className="tr-breadcrumb">{[source?.aspect,source?.subject,source?.parent].filter(Boolean).join(' / ')||'Materi pembelajaran'}</div>
           <div className="tr-item-bottom"><span><CalendarDays size={14}/>{schedule.length?schedule.map(monthName).join(', '):'Sepanjang semester'}</span><span className="tr-open">Lihat detail <ChevronRight size={17}/></span></div>
         </button>;
@@ -286,20 +314,29 @@ export default function TargetReview(){
     </>}
 
     {tab==='structure'&&<>
-      <div className="tr-section-header"><div><h2>Struktur kurikulum dari dokumen asli</h2><p>Judul induk dan materi tersusun per jenjang, lengkap dengan nomor baris sumbernya. Judul induk tidak otomatis dihitung sebagai target penilaian.</p></div></div>
+      <div className="tr-section-header"><div><h2>Struktur kurikulum dari dokumen asli</h2><p>Nomor tampil berurutan dalam setiap jenjang. Judul induk bisa dibuka untuk membaca panduan guru dan contoh rincian dari Excel; nomor baris sumber disimpan di detail.</p></div></div>
       <div className="tr-structure">
         {structure.map(g=>{
-          const rows=g.rows.filter(([r,subject,title])=>!query.trim()||[title,subject,String(r)].join(' ').toLocaleLowerCase('id-ID').includes(query.toLocaleLowerCase('id-ID')));
+          const rows=g.rows
+            .filter(([r,subject,title])=>!query.trim()||[title,subject,String(r)].join(' ').toLocaleLowerCase('id-ID').includes(query.toLocaleLowerCase('id-ID')))
+            .sort((a,b)=>Number(a[0])-Number(b[0]));
+          const allRows=[...g.rows].sort((a,b)=>Number(a[0])-Number(b[0]));
           if(!rows.length)return null;
           return <details key={g.name} className="tr-structure-group" open={Boolean(level||query)}>
             <summary><span><GraduationCap size={19}/><strong>{g.display==='Remaja'?'Remaja (Muda-Mudi)':g.display}</strong><small>{rows.length} bagian</small></span><ChevronRight size={19}/></summary>
-            <div className="tr-structure-rows">{rows.map(([row,subject,title])=>{
+            <div className="tr-structure-rows">{rows.map(([row,subject,title],index)=>{
               const related=targetByRow.get(g.display+':'+row);
               const schedule=groupMonths[g.name]?.[String(row)]||[];
+              const sourceIndex=allRows.findIndex(([n])=>Number(n)===Number(row));
+              const nextRow=sourceIndex<allRows.length-1?Number(allRows[sourceIndex+1][0]):Number.POSITIVE_INFINITY;
+              const guidance=teacherGuidance({title,subject,level:g.display});
               return <div key={g.name+'-'+row} className="tr-structure-row">
-                <span className="tr-row-number">{String(row).padStart(2,'0')}</span>
-                <div><strong>{title}</strong><p>{subject}{schedule.length?' · Jadwal: '+[...schedule].sort((a,b)=>a-b).map(monthName).join(', '):''}</p></div>
-                {related?<button type="button" onClick={()=>openTarget(related)}>Detail <ArrowUpRight size={15}/></button>:<span className="tr-parent-label">Judul induk</span>}
+                <span className="tr-row-number" aria-label={'Urutan '+(index+1)}>{index+1}</span>
+                <div><strong>{tidySourceNumber(title)}</strong><p>{subject}{schedule.length?' · Jadwal: '+[...schedule].sort((a,b)=>a-b).map(monthName).join(', '):''}</p>
+                  <p className="tr-structure-guide">{guidance.focus}</p></div>
+                <button type="button" onClick={()=>related?openTarget(related):openHeading(g.display,subject,title,Number(row),nextRow,schedule)}>
+                  {related?'Detail target':'Panduan guru'} <ArrowUpRight size={15}/>
+                </button>
               </div>;
             })}</div>
           </details>;
@@ -344,13 +381,54 @@ export default function TargetReview(){
       </form>
     </section>}
 
+
+    {headingDetail&&<div className="tr-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setHeadingDetail(null)}}>
+      <section className="tr-modal" role="dialog" aria-modal="true" aria-labelledby="tr-heading-title">
+        <div className="tr-modal-head"><span><FolderTree size={17}/> PANDUAN MATERI INDUK</span>
+          <button type="button" aria-label="Tutup panduan" onClick={()=>setHeadingDetail(null)}><X size={21}/></button></div>
+        <div className="tr-modal-body">
+          <div className="tr-detail-tags"><span>{headingDetail.level==='Remaja'?'Remaja / Muda-Mudi':headingDetail.level}</span><span>{headingDetail.subject}</span><span>Materi induk</span></div>
+          <h2 id="tr-heading-title">{tidySourceNumber(headingDetail.title)}</h2>
+          <div className="tr-teacher-guide">
+            <h3><BookMarked size={18}/> Panduan singkat untuk guru</h3>
+            <span className="tr-guide-disclaimer">Contoh arahan mengajar, bukan materi tambahan resmi dari Excel</span>
+            <div className="tr-guide-line"><strong>Gambaran materi</strong><p>{headingGuidance?.focus}</p></div>
+            <div className="tr-guide-line"><strong>Contoh kegiatan</strong><p>{headingGuidance?.activity}</p></div>
+            <div className="tr-guide-line"><strong>Hal yang diamati</strong><p>{headingGuidance?.evidence}</p></div>
+          </div>
+          {headingDetail.children.length>0&&<div className="tr-detail-section">
+            <h3><Layers3 size={17}/> Rincian target dari dokumen asli</h3>
+            <p>Pilih materi untuk melihat detail dan panduan penilaiannya.</p>
+            <div className="tr-child-list">{headingDetail.children.map((t,index)=><button type="button" key={t.id} onClick={()=>openTarget(t)}>
+              <span>{index+1}.</span><strong>{tidySourceNumber(t.title)}</strong><ArrowUpRight size={16}/>
+            </button>)}</div>
+          </div>}
+          <div className="tr-detail-section"><h3><CalendarDays size={17}/> Jadwal sumber</h3>
+            <div className="tr-month-chips">{headingDetail.months.length?headingDetail.months.map(n=><span key={n}>{monthName(n)}</span>):<span>Tidak ditentukan per bulan</span>}</div>
+          </div>
+          <div className="tr-detail-section"><h3><FileText size={17}/> Referensi</h3>
+            <p>Judul induk asli dari Excel, baris {headingDetail.row}. Nomor baris sumber ini berbeda dengan nomor urut tampilan.</p>
+          </div>
+        </div>
+        <div className="tr-modal-footer"><button type="button" className="tr-close-btn" onClick={()=>setHeadingDetail(null)}>Kembali ke struktur</button></div>
+      </section>
+    </div>}
     {detail&&<div className="tr-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setDetail(null)}}>
       <section className="tr-modal" role="dialog" aria-modal="true" aria-labelledby="tr-detail-title">
         <div className="tr-modal-head"><span><BookOpen size={17}/> DETAIL TARGET PEMBELAJARAN</span><button type="button" aria-label="Tutup detail" onClick={()=>setDetail(null)}><X size={21}/></button></div>
         <div className="tr-modal-body">
           <div className="tr-detail-tags"><span>{detail.levels?.name==='Remaja'?'Remaja / Muda-Mudi':detail.levels?.name||'Semua jenjang'}</span><span>Semester {detail.source_metadata?.semester||1}</span><span>{detail.code||'Target pembelajaran'}</span></div>
           <h2 id="tr-detail-title">{detail.title}</h2>
-          <p className="tr-detail-lead">{detail.description||'Target pembelajaran sesuai dokumen kurikulum yang diunggah.'}</p>
+          {detail.description&&detail.description!==detail.source_metadata?.parent&&
+            !detail.description.startsWith('Rincian program bulanan asli:')&&
+            <p className="tr-detail-lead">{detail.description}</p>}
+          <div className="tr-teacher-guide">
+            <h3><BookMarked size={18}/> Panduan singkat untuk guru</h3>
+            <span className="tr-guide-disclaimer">Contoh penerapan dan pengamatan, bukan kutipan atau perubahan target Excel</span>
+            <div className="tr-guide-line"><strong>Gambaran materi</strong><p>{detailGuidance?.focus}</p></div>
+            <div className="tr-guide-line"><strong>Contoh kegiatan</strong><p>{detailGuidance?.activity}</p></div>
+            <div className="tr-guide-line"><strong>Indikator pengamatan</strong><p>{detailGuidance?.evidence}</p></div>
+          </div>
           <div className="tr-detail-section"><h3><Layers3 size={17}/> Posisi dalam kurikulum</h3><dl>
             <div><dt>Aspek</dt><dd>{detail.source_metadata?.aspect||'-'}</dd></div>
             <div><dt>Mata pelajaran</dt><dd>{detail.source_metadata?.subject||'-'}</dd></div>
