@@ -301,7 +301,7 @@ export default function TargetReview(){
         const schedule=uniqueMonths(t);
         return <button className="tr-target" key={t.id} type="button" onClick={()=>openTarget(t)}>
           <div className="tr-item-top"><span className="tr-level-tag">{t.levels?.name==='Remaja'?'Remaja / Muda-Mudi':t.levels?.name||'Tanpa jenjang'}</span><span className="tr-item-code">No. {(Math.min(page,pages)-1)*pageSize+index+1}</span></div>
-          <h3>{t.title}</h3>
+          <h3>{tidySourceNumber(t.title)}</h3>
           {(t.title.length<65||!t.description||t.description===source?.parent)&&
             <p className="tr-guidance-preview">{teacherGuidance({
               title:t.title,subject:source?.subject,parent:source?.parent,level:t.levels?.name
@@ -407,7 +407,7 @@ export default function TargetReview(){
             <div className="tr-month-chips">{headingDetail.months.length?headingDetail.months.map(n=><span key={n}>{monthName(n)}</span>):<span>Tidak ditentukan per bulan</span>}</div>
           </div>
           <div className="tr-detail-section"><h3><FileText size={17}/> Referensi</h3>
-            <p>Judul induk asli dari Excel, baris {headingDetail.row}. Nomor baris sumber ini berbeda dengan nomor urut tampilan.</p>
+            <p>Judul asli: {headingDetail.title}. Baris Excel: {headingDetail.row}. Nomor sumber ini berbeda dengan urutan yang ditampilkan.</p>
           </div>
         </div>
         <div className="tr-modal-footer"><button type="button" className="tr-close-btn" onClick={()=>setHeadingDetail(null)}>Kembali ke struktur</button></div>
@@ -418,7 +418,7 @@ export default function TargetReview(){
         <div className="tr-modal-head"><span><BookOpen size={17}/> DETAIL TARGET PEMBELAJARAN</span><button type="button" aria-label="Tutup detail" onClick={()=>setDetail(null)}><X size={21}/></button></div>
         <div className="tr-modal-body">
           <div className="tr-detail-tags"><span>{detail.levels?.name==='Remaja'?'Remaja / Muda-Mudi':detail.levels?.name||'Semua jenjang'}</span><span>Semester {detail.source_metadata?.semester||1}</span><span>{detail.code||'Target pembelajaran'}</span></div>
-          <h2 id="tr-detail-title">{detail.title}</h2>
+          <h2 id="tr-detail-title">{tidySourceNumber(detail.title)}</h2>
           {detail.description&&detail.description!==detail.source_metadata?.parent&&
             !detail.description.startsWith('Rincian program bulanan asli:')&&
             <p className="tr-detail-lead">{detail.description}</p>}
@@ -442,6 +442,7 @@ export default function TargetReview(){
             <p>Jadwal mengikuti dokumen sumber. Tahun ajaran tidak dipaksakan jika belum tercantum pada file.</p>
           </div>
           <div className="tr-detail-section"><h3><FileText size={17}/> Referensi sumber</h3><dl>
+            <div><dt>Judul asli pada sumber</dt><dd>{detail.title}</dd></div>
             <div><dt>File Excel</dt><dd>{detail.source_metadata?.source_file||'Input manual'}</dd></div>
             <div><dt>Sheet</dt><dd>{detail.source_metadata?.source_sheet||'-'}</dd></div>
             <div><dt>Baris</dt><dd>{detail.source_metadata?.source_row??'-'}</dd></div>
