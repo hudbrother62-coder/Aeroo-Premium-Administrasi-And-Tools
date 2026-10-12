@@ -39,7 +39,7 @@ export async function GET(req:NextRequest){
   if(error)return NextResponse.json({error:error.message},{status:400});
 
   let rows=data??[];
-  const slug=segmentSlug[segment];
+  const slug=segment==='KELOMPOK'?undefined:segmentSlug[segment];
 
 
   const office=req.nextUrl.searchParams.get('office');
