@@ -19,7 +19,7 @@ const nav=[
   {href:'/database',label:'Database',icon:Database,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
   {href:'/presensi',label:'Presensi',icon:ClipboardCheck,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
   {href:'/jurnal',label:'Jurnal',icon:BookOpen,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
-  {href:'/target',label:'Target & Progres',icon:Target,roles:['ADMIN','DEWAN_GURU','VIEWER'] as Role[],publicRead:true},
+  {href:'/target',label:'Target & Progres',icon:Target,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
   {href:'/agenda',label:'Agenda',icon:CalendarDays,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
   {href:'/rekap',label:'Rekap',icon:ChartNoAxesCombined,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
   {href:'/sarpras',label:'Sarana & Prasarana',icon:Warehouse,roles:['ADMIN','DEWAN_GURU','KELOMPOK'] as Role[]},
@@ -90,6 +90,8 @@ export default function AppShell({children}:{children:React.ReactNode}){
   useEffect(()=>{setDrawer(false);setMoreOpen(false);setQuickOpen(false)},[path]);
   useEffect(()=>{const close=()=>{setDrawer(false);setMoreOpen(false);setQuickOpen(false)};window.addEventListener('simpul:close-overlays',close);return()=>window.removeEventListener('simpul:close-overlays',close)},[]);
   const visible=useMemo(()=>user?nav.filter(x=>{
+    // The curriculum catalogue is read-only for everyone, independent of editing privileges.
+    if(x.href==='/target')return true;
     if(['/tim-akses','/audit','/pengaturan'].includes(x.href))return user.role==='ADMIN';
     const permission=navPermission[x.href];
     if(permission&&user.permissions&&permission in user.permissions)return user.permissions[permission]===true;
