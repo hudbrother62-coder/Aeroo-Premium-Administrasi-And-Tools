@@ -89,6 +89,12 @@ export default function TargetReview(){
   const [form,setForm]=useState({level_id:'',class_id:'',code:'',title:'',description:'',target_value:'',target_unit:'',target_month:''});
 
   useEffect(()=>{
+    // Deep links from the simple journal flow open the result directly.
+    const requested=new URLSearchParams(window.location.search).get('tab');
+    if(requested==='progress'||requested==='structure')setTab(requested);
+  },[]);
+
+  useEffect(()=>{
     let live=true;
     const json=async(url:string)=>{
       const response=await fetch(url,{cache:'no-store'});
