@@ -44,7 +44,7 @@ export async function POST(_:Request,{params}:{params:Promise<{id:string}>}){
       target_id:String(x.target_id),reason:String(x.reason||'').slice(0,300),
       quote:String(x.quote||'').slice(0,200),
       relation:['DIAJARKAN','INDIKASI','BELUM_TERBUKTI'].includes(x.relation)?x.relation:'INDIKASI'
-    })).filter(x=>x.reason&&x.quote&&story.includes(x.quote));
+    })).filter((x:Match)=>x.reason&&x.quote&&story.includes(x.quote));
     const analysis={
       status:'SUGGESTION_ONLY',provider:'groq',model,created_at:new Date().toISOString(),
       summary:String(output?.summary||'Tidak ada kesimpulan yang cukup kuat dari isi jurnal.').slice(0,900),
