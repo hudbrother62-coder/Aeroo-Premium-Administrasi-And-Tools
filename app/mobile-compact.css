@@ -1,0 +1,17 @@
+/* Simpul mobile-first: prioritize actions and data over instructional copy. */
+@media (max-width:767px) {
+ .pageHeader p,.cardHead>div>p,.attendanceStartIntro p,
+ .journalKindHint,.journalFieldHint,.journalChartFooter,
+ .journalIntegration,.journalStep,.journalStartCard>p {display:none}
+ .pageHeader{gap:14px!important;align-items:flex-start}
+ .pageHeader h1{line-height:1.2}
+ .pageHeader>.btn,.pageHeader>div:last-child>.btn{min-height:42px}
+ .formGrid{row-gap:16px!important;column-gap:12px!important}
+ .formGrid>label{min-width:0;line-height:1.5}
+ .card{min-width:0}
+ .attendancePanel,.journalFilterBar{min-width:0}
+ .journalFilterBar>label{min-width:0}
+ .formGrid input,.formGrid select,.formGrid textarea{max-width:100%}
+ .list>.item{padding-block:14px}
+ .attendanceDay{min-width:0}
+}

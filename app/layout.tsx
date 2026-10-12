@@ -1,5 +1,6 @@
 import './globals.css';
 import './navigation.css';
+import './mobile-compact.css';
 import type {Metadata} from 'next';
 import AppShell from '@/components/AppShell';
 
