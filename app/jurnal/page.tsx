@@ -6,7 +6,7 @@ import {BookOpenText,ArrowRight,ClipboardList,Target,CheckCheck,UsersRound,Calen
 import {jakartaDate} from '@/lib/domain';
 import {readScopesForRole,writeScopesForRole,type Audience} from '@/lib/access';
 
-type Journal={id:string;class_id?:string;journal_date:string;journal_kind:string;title:string;state?:string;follow_up?:string;classes?:{id?:string;name?:string;level_id?:string};assessment?:{class_assessment?:{level_id?:string}};journal_progress?:Array<{member_id?:string;participant_key?:string;target_id?:string;progress_value?:number|null}>};
+type Journal={id:string;class_id?:string;journal_date:string;journal_kind:string;title:string;state?:string;follow_up?:string;classes?:{id?:string;name?:string;level_id?:string};assessment?:{class_assessment?:{level_id?:string};ai_target_analysis?:{matches?:Array<{target_id:string;relation?:string}>}};journal_progress?:Array<{member_id?:string;participant_key?:string;target_id?:string;progress_value?:number|null}>};
 type Level={id:string;name:string};
 type ClassRow={id:string;name:string;level_id?:string;audience:string};
 const kindLabels:Record<string,string>={PENGKAJIAN:'Pengkajian',KELOMPOK:'Kelompok',IBU_IBU:'Ibu-Ibu',PENGURUS:'Musyawarah',CABERAWIT_CLASS:'Caberawit Kelas',MUDA_MUDI_CLASS:'Muda-Mudi Kelas'};
@@ -70,7 +70,7 @@ export default function JournalDashboard(){
   const done=filtered.filter(j=>j.state==='COMPLETED').length;
   const drafts=filtered.filter(j=>j.state==='DRAFT'||!j.state).length;
   const observed=new Set(filtered.flatMap(j=>(j.journal_progress||[]).map(p=>p.participant_key||p.member_id).filter((v):v is string=>Boolean(v)))).size;
-  const targetLinks=filtered.reduce((n,j)=>n+(j.journal_progress||[]).filter(p=>!!p.target_id).length,0);
+  const targetLinks=filtered.reduce((n,j)=>n+(j.assessment?.ai_target_analysis?.matches||[]).filter(m=>m.relation==='DIAJARKAN').length,0);
   const weeks=Array.from({length:Math.ceil(new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),0).getDate()/7)},(_,i)=>{
     const count=filtered.filter(j=>Math.floor((Number(j.journal_date.slice(8,10))-1)/7)===i).length;
     return{label:`Pekan ${i+1}`,count};
@@ -108,7 +108,7 @@ export default function JournalDashboard(){
       <article className="card journalMetric"><span><BookOpenText size={17}/> Total jurnal</span><strong>{loading?'…':filtered.length}</strong><small>{monthLabel(month)}</small></article>
       <article className="card journalMetric"><span><CheckCheck size={17}/> Jurnal selesai</span><strong>{loading?'…':done}</strong><small>{loading?'Memuat…':filtered.length?Math.round(done/filtered.length*100)+'% dari jurnal':'Belum ada data'}</small></article>
       <article className="card journalMetric"><span><ClipboardList size={17}/> Perlu dilengkapi</span><strong>{loading?'…':drafts}</strong><small>Jurnal berstatus draf</small></article>
-      <article className="card journalMetric"><span><UsersRound size={17}/> Jurnal terhubung target</span><strong>{loading?'…':targetLinks}</strong><small>{targetLinks} penilaian terhubung target</small></article>
+      <article className="card journalMetric"><span><UsersRound size={17}/> Jurnal terhubung target</span><strong>{loading?'…':targetLinks}</strong><small>{targetLinks} target terkonfirmasi AI</small></article>
     </div>
 
     <div className="journalContentGrid section">
