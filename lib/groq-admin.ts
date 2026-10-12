@@ -28,7 +28,10 @@ export type StoredGroq={ciphertext?:string|null;model?:string|null;updated_at?:s
 export async function readGroq(s:any):Promise<StoredGroq>{
   const {data,error}=await s.from('app_settings').select('value').eq('key','groq_provider').maybeSingle();
   if(error)throw Error('Pengaturan Groq tidak dapat dibaca: '+error.message);
-  return data?.value||{};
+  if(data?.value)return data.value;
+  const {data:scoped,error:scopeError}=await s.rpc('get_groq_provider_config');
+  if(scopeError)throw Error('Konfigurasi Groq untuk jurnal tidak dapat dibaca.');
+  return scoped||{};
 }
 export function publicGroqState(item:StoredGroq){
   return {configured:Boolean(item.ciphertext),enabled:item.enabled!==false,model:validModel(item.model||'')?item.model:DEFAULT_GROQ_MODEL,updated_at:item.updated_at||null};
