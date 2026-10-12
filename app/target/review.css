@@ -138,3 +138,25 @@ html[data-theme="dark"] .tr-form-actions button{color:var(--bg)}
 }
 @media(max-width:420px){.tr-stat{align-items:flex-start}.tr-hero-meta{gap:5px}.tr-item-top{align-items:flex-start}.tr-item-code{max-width:48%}.tr-filter-selects{flex-direction:column}.tr-filter-selects label{min-height:44px}.tr-section-header{flex-wrap:wrap}.tr-pagination{align-items:flex-start;flex-direction:column}.tr-pagination>div{width:100%}.tr-pagination button{flex:1;justify-content:center}.tr-detail-section dl>div{grid-template-columns:minmax(86px,31%) 1fr}}
 @media(prefers-reduced-motion:reduce){.tr-target,.tr-structure-group>summary>svg{transition:none}.tr-loader{animation:none}}
+
+
+/* Teacher guidance: sourced title remains distinct from pedagogical suggestions. */
+.tr-guidance-preview{font-size:11px;line-height:1.55;color:var(--muted);margin:2px 0 10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tr-structure-row>div .tr-structure-guide{font-size:11px;line-height:1.55;margin-top:7px;color:var(--muted);max-width:740px}
+.tr-structure-row>div{padding-right:3px}
+.tr-row-number{font-variant-numeric:tabular-nums;min-width:34px;width:auto;padding:0 7px;color:var(--tr-accent-strong);background:var(--tr-tint)}
+.tr-structure-row button{white-space:nowrap}
+.tr-teacher-guide{padding:17px 19px;border:1px solid color-mix(in srgb,var(--tr-accent) 25%,var(--tr-stroke));border-radius:13px;background:color-mix(in srgb,var(--tr-tint) 45%,var(--surface));margin:17px 0}
+.tr-teacher-guide>h3{display:flex;gap:9px;align-items:center;font-size:14px;margin:0 0 6px;color:var(--text)}
+.tr-teacher-guide>h3 svg{color:var(--tr-accent)}
+.tr-guide-disclaimer{display:block;margin-bottom:15px;font-size:11px;line-height:1.45;color:var(--muted)}
+.tr-guide-line+.tr-guide-line{border-top:1px solid color-mix(in srgb,var(--tr-stroke) 70%,transparent);padding-top:12px;margin-top:12px}
+.tr-guide-line strong{display:block;font-size:12px;color:var(--tr-accent-strong);margin-bottom:4px}
+.tr-guide-line p{color:var(--text);font-size:12px;line-height:1.7;margin:0}
+.tr-child-list{display:grid;gap:7px;margin-top:12px}
+.tr-child-list button{display:flex;align-items:center;gap:10px;text-align:left;padding:11px 12px;border:1px solid var(--tr-stroke);background:var(--surface-2);border-radius:9px;color:var(--text);font-size:12px;line-height:1.45}
+.tr-child-list button:hover{border-color:var(--tr-accent)}
+.tr-child-list button span{color:var(--tr-accent-strong);font-weight:800;align-self:flex-start}
+.tr-child-list button strong{flex:1;font-weight:650}
+.tr-child-list button svg{flex:none;color:var(--tr-accent)}
+@media(max-width:740px){.tr-teacher-guide{padding:15px 14px}.tr-structure-row{align-items:flex-start;flex-wrap:wrap}.tr-structure-row>div{flex:1 1 calc(100% - 52px)}.tr-structure-row button{margin-left:42px;min-height:35px}.tr-guide-line p{font-size:12px}}
