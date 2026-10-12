@@ -95,17 +95,17 @@ export default function TargetReview(){
           setSelected(current=>current||v.value[0]?.id||'');
           if(v.value.length===0)setLoading(false);
         }else{setError('Daftar versi target belum dapat dimuat.');setLoading(false);}
-        if(u.status==='fulfilled')setRole(u.value?.role||'VIEWER');
+        if(u.status==='fulfilled'){
+          const nextRole=u.value?.role||'VIEWER';
+          setRole(nextRole);
+          if(['ADMIN','DEWAN_GURU'].includes(nextRole)&&new URLSearchParams(window.location.search).get('create')==='1'){
+            setShowCreate(true);setTab('manage');
+          }
+        }
         if(l.status==='fulfilled'&&Array.isArray(l.value))setLevels(l.value);
         if(c.status==='fulfilled'&&Array.isArray(c.value))setClasses(c.value);
       });
     return()=>{live=false};
-  },[]);
-
-  useEffect(()=>{
-    if(new URLSearchParams(window.location.search).get('create')==='1'){
-      setShowCreate(true);setTab('manage');
-    }
   },[]);
 
   useEffect(()=>{
