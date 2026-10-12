@@ -160,3 +160,14 @@ html[data-theme="dark"] .tr-form-actions button{color:var(--bg)}
 .tr-child-list button strong{flex:1;font-weight:650}
 .tr-child-list button svg{flex:none;color:var(--tr-accent)}
 @media(max-width:740px){.tr-teacher-guide{padding:15px 14px}.tr-structure-row{align-items:flex-start;flex-wrap:wrap}.tr-structure-row>div{flex:1 1 calc(100% - 52px)}.tr-structure-row button{margin-left:42px;min-height:35px}.tr-guide-line p{font-size:12px}}
+
+
+/* Viewport-layered dialogs: independent of the app shell scroll position. */
+.tr-overlay-root{position:fixed;inset:0;z-index:10000;padding:0;pointer-events:none;overflow:visible}
+.tr-overlay-root .tr-modal-backdrop{position:fixed;inset:0;z-index:1;pointer-events:auto;overscroll-behavior:contain}
+.tr-overlay-root .tr-modal{min-height:0;max-height:min(90dvh,820px)}
+.tr-overlay-root .tr-modal-body{min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+@media(max-width:740px){
+  .tr-overlay-root .tr-modal-backdrop{align-items:center;padding:12px}
+  .tr-overlay-root .tr-modal{max-height:calc(100dvh - 24px);border-radius:17px;width:100%}
+}
