@@ -30,3 +30,6 @@
 .fj-matches article p{font-size:12px;line-height:1.6;margin:9px 0}.fj-matches blockquote{margin:0;border-left:3px solid var(--fj-accent);padding:8px 13px;font-size:12px;color:var(--muted);line-height:1.6}
 .fj-suggestion{background:var(--surface-2);padding:13px 15px;border-radius:9px}
 @media(max-width:650px){.fj-header p{font-size:13px}.fj-panel{padding:16px}.fj-row{grid-template-columns:1fr}.fj-row label input,.fj-row label select,.fj-field input,.fj-field textarea{font-size:16px}.fj-attendance select{max-width:none}.fj-actions{position:sticky;bottom:0;background:var(--surface);z-index:10;padding:14px 0 4px}.fj-primary{flex:1}.fj-success~.fj-actions{position:static}}
+
+.fj-textblock{padding:13px 0;border-bottom:1px solid var(--border)}.fj-textblock strong{font-size:13px}.fj-textblock p{font-size:14px;line-height:1.8;white-space:pre-wrap;margin:6px 0}
+.fj-ai>button{margin-top:15px;cursor:pointer}
