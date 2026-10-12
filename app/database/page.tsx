@@ -3,26 +3,27 @@
 import Link from 'next/link';
 import {FormEvent,useEffect,useMemo,useRef,useState} from 'react';
 import {Archive,Download,FileUp,RotateCcw,Trash2,Users} from 'lucide-react';
-import {type Role} from '@/lib/access';
+import {type Role,type Audience,readScopesForRole,writeScopesForRole} from '@/lib/access';
 
 type Member={member_memberships?:any[];revision?:number;level_id?:string;id:string;name:string;gender?:string;phone?:string;section?:string;status:string;class_id?:string;levels?:{name?:string};classes?:{name?:string};member_categories?:Array<{category_id:string;categories?:{name?:string;slug?:string}}>};
 type ClassRow={id:string;name:string;audience:string;level_id?:string};
 type Category={id:string;name:string;slug:string};
-const tabs=[['ALL','Semua'],['CABERAWIT','Caberawit'],['MUDA_MUDI','Muda-Mudi'],['IBU_IBU','Ibu-Ibu']] as const;
+const tabs=[['ALL','Semua'],['KELOMPOK','Kelompok'],['CABERAWIT','Caberawit'],['MUDA_MUDI','Muda-Mudi'],['IBU_IBU','Ibu-Ibu']] as const;
 
 export default function DatabasePage(){
   const[segment,setSegment]=useState('ALL'),[q,setQ]=useState(''),[classId,setClassId]=useState(''),[statusFilter,setStatusFilter]=useState(()=>typeof window!=='undefined'&&new URLSearchParams(window.location.search).get('archived')==='1'?'INACTIVE':'ACTIVE'),[sort,setSort]=useState('source'),[levelId,setLevelId]=useState(''),[office,setOffice]=useState(''),[levels,setLevels]=useState<any[]>([]);
   const[data,setData]=useState<Member[]>([]),[classes,setClasses]=useState<ClassRow[]>([]),[categories,setCategories]=useState<Category[]>([]);
-  const[role,setRole]=useState<Role|null>(null),[selected,setSelected]=useState<string[]>([]),[bulkCategories,setBulkCategories]=useState<string[]>([]),[bulkClass,setBulkClass]=useState('');
+  const[readableScopes,setReadableScopes]=useState<Audience[]>([]),[writableScopes,setWritableScopes]=useState<Audience[]>([]);
+   const[role,setRole]=useState<Role|null>(null),[selected,setSelected]=useState<string[]>([]),[bulkCategories,setBulkCategories]=useState<string[]>([]),[bulkClass,setBulkClass]=useState('');
   const[showClass,setShowClass]=useState(false),[className,setClassName]=useState(''),[showLevel,setShowLevel]=useState(false),[levelName,setLevelName]=useState('');
   const[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');
   const upload=useRef<HTMLInputElement>(null);
-  const canWrite=role==='ADMIN'||role==='DEWAN_GURU'||role==='KELOMPOK';
+  const canWrite=role==='ADMIN'||writableScopes.length>0;
   const canClass=role==='ADMIN'||role==='DEWAN_GURU';
   const archived=statusFilter==='INACTIVE';
-  const visibleTabs=tabs.filter(([v])=>role==='DEWAN_GURU'?['ALL','CABERAWIT','MUDA_MUDI'].includes(v):role==='KELOMPOK'?['ALL','MUDA_MUDI','IBU_IBU'].includes(v):true);
+  const visibleTabs=tabs.filter(([v])=>role==='ADMIN'||(v!=='ALL'&&readableScopes.includes(v as Audience)));
   const classOptions=useMemo(()=>classes.filter(c=>segment==='ALL'||c.audience===segment),[classes,segment]);
-  const allowedCategories=categories.filter(c=>['caberawit','muda-mudi','ibu-ibu'].includes(c.slug)&&(role==='ADMIN'||(role==='DEWAN_GURU'&&['caberawit','muda-mudi'].includes(c.slug))||(role==='KELOMPOK'&&['muda-mudi','ibu-ibu'].includes(c.slug))));
+  const allowedCategories=categories.filter(c=>['caberawit','muda-mudi','ibu-ibu'].includes(c.slug)&&(role==='ADMIN'||writableScopes.includes((c.slug==='caberawit'?'CABERAWIT':c.slug==='muda-mudi'?'MUDA_MUDI':'IBU_IBU') as Audience)));
 
   async function loadMembers(fresh=false){
     setLoading(true);setError('');
@@ -41,6 +42,10 @@ export default function DatabasePage(){
       if(!c.ok||!g.ok||!u.ok||!l.ok)throw new Error('Filter database tidak dapat dimuat.');
       const [cv,gv,uv,lv]=await Promise.all([c.json(),g.json(),u.json(),l.json()]);
       setClasses(cv);setCategories(gv);setRole(uv.role);setLevels(lv);
+       const read=(Array.isArray(uv.read_scopes)?uv.read_scopes:readScopesForRole(uv.role)) as Audience[];
+       const write=(Array.isArray(uv.write_scopes)?uv.write_scopes:writeScopesForRole(uv.role)) as Audience[];
+       setReadableScopes(read);setWritableScopes(write);
+       if(uv.role!=='ADMIN')setSegment(read.includes('CABERAWIT')?'CABERAWIT':read.includes('KELOMPOK')?'KELOMPOK':read[0]||'CABERAWIT');
     }catch(e){setError(e instanceof Error?e.message:'Gagal memuat filter database.')}
   }
   useEffect(()=>{void loadMeta();const create=new URLSearchParams(window.location.search).get('create');if(create==='class')setShowClass(true);if(create==='level')setShowLevel(true)},[]);
@@ -97,7 +102,7 @@ export default function DatabasePage(){
     <div className="databaseActions section"><button className={archived?'btn secondary':'btn ghost'} onClick={()=>setStatusFilter(v=>v==='INACTIVE'?'ACTIVE':'INACTIVE')}><Archive size={16}/>{archived?'Lihat aktif':'Arsip'}</button>{canWrite&&<a className="btn ghost" href="/api/members/spreadsheet?template=1"><Download size={16}/>Template Excel</a>}<a className="btn ghost" href={"/api/members/spreadsheet?status="+statusFilter}><Download size={16}/>Excel {archived?"Arsip":"Aktif"}</a><a className="btn ghost" href={"/api/members/spreadsheet?format=csv&status="+statusFilter}><Download size={16}/>CSV</a>{role==='ADMIN'&&<a className="btn ghost" href="/api/members/spreadsheet?status=ALL"><Download size={16}/>Excel Semua Data</a>}{canWrite&&<><input hidden ref={upload} type="file" accept=".xlsx,.xls" onChange={e=>{const f=e.target.files?.[0];if(f)void importExcel(f);e.target.value=''}}/><button className="btn ghost" onClick={()=>upload.current?.click()} disabled={busy}><FileUp size={16}/>Import Excel</button></>}{canClass&&!archived&&<button className="btn ghost" onClick={()=>setShowLevel(v=>!v)}>{showLevel?'Tutup jenjang':'+ Jenjang'}</button>}{canClass&&!archived&&['CABERAWIT','MUDA_MUDI'].includes(segment)&&<button className="btn ghost" onClick={()=>setShowClass(v=>!v)}>{showClass?'Tutup kelas':'+ Kelas'}</button>}</div>
     {showLevel&&<form className="card section inlineForm" onSubmit={addLevel}><label>Nama jenjang<input className="input" required value={levelName} onChange={e=>setLevelName(e.target.value)} placeholder="Contoh: SD 1 atau Remaja"/></label><button className="btn" disabled={busy}>Simpan jenjang</button></form>}
     {showClass&&<form className="card section inlineForm compactCreateForm" onSubmit={addClass}><label>Nama kelas<input className="input" required value={className} onChange={e=>setClassName(e.target.value)} placeholder="Contoh: Kelas A"/></label><button className="btn" disabled={busy}>Simpan kelas</button></form>}
-    {(segment==='CABERAWIT'||segment==='MUDA_MUDI')&&classOptions.length>0&&!archived&&<section className="classLanes section"><div className="cardHead"><div><h2>Kelas</h2><p>Pindahkan anggota dengan drag & drop atau pilih kelas saat mengedit.</p></div></div><div className="classLaneList">{classOptions.map(c=><div className="classLane" key={c.id} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const id=e.dataTransfer.getData('text/member-id');if(id)void moveMember(id,c.id)}}><strong>{c.name}</strong><span>{data.filter(m=>m.member_memberships?.some(mm=>mm.effective&&mm.class_id===c.id)).length} anggota</span></div>)}</div></section>}
+    {(segment==='CABERAWIT'||segment==='MUDA_MUDI')&&classOptions.length>0&&!archived&&<section className="classLanes section"><div className="cardHead"><div><h2>Kelas</h2></div></div><div className="classLaneList">{classOptions.map(c=><div className="classLane" key={c.id} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const id=e.dataTransfer.getData('text/member-id');if(id)void moveMember(id,c.id)}}><strong>{c.name}</strong><span>{data.filter(m=>m.member_memberships?.some(mm=>mm.effective&&mm.class_id===c.id)).length} anggota</span></div>)}</div></section>}
     
     {message&&<div className="notice success section" role="status">{message}</div>}{error&&<div className="notice error section" role="alert">{error}</div>}
     {loading&&data.length>0&&<div className="dataRefreshHint">Memperbarui database…</div>}{canWrite&&selected.length>0&&!archived&&<div className="bulkPanel card section"><div><strong>{selected.length} dipilih</strong><p>Centang bagian tujuan; keanggotaan yang sudah ada tidak digandakan.</p></div><div className="chips">{allowedCategories.map(c=><label className="chip" key={c.id}><input type="checkbox" checked={bulkCategories.includes(c.id)} onChange={e=>setBulkCategories(v=>e.target.checked?[...v,c.id]:v.filter(x=>x!==c.id))}/>{c.name}</label>)}</div>{classOptions.length>0&&<select className="select" value={bulkClass} onChange={e=>setBulkClass(e.target.value)}><option value="">Kelas tidak diubah</option>{classOptions.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select>}<button className="btn" disabled={busy||(!bulkClass&&!bulkCategories.length)} onClick={()=>void applyBulk()}>{busy?'Menyimpan…':'Terapkan'}</button></div>}

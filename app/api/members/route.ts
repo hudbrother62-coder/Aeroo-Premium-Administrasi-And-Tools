@@ -19,7 +19,7 @@ export async function GET(req:NextRequest){
   const sort=req.nextUrl.searchParams.get('sort')??'name_asc';
   const mode=req.nextUrl.searchParams.get('mode')??'full';
   const selection=mode==='names'
-    ? 'id,name,status'
+    ? 'id,name,status,member_memberships(*,categories(slug))'
     : mode==='list'
       ? 'id,name,phone,status,source_order,created_at,member_memberships(id,category_id,class_id,level_id,office,section,valid_from,valid_to,ended_on,active,categories(id,name,slug),classes(id,name),levels(id,name))'
       : '*,levels(id,name),classes!members_class_id_fkey(id,name,audience),member_categories(category_id,categories(id,name,slug)),member_memberships(*,categories(id,name,slug),classes(id,name),levels(id,name))';
@@ -43,6 +43,7 @@ export async function GET(req:NextRequest){
 
 
   const office=req.nextUrl.searchParams.get('office');
+  if(segment==='KELOMPOK')rows=rows.filter((p:any)=>!p.member_memberships?.some((m:any)=>effectiveMembership(m)&&m.categories?.slug==='caberawit'));
   if(slug||classId||levelId||office)rows=rows.filter((p:any)=>p.member_memberships?.some((m:any)=>effectiveMembership(m)&&(!slug||m.categories?.slug===slug)&&(!classId||m.class_id===classId)&&(!levelId||m.level_id===levelId)&&(!office||[m.office,m.section].some(v=>v?.toLowerCase().includes(office.toLowerCase())))));
   const body=mode==='names'?rows.map((p:any)=>({id:p.id,name:p.name,status:p.status})):rows.map((p:any)=>projectMember(p));
   return NextResponse.json(body,{headers:{'Cache-Control':'private, max-age=10, stale-while-revalidate=30'}});

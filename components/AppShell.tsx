@@ -21,20 +21,19 @@ const nav=[
   {href:'/jurnal',label:'Jurnal',icon:BookOpen,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
   {href:'/target',label:'Target & Progres',icon:Target,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
   {href:'/agenda',label:'Agenda',icon:CalendarDays,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
-  {href:'/rekap',label:'Rekap',icon:ChartNoAxesCombined,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
   {href:'/sarpras',label:'Sarana & Prasarana',icon:Warehouse,roles:['ADMIN','DEWAN_GURU','KELOMPOK'] as Role[]},
   {href:'/kelengkapan',label:'Kelengkapan',icon:ClipboardCheck,roles:['ADMIN','DEWAN_GURU','KELOMPOK'] as Role[]},
   {href:'/laporan',label:'Laporan',icon:FileText,roles:['ADMIN','DEWAN_GURU','VIEWER'] as Role[],publicRead:true},
   {href:'/struktur',label:'Dapukan & Pengurus',icon:Network,roles:['ADMIN','KELOMPOK'] as Role[]},
   {href:'/catatan',label:'Catatan',icon:NotebookPen,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[]},
-  {href:'/arsip',label:'Arsip',icon:Archive,roles:['ADMIN','DEWAN_GURU','KELOMPOK'] as Role[]},
+  {href:'/arsip',label:'Arsip',icon:Archive,roles:['ADMIN'] as Role[]},
   {href:'/impor',label:'Import Center',icon:Upload,roles:['ADMIN','DEWAN_GURU','KELOMPOK'] as Role[]},
   {href:'/tim-akses',label:'Akses',icon:Users,roles:['ADMIN'] as Role[]},
   {href:'/audit',label:'Audit',icon:FileSearch,roles:['ADMIN'] as Role[]},
   {href:'/pengaturan',label:'Pengaturan',icon:Settings,roles:['ADMIN'] as Role[]},
 ];
 
-const sections=[['BERANDA',['/']],['OPERASIONAL',['/agenda','/presensi','/jurnal']],['PEMBINAAN',['/target']],['DATA',['/database','/struktur','/sarpras']],['PRIBADI',['/catatan']],['ANALISIS',['/rekap','/kelengkapan','/laporan']],['SISTEM',['/arsip','/impor','/tim-akses','/audit','/pengaturan']]] as const;
+const sections=[['BERANDA',['/']],['OPERASIONAL',['/agenda','/presensi','/jurnal']],['PEMBINAAN',['/target']],['DATA',['/database','/struktur','/sarpras']],['PRIBADI',['/catatan']],['ANALISIS',['/kelengkapan','/laporan']],['SISTEM',['/arsip','/impor','/tim-akses','/audit','/pengaturan']]] as const;
 const navPermission:Record<string,string>={'/database':'person.read','/agenda':'agenda.read','/presensi':'attendance.read','/jurnal':'journal.read','/target':'target.read','/struktur':'position.read','/rekap':'report.read','/laporan':'report.read','/arsip':'archive.manage','/impor':'import.manage','/tim-akses':'user.manage','/pengaturan':'settings.manage'};
 const roleLabel:Record<Role,string>={ADMIN:'Admin',DEWAN_GURU:'Dewan Guru',KELOMPOK:'Operator',VIEWER:'Viewer'};
 
@@ -92,7 +91,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
   const visible=useMemo(()=>user?nav.filter(x=>{
     // The curriculum catalogue is read-only for everyone, independent of editing privileges.
     if(x.href==='/target')return true;
-    if(['/tim-akses','/audit','/pengaturan'].includes(x.href))return user.role==='ADMIN';
+    if(['/arsip','/tim-akses','/audit','/pengaturan'].includes(x.href))return user.role==='ADMIN';
     const permission=navPermission[x.href];
     if(permission&&user.permissions&&permission in user.permissions)return user.permissions[permission]===true;
     return x.roles.includes(user.role);
