@@ -1,0 +1,183 @@
+/* Simpul UI refinement — consistent, compact and mobile-first.
+   Keep the product's existing color tokens and module behaviours intact. */
+:root{
+  --ui-radius:14px;
+  --ui-radius-lg:18px;
+  --ui-space:16px;
+}
+html,body{max-width:100%;overflow-x:clip}
+body{background:var(--bg);line-height:1.5}
+button,a,input,select,textarea{touch-action:manipulation}
+button{cursor:pointer}
+a:not(.btn):focus-visible,button:focus-visible,[role="button"]:focus-visible{
+  outline:2px solid var(--primary);outline-offset:3px
+}
+.pageContent{width:100%;max-width:1360px;margin-inline:auto;min-width:0}
+.pageContent>*,.pageContent>*>*{min-width:0}
+.pageHeader{margin-bottom:16px;align-items:center;gap:12px}
+.pageHeader h1{font-size:clamp(23px,2.6vw,32px);line-height:1.19;letter-spacing:-.035em;margin:0}
+.pageHeader p{font-size:13px;line-height:1.45}
+.card,.metricCard,.attendancePanel,.item,.tableWrap,.levelCard,.healthCard{
+  border-radius:var(--ui-radius-lg);
+  border-color:var(--border);
+  box-shadow:none
+}
+.card{padding:18px}
+.section{margin-top:16px}
+.sectionTitle{margin-bottom:12px}
+.metricGrid,.dashboardGrid,.list,.formGrid{gap:12px}
+.metricCard{padding:16px}
+.metricCard strong{font-size:clamp(24px,2.6vw,31px)}
+.input,.select,.textarea{
+  min-width:0;max-width:100%;min-height:44px;border-radius:11px;
+  background:var(--surface);color:var(--text);
+}
+.input:focus-visible,.select:focus-visible,.textarea:focus-visible{
+  outline:none;border-color:var(--primary);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 13%,transparent)
+}
+.btn,.smallAction,.iconOnly,.tab{
+  border-radius:11px;transition:background-color .15s ease,border-color .15s ease,color .15s ease
+}
+.btn{min-height:43px;font-size:13px;font-weight:650;box-shadow:none}
+.btn.secondary,.btn.ghost{box-shadow:none}
+.btn:hover,.smallAction:hover,.iconOnly:hover{transform:none}
+.tab{font-weight:650}
+.tabBar{gap:7px;scrollbar-width:thin}
+.item{min-width:0}
+.item h3{overflow-wrap:anywhere}
+.tableWrap,.tableScroll,.tableContainer{
+  max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;scrollbar-width:thin
+}
+.tableWrap table{width:100%}
+.table th,.table td{vertical-align:middle}
+.formGrid>*,.toolbar>*{min-width:0}
+.formActions{gap:9px;flex-wrap:wrap}
+.dialogBackdrop{overscroll-behavior:contain}
+.dialogCard{max-width:calc(100vw - 24px);min-width:0}
+.dialogCard input,.dialogCard select,.dialogCard textarea{max-width:100%}
+.emptyState{line-height:1.5}
+
+/* All attendance pages use the same, clearly active, functional subnavigation. */
+.attendanceRoute{min-width:0;max-width:1190px;margin-inline:auto}
+.attendanceRouteTabs{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:7px;margin:0 0 19px;padding:5px;max-width:540px;
+  border:1px solid var(--border);border-radius:15px;background:var(--surface)
+}
+.attendanceRouteTab{
+  min-width:0;display:flex;align-items:center;justify-content:center;gap:8px;
+  min-height:43px;padding:9px 12px;border:1px solid transparent;
+  border-radius:11px;text-align:center;text-decoration:none;
+  color:var(--muted);font-size:13px;font-weight:650;line-height:1.2;
+  transition:background .14s,color .14s,border-color .14s
+}
+.attendanceRouteTab:hover{background:var(--surface-2);color:var(--text)}
+.attendanceRouteTab.active{
+  background:var(--primary-soft);color:var(--primary);
+  border-color:color-mix(in srgb,var(--primary) 20%,var(--border))
+}
+.attendanceRoute .pageHeader{margin-bottom:12px}
+.attendanceRoute .pageHeader h1{font-size:clamp(24px,2.6vw,30px)}
+.attendanceRoute .pageHeader a:not(.btn){font-size:12px;color:var(--muted);text-decoration:none}
+.attendanceStartIntro{margin:0 0 10px}
+.attendanceStartIntro h2{font-size:16px}
+.attendanceStartCard{max-width:900px;padding:20px!important}
+.attendanceRoute form.section{margin-top:8px}
+.attendanceSteps{gap:8px;margin-bottom:18px}
+.attendanceSteps span{line-height:1.35;padding:9px 7px}
+.attendanceFormGrid{gap:14px!important}
+.attendanceFormGrid>label{font-size:13px}
+.attendanceStartActions{margin-top:14px;padding-top:15px}
+.attendanceStartActions .btn{min-width:150px}
+.attendanceRoutineChoice{background:var(--surface-2)}
+.attendanceGenderTabs button{font-weight:650}
+.attendanceWorkspace{gap:13px}
+.attendancePanel{padding:17px}
+.attendanceFilters{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.attendanceMonthHead{gap:8px}
+.attendanceMonthHead .input{width:auto;min-width:0;flex:1}
+.attendanceKpi{padding:14px}
+.attendanceKpi strong{font-size:26px}
+
+/* Navigation in both light and dark mode inherits one consistent palette. */
+.desktopSidebar,.mobileDrawer,.mobileBottomNav,.mobileMorePanel{
+  color:var(--text)
+}
+.navItem{border-radius:11px}
+.navItem.active{color:var(--primary);background:var(--primary-soft)}
+.agendaSidebarLinks a{border-radius:8px}
+.mobileDrawer .agendaSidebarLinks a{min-height:35px;display:flex;align-items:center}
+.simpulReturnBar{max-width:1360px}
+.simpulReturnLink{min-height:37px;font-size:12px;border-radius:10px}
+.mobileHeader{background:var(--surface)!important}
+.mobileHeader .mobileBrand{text-decoration:none}
+.mobileHeader .headerTheme{box-shadow:none}
+.mobileBottomNav{background:var(--surface)!important}
+
+/* Small screens should show data and actions, not unused whitespace. */
+@media(max-width:979px){
+  .pageContent{padding:15px 12px calc(100px + env(safe-area-inset-bottom));max-width:100%}
+  .pageHeader{gap:10px;flex-wrap:wrap;margin-bottom:13px}
+  .pageHeader h1{font-size:clamp(22px,6vw,28px)}
+  .card{padding:14px;border-radius:15px}
+  .section{margin-top:13px}
+  .mobileHeader{height:58px;padding-block:6px}
+  .mobileHeader .mobileBrand{gap:7px;max-width:160px}
+  .mobileHeader .mobileBrand img{height:34px;width:34px;object-fit:cover;border-radius:10px}
+  .mobileHeader .mobileBrand b{font-size:16px}
+  .mobileHeader .mobileBrand small{display:none}
+  .mobileHeader .mobileMenuButton{width:39px;height:39px}
+  .mobileHeader .headerTheme{width:39px;height:39px}
+  .globalToolsDock{top:8px!important;right:57px!important;z-index:61}
+  .globalTools .globalToolButton{height:39px;width:39px}
+  .mobileBottomNav{border-radius:18px 18px 0 0;padding-top:5px;padding-bottom:max(7px,env(safe-area-inset-bottom))}
+  .bottomNavItems .navItem,.bottomNavMore{min-width:0}
+  .mobileQuickFab{width:50px;height:50px;right:16px;bottom:calc(91px + env(safe-area-inset-bottom));border-radius:16px}
+  .simpulReturnBar{padding:9px 12px 0}
+  .simpulReturnLink{padding:6px 10px;min-height:35px}
+  .dialogBackdrop>.dialogCard{
+    max-height:calc(100dvh - 30px - env(safe-area-inset-top) - env(safe-area-inset-bottom))!important;
+    overflow-y:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch
+  }
+  .attendanceRouteTabs{max-width:none;margin-bottom:15px}
+  .attendanceRouteTab{min-height:45px;padding:9px 5px;gap:6px;font-size:12px}
+  .attendanceStartIntro{display:none}
+  .attendanceStartCard{padding:14px!important}
+  .attendanceSteps{display:none}
+  .attendanceRoute .pageHeader{margin:0 0 12px}
+  .attendanceRoute form.section{margin-top:0}
+  .attendanceFormGrid{gap:12px!important}
+  .attendanceStartActions{margin-top:14px}
+  .attendanceStartActions .btn{width:100%}
+  .attendancePanel{padding:13px}
+  .attendanceDay,.attendanceDayEmpty{min-height:49px;padding:7px 5px}
+  .attendanceDay strong{font-size:12px}
+  .attendanceDay small{font-size:9px}
+  .attendanceCalendar{gap:3px}
+  .attendanceMonthHead .smallAction{flex:0 0 36px}
+  .attendanceRoute .attendanceKpiGrid{gap:8px}
+  .attendanceMeeting{flex-wrap:wrap}
+  .attendanceMeetingActions{width:100%;flex-direction:row}
+  .attendanceMeetingActions .btn{flex:1}
+  .attendanceMeetingPickList{grid-template-columns:1fr}
+  .attendancePage .journalBack{display:none}
+}
+@media(max-width:420px){
+  .pageContent{padding-inline:11px}
+  .mobileHeaderStart{gap:5px}
+  .mobileHeader .mobileBrand{gap:5px}
+  .mobileHeader .mobileBrand img{height:31px;width:31px}
+  .mobileHeader .mobileBrand b{font-size:15px}
+  .mobileHeader .mobileMenuButton{width:36px;height:38px}
+  .attendanceRouteTabs{gap:3px;padding:4px}
+  .attendanceRouteTab{font-size:11px;gap:4px}
+  .attendanceRouteTab svg{width:16px;height:16px}
+  .attendanceFilters,.attendanceRecapFilters{grid-template-columns:1fr 1fr}
+  .attendanceDay,.attendanceDayEmpty{min-height:43px}
+  .attendanceDay small{font-size:8px}
+}
+@media(prefers-reduced-motion:reduce){
+  .attendanceRouteTab{transition:none}
+}
