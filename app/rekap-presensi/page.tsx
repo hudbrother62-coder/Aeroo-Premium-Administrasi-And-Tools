@@ -1,3 +1,2 @@
 import {redirect} from 'next/navigation';
-
-export default function Page(){redirect('/rekap?tab=presensi')}
+export default function Page(){redirect('/presensi?tab=rekap')}
