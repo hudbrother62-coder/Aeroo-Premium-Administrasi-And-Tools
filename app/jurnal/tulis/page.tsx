@@ -10,6 +10,7 @@ import './tulis.css';
 type ClassRow={id:string;name:string;level_id?:string|null;audience:string};
 type Activity={id:string;name:string;audience:string};
 type EventRow={id:string;event_date:string;title:string;audience:string;class_id?:string|null;activity_type_id?:string|null;agenda_id?:string|null;state?:string};
+type AgendaRow={id:string;title:string;audience:string;class_id?:string|null;activity_type_id?:string|null;status?:string;starts_at:string};
 type TargetMatch={target_id:string;title:string;reason:string;quote:string;relation:string};
 type Analysis={summary:string;suggestion:string;matches:TargetMatch[];created_at:string;status:string};
 const journalKinds=[
@@ -31,6 +32,9 @@ export default function TulisJurnal(){
   const [classId,setClassId]=useState('');
   const [activityId,setActivityId]=useState('');
   const [selectedEvent,setSelectedEvent]=useState('');
+  const [fromAgenda,setFromAgenda]=useState(false);
+  const [agendaId,setAgendaId]=useState('');
+  const [agendaOptions,setAgendaOptions]=useState<AgendaRow[]>([]);
   const [title,setTitle]=useState('');
   const [material,setMaterial]=useState('');
   const [summary,setSummary]=useState('');
@@ -46,6 +50,20 @@ export default function TulisJurnal(){
   const options=journalKinds.filter(k=>scopes.includes(k.audience as Audience));
   const availableClasses=classes.filter(c=>c.audience===scope);
   const availableActivities=activities.filter(a=>a.audience===scope);
+  const selectedAgenda=agendaOptions.find(a=>a.id===agendaId);
+  useEffect(()=>{
+    setActivityId(previous=>activities.some(a=>a.id===previous&&a.audience===scope)?previous:activities.find(a=>a.audience===scope)?.id||'');
+  },[scope,activities]);
+  useEffect(()=>{
+    let alive=true;
+    if(!fromAgenda||!date){setAgendaOptions([]);return;}
+    const from=date+'T00:00:00+07:00',to=date+'T23:59:59+07:00';
+    fetch('/api/agenda?'+new URLSearchParams({from,to}),{cache:'no-store'})
+      .then(async r=>{const v=await r.json();if(!r.ok)throw Error(v.error||'Agenda gagal dimuat.');return v})
+      .then(v=>{if(alive)setAgendaOptions(Array.isArray(v)?v.filter((a:AgendaRow)=>a.audience===scope&&a.status!=='CANCELLED'):[])})
+      .catch(e=>{if(alive){setAgendaOptions([]);setError(e.message)}});
+    return()=>{alive=false};
+  },[fromAgenda,date,scope]);
   useEffect(()=>{
     Promise.all([
       fetch('/api/auth/me').then(r=>r.json()),
@@ -71,7 +89,7 @@ export default function TulisJurnal(){
       .then(v=>{if(alive)setEvents(Array.isArray(v)?v:[])}).catch(()=>{if(alive)setEvents([])});
     return()=>{alive=false};
   },[date,scope]);
-  const matching=useMemo(()=>events.filter(e=>e.state!=='CANCELLED'&&(!classId||e.class_id===classId)&&(!activityId||!e.activity_type_id||e.activity_type_id===activityId)),[events,classId,activityId]);
+  const matching=useMemo(()=>events.filter(e=>e.state!=='CANCELLED'&&(!classId||e.class_id===classId)&&(fromAgenda?!!agendaId&&e.agenda_id===agendaId:e.agenda_id==null&&!!activityId&&e.activity_type_id===activityId)),[events,classId,activityId,fromAgenda,agendaId]);
   const event=matching.find(x=>x.id===selectedEvent)||matching.length===1?matching.find(x=>x.id===selectedEvent)||matching[0]:null;
   const classRequired=scope==='CABERAWIT'||scope==='MUDA_MUDI';
   async function analyze(id:string){
@@ -85,15 +103,18 @@ export default function TulisJurnal(){
   async function save(){
     if(saving||!scopes.includes(scope))return;
     if(!date||!summary.trim()&&!material.trim()){setError('Tuliskan isi jurnal atau materi kegiatan terlebih dahulu.');return;}
-    if(classRequired&&!classId){setError('Pilih kelas supaya jurnal sesuai dengan peserta dan target.');return;}
+    if(fromAgenda&&!selectedAgenda){setError('Pilih agenda khusus terlebih dahulu.');return;}
+    if(!fromAgenda&&!activityId){setError('Pilih jenis kegiatan terlebih dahulu.');return;}
+    if(classRequired&&!classId&&!selectedAgenda?.class_id){setError('Pilih kelas supaya jurnal sesuai dengan peserta dan target.');return;}
     if(matching.length>1&&!selectedEvent){setError('Ada beberapa presensi di hari itu. Pilih pertemuan yang tepat.');return;}
     setSaving(true);setError('');
     try{
       const e=event;
-      const classroom=availableClasses.find(c=>c.id===classId);
+      const linkedClass=classId||selectedAgenda?.class_id||'';
+      const classroom=availableClasses.find(c=>c.id===linkedClass);
       const body={
-        journal_kind:kind,journal_date:date,title:title.trim()||'Jurnal '+(journalKinds.find(x=>x.value===kind)?.label||'kegiatan')+' - '+date,
-        event_id:e?.id||null,agenda_id:e?.agenda_id||null,class_id:classId||null,activity_type_id:e?.activity_type_id||activityId||null,
+        journal_kind:kind,journal_date:date,title:title.trim()||'Jurnal '+(selectedAgenda?.title||availableActivities.find(a=>a.id===activityId)?.name||journalKinds.find(x=>x.value===kind)?.label||'kegiatan')+' - '+date,
+        event_id:e?.id||null,agenda_id:e?.agenda_id||selectedAgenda?.id||null,class_id:linkedClass||null,activity_type_id:e?.activity_type_id||selectedAgenda?.activity_type_id||activityId||null,
         material:material.trim()||null,summary:summary.trim()||null,obstacles:obstacles.trim()||null,follow_up:followUp.trim()||null,
         assessment:{free_form:true,source:'TEACHER_TEXT',class_assessment:{level_id:classroom?.level_id||null}},
         progress:[],revision:0,state:'COMPLETED'
@@ -112,16 +133,19 @@ export default function TulisJurnal(){
     <header className="fj-header"><span><BookOpen size={18}/> CATATAN GURU</span><h1>Tulis Jurnal</h1></header>
     {!savedId?<section className="fj-panel">
       <div className="fj-row">
-        <label>Jenis kegiatan<select value={kind} onChange={e=>{setKind(e.target.value);setClassId('');setActivityId('');setSelectedEvent('')}}>{options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
+        <label>Jenis kegiatan<select value={kind} onChange={e=>{setKind(e.target.value);setClassId('');setActivityId('');setSelectedEvent('');setFromAgenda(false);setAgendaId('')}}>{options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
         <label>Tanggal<input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label>
         {classRequired&&<label>Kelas<select value={classId} onChange={e=>{setClassId(e.target.value);setSelectedEvent('')}}><option value="">Pilih kelas</option>{availableClasses.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
-        <label>Kegiatan (jika ada)<select value={activityId} onChange={e=>setActivityId(e.target.value)}><option value="">Tanpa jenis khusus</option>{availableActivities.map(a=><option value={a.id} key={a.id}>{a.name}</option>)}</select></label>
+        <label>Kegiatan<select value={fromAgenda?'AGENDA':activityId} onChange={e=>{const value=e.target.value;setFromAgenda(value==='AGENDA');setAgendaId('');setSelectedEvent('');setActivityId(value==='AGENDA'?'':value);}}>
+          <option value="" disabled>Pilih kegiatan</option>{availableActivities.map(a=><option value={a.id} key={a.id}>{a.name}</option>)}<option value="AGENDA">Lainnya — dari agenda khusus</option>
+        </select></label>
+        {fromAgenda&&<label>Agenda khusus<select value={agendaId} onChange={e=>{const value=e.target.value;setAgendaId(value);setSelectedEvent('');const a=agendaOptions.find(x=>x.id===value);if(a?.class_id)setClassId(a.class_id);}}><option value="">Pilih agenda yang sudah dibuat</option>{agendaOptions.map(a=><option key={a.id} value={a.id}>{a.title}</option>)}</select></label>}
       </div>
       {matching.length>0&&<div className="fj-attendance">
         <CheckCircle2 size={18}/><div><strong>Presensi tanggal ini ditemukan</strong><p>{matching.length===1?'Jurnal akan otomatis terhubung dengan presensi tersebut.':'Ada beberapa pertemuan. Pilih satu yang sesuai.'}</p></div>
         {matching.length>1&&<select aria-label="Pilih presensi terkait" value={selectedEvent} onChange={e=>setSelectedEvent(e.target.value)}><option value="">Pilih pertemuan</option>{matching.map(e=><option value={e.id} key={e.id}>{e.title}</option>)}</select>}
       </div>}
-      {!matching.length&&<div className="fj-hint">Presensi belum tersedia untuk pilihan ini. Jurnal tetap dapat disimpan tanpa membuat agenda.</div>}
+      {!matching.length&&<div className="fj-hint">Presensi untuk tanggal dan kegiatan ini belum tersedia. Jurnal tetap dapat ditulis; sistem akan menautkannya otomatis saat presensi dibuat.</div>}
       <label className="fj-field">Judul jurnal (opsional)<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Misal: Pengajian sore kelas 3"/></label>
       <label className="fj-field">Materi yang disampaikan (opsional)<textarea rows={2} value={material} onChange={e=>setMaterial(e.target.value)} placeholder="Misal: membaca surat pendek, tata krama menjaga kebersihan"/></label>
       <label className="fj-field"><strong>Cerita kegiatan dan hasilnya</strong><textarea rows={7} value={summary} onChange={e=>setSummary(e.target.value)} placeholder="Ceritakan dengan kata-kata sendiri: hari ini mengajarkan apa, bagaimana suasananya, anak-anak sudah bisa apa, dan bagian mana yang perlu diulang…"/></label>
