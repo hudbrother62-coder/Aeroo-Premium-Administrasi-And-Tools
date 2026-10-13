@@ -5,17 +5,17 @@ import {FormEvent,useEffect,useMemo,useRef,useState} from 'react';
 import {Archive,Download,FileUp,RotateCcw,Trash2,Users} from 'lucide-react';
 import {type Role,type Audience,readScopesForRole,writeScopesForRole} from '@/lib/access';
 
-type Member={member_memberships?:any[];revision?:number;level_id?:string;id:string;name:string;gender?:string;phone?:string;section?:string;status:string;class_id?:string;levels?:{name?:string};classes?:{name?:string};member_categories?:Array<{category_id:string;categories?:{name?:string;slug?:string}}>};
-type ClassRow={id:string;name:string;audience:string;level_id?:string};
+type Member={member_memberships?:any[];revision?:number;id:string;name:string;gender?:string;phone?:string;section?:string;status:string;class_id?:string;classes?:{name?:string};member_categories?:Array<{category_id:string;categories?:{name?:string;slug?:string}}>};
+type ClassRow={id:string;name:string;audience:string};
 type Category={id:string;name:string;slug:string};
 const tabs=[['ALL','Semua'],['KELOMPOK','Kelompok'],['CABERAWIT','Caberawit'],['MUDA_MUDI','Muda-Mudi'],['IBU_IBU','Ibu-Ibu']] as const;
 
 export default function DatabasePage(){
-  const[segment,setSegment]=useState('ALL'),[q,setQ]=useState(''),[classId,setClassId]=useState(''),[statusFilter,setStatusFilter]=useState(()=>typeof window!=='undefined'&&new URLSearchParams(window.location.search).get('archived')==='1'?'INACTIVE':'ACTIVE'),[sort,setSort]=useState('source'),[levelId,setLevelId]=useState(''),[office,setOffice]=useState(''),[levels,setLevels]=useState<any[]>([]);
+  const[segment,setSegment]=useState('ALL'),[q,setQ]=useState(''),[classId,setClassId]=useState(''),[statusFilter,setStatusFilter]=useState(()=>typeof window!=='undefined'&&new URLSearchParams(window.location.search).get('archived')==='1'?'INACTIVE':'ACTIVE'),[sort,setSort]=useState('source'),[office,setOffice]=useState('');
   const[data,setData]=useState<Member[]>([]),[classes,setClasses]=useState<ClassRow[]>([]),[categories,setCategories]=useState<Category[]>([]);
   const[readableScopes,setReadableScopes]=useState<Audience[]>([]),[writableScopes,setWritableScopes]=useState<Audience[]>([]);
    const[role,setRole]=useState<Role|null>(null),[selected,setSelected]=useState<string[]>([]),[bulkCategories,setBulkCategories]=useState<string[]>([]),[bulkClass,setBulkClass]=useState('');
-  const[showClass,setShowClass]=useState(false),[className,setClassName]=useState(''),[showLevel,setShowLevel]=useState(false),[levelName,setLevelName]=useState('');
+  const[showClass,setShowClass]=useState(false),[className,setClassName]=useState('');
   const[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState('');
   const upload=useRef<HTMLInputElement>(null);
   const canWrite=role==='ADMIN'||writableScopes.length>0;
@@ -28,7 +28,7 @@ export default function DatabasePage(){
   async function loadMembers(fresh=false){
     setLoading(true);setError('');
     const params=new URLSearchParams({segment,status:statusFilter,sort,mode:'list'});
-    if(q)params.set('q',q);if(classId)params.set('class_id',classId);if(levelId)params.set('level_id',levelId);if(office)params.set('office',office);
+    if(q)params.set('q',q);if(classId)params.set('class_id',classId);if(office)params.set('office',office);
     try{
       const r=await fetch('/api/members?'+params,{cache:fresh?'no-store':'default'});
       const j=await r.json();
@@ -38,19 +38,19 @@ export default function DatabasePage(){
   }
   async function loadMeta(){
     try{
-      const [c,g,u,l]=await Promise.all([fetch('/api/classes'),fetch('/api/categories'),fetch('/api/auth/me'),fetch('/api/levels')]);
-      if(!c.ok||!g.ok||!u.ok||!l.ok)throw new Error('Filter database tidak dapat dimuat.');
-      const [cv,gv,uv,lv]=await Promise.all([c.json(),g.json(),u.json(),l.json()]);
-      setClasses(cv);setCategories(gv);setRole(uv.role);setLevels(lv);
+      const [c,g,u]=await Promise.all([fetch('/api/classes'),fetch('/api/categories'),fetch('/api/auth/me')]);
+      if(!c.ok||!g.ok||!u.ok)throw new Error('Filter database tidak dapat dimuat.');
+      const [cv,gv,uv]=await Promise.all([c.json(),g.json(),u.json()]);
+      setClasses(cv);setCategories(gv);setRole(uv.role);
        const read=(Array.isArray(uv.read_scopes)?uv.read_scopes:readScopesForRole(uv.role)) as Audience[];
        const write=(Array.isArray(uv.write_scopes)?uv.write_scopes:writeScopesForRole(uv.role)) as Audience[];
        setReadableScopes(read);setWritableScopes(write);
        if(uv.role!=='ADMIN')setSegment(read.includes('CABERAWIT')?'CABERAWIT':read.includes('KELOMPOK')?'KELOMPOK':read[0]||'CABERAWIT');
     }catch(e){setError(e instanceof Error?e.message:'Gagal memuat filter database.')}
   }
-  useEffect(()=>{void loadMeta();const create=new URLSearchParams(window.location.search).get('create');if(create==='class')setShowClass(true);if(create==='level')setShowLevel(true)},[]);
-  useEffect(()=>{void loadMembers()},[segment,classId,statusFilter,sort,levelId]);
-  useEffect(()=>setSelected([]),[segment,classId,statusFilter,sort,levelId]);
+  useEffect(()=>{void loadMeta();const create=new URLSearchParams(window.location.search).get('create');if(create==='class')setShowClass(true)},[]);
+  useEffect(()=>{void loadMembers()},[segment,classId,statusFilter,sort]);
+  useEffect(()=>setSelected([]),[segment,classId,statusFilter,sort]);
 
   async function action(id:string,kind:'archive'|'restore'|'delete'){
     if(!window.confirm(kind==='delete'?'Hapus permanen? Identitas anggota hilang, riwayat kegiatan tetap tersimpan.':kind==='archive'?'Arsipkan anggota ini?':'Pulihkan anggota dari arsip?'))return;
@@ -59,12 +59,6 @@ export default function DatabasePage(){
     const j=await r.json();setBusy(false);
     if(!r.ok){setError(j.error||'Tindakan gagal.');return}
     setMessage(kind==='archive'?'Anggota dipindahkan ke arsip.':kind==='restore'?'Anggota dipulihkan.':'Data pribadi dihapus permanen.');await loadMembers(true);
-  }
-  async function addLevel(e:FormEvent){
-    e.preventDefault();setBusy(true);setError('');
-    const r=await fetch('/api/levels',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:levelName})});
-    const j=await r.json();setBusy(false);
-    if(!r.ok){setError(j.error||'Jenjang gagal dibuat.');return}setLevelName('');setShowLevel(false);setMessage('Jenjang berhasil dibuat.');await loadMeta();await loadMembers(true);
   }
   async function addClass(e:FormEvent){
     e.preventDefault();setBusy(true);setError('');
@@ -98,9 +92,9 @@ export default function DatabasePage(){
   return <>
     <div className="pageHeader"><h1>Database</h1>{canWrite&&<Link className="btn" href="/database/tambah">+ Data</Link>}</div>
     <div className="tabBar section">{visibleTabs.map(([v,l])=><button key={v} className={segment===v?'tab active':'tab'} onClick={()=>{setSegment(v);setClassId('')}}>{l}</button>)}</div>
-    <div className="toolbar card databaseTools"><input className="input" placeholder="Cari nama anggota…" value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&void loadMembers()}/><select className="select" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="ACTIVE">Aktif</option><option value="INACTIVE">Tidak aktif</option></select><select className="select" value={sort} onChange={e=>setSort(e.target.value)}><option value="source">Urutan database</option><option value="name_asc">Nama A–Z</option><option value="name_desc">Nama Z–A</option><option value="newest">Terbaru</option><option value="oldest">Terlama</option></select><select className="select" value={classId} onChange={e=>setClassId(e.target.value)}><option value="">Semua kelas</option>{classOptions.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select><select className="select" value={levelId} onChange={e=>setLevelId(e.target.value)}><option value="">Semua jenjang</option>{levels.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select><button className="btn secondary" onClick={()=>void loadMembers()}>Cari</button></div>
-    <div className="databaseActions section"><button className={archived?'btn secondary':'btn ghost'} onClick={()=>setStatusFilter(v=>v==='INACTIVE'?'ACTIVE':'INACTIVE')}><Archive size={16}/>{archived?'Lihat aktif':'Arsip'}</button>{canWrite&&<a className="btn ghost" href="/api/members/spreadsheet?template=1"><Download size={16}/>Template Excel</a>}<a className="btn ghost" href={"/api/members/spreadsheet?status="+statusFilter}><Download size={16}/>Excel {archived?"Arsip":"Aktif"}</a><a className="btn ghost" href={"/api/members/spreadsheet?format=csv&status="+statusFilter}><Download size={16}/>CSV</a>{role==='ADMIN'&&<a className="btn ghost" href="/api/members/spreadsheet?status=ALL"><Download size={16}/>Excel Semua Data</a>}{canWrite&&<><input hidden ref={upload} type="file" accept=".xlsx,.xls" onChange={e=>{const f=e.target.files?.[0];if(f)void importExcel(f);e.target.value=''}}/><button className="btn ghost" onClick={()=>upload.current?.click()} disabled={busy}><FileUp size={16}/>Import Excel</button></>}{canClass&&!archived&&<button className="btn ghost" onClick={()=>setShowLevel(v=>!v)}>{showLevel?'Tutup jenjang':'+ Jenjang'}</button>}{canClass&&!archived&&['CABERAWIT','MUDA_MUDI'].includes(segment)&&<button className="btn ghost" onClick={()=>setShowClass(v=>!v)}>{showClass?'Tutup kelas':'+ Kelas'}</button>}</div>
-    {showLevel&&<form className="card section inlineForm" onSubmit={addLevel}><label>Nama jenjang<input className="input" required value={levelName} onChange={e=>setLevelName(e.target.value)} placeholder="Contoh: SD 1 atau Remaja"/></label><button className="btn" disabled={busy}>Simpan jenjang</button></form>}
+    <div className="toolbar card databaseTools"><input className="input" placeholder="Cari nama anggota…" value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>e.key==='Enter'&&void loadMembers()}/><select className="select" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="ACTIVE">Aktif</option><option value="INACTIVE">Tidak aktif</option></select><select className="select" value={sort} onChange={e=>setSort(e.target.value)}><option value="source">Urutan database</option><option value="name_asc">Nama A–Z</option><option value="name_desc">Nama Z–A</option><option value="newest">Terbaru</option><option value="oldest">Terlama</option></select><select className="select" value={classId} onChange={e=>setClassId(e.target.value)}><option value="">Semua kelas</option>{classOptions.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select><button className="btn secondary" onClick={()=>void loadMembers()}>Cari</button></div>
+    <div className="databaseActions section"><button className={archived?'btn secondary':'btn ghost'} onClick={()=>setStatusFilter(v=>v==='INACTIVE'?'ACTIVE':'INACTIVE')}><Archive size={16}/>{archived?'Lihat aktif':'Arsip'}</button>{canWrite&&<a className="btn ghost" href="/api/members/spreadsheet?template=1"><Download size={16}/>Template Excel</a>}<a className="btn ghost" href={"/api/members/spreadsheet?status="+statusFilter}><Download size={16}/>Excel {archived?"Arsip":"Aktif"}</a><a className="btn ghost" href={"/api/members/spreadsheet?format=csv&status="+statusFilter}><Download size={16}/>CSV</a>{role==='ADMIN'&&<a className="btn ghost" href="/api/members/spreadsheet?status=ALL"><Download size={16}/>Excel Semua Data</a>}{canWrite&&<><input hidden ref={upload} type="file" accept=".xlsx,.xls" onChange={e=>{const f=e.target.files?.[0];if(f)void importExcel(f);e.target.value=''}}/><button className="btn ghost" onClick={()=>upload.current?.click()} disabled={busy}><FileUp size={16}/>Import Excel</button></>}{canClass&&!archived&&['CABERAWIT','MUDA_MUDI'].includes(segment)&&<button className="btn ghost" onClick={()=>setShowClass(v=>!v)}>{showClass?'Tutup kelas':'+ Kelas'}</button>}</div>
+    
     {showClass&&<form className="card section inlineForm compactCreateForm" onSubmit={addClass}><label>Nama kelas<input className="input" required value={className} onChange={e=>setClassName(e.target.value)} placeholder="Contoh: Kelas A"/></label><button className="btn" disabled={busy}>Simpan kelas</button></form>}
     {(segment==='CABERAWIT'||segment==='MUDA_MUDI')&&classOptions.length>0&&!archived&&<section className="classLanes section"><div className="cardHead"><div><h2>Kelas</h2></div></div><div className="classLaneList">{classOptions.map(c=><div className="classLane" key={c.id} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const id=e.dataTransfer.getData('text/member-id');if(id)void moveMember(id,c.id)}}><strong>{c.name}</strong><span>{data.filter(m=>m.member_memberships?.some(mm=>mm.effective&&mm.class_id===c.id)).length} anggota</span></div>)}</div></section>}
     
@@ -115,7 +109,7 @@ export default function DatabasePage(){
       </div>)}
       {!loading&&!data.length&&<div className="card emptyState">{archived?'Arsip kosong.':'Belum ada data pada filter ini.'}</div>}
     </div>
-    <div className="tableWrap responsiveWrap section databaseDesktopTable"><table className="table responsiveTable"><thead><tr><th><span style={{display:"inline-flex",alignItems:"center",gap:10}}>{canWrite&&!archived&&<input type="checkbox" aria-label="Pilih semua" checked={selectAll} onChange={e=>setSelected(e.target.checked?data.map(x=>x.id):[])}/>}<span>No.</span></span></th><th>Nama</th><th>Program</th><th>Jenjang</th><th>Kelas / seksi</th><th>Aksi</th></tr></thead><tbody>{loading&&!data.length?<tr><td colSpan={6}>Memuat database…</td></tr>:data.map((m,index)=><tr key={m.id} draggable={canWrite&&!archived} onDragStart={e=>e.dataTransfer.setData('text/member-id',m.id)}><td data-label="No."><span style={{display:"inline-flex",alignItems:"center",gap:10}}>{canWrite&&!archived&&<input type="checkbox" aria-label={`Pilih ${m.name}`} checked={selected.includes(m.id)} onChange={e=>setSelected(v=>e.target.checked?[...v,m.id]:v.filter(x=>x!==m.id))}/>}<span style={{fontVariantNumeric:"tabular-nums"}}>{index+1}</span></span></td><td data-label="Nama"><Link className="personLink" href={'/database/'+m.id}><strong>{m.name}</strong></Link><small className="muted memberPhone">{m.phone||''}</small></td><td data-label="Program">{m.member_memberships?.filter(mm=>mm.effective??mm.active).map(mm=>mm.categories?.name).filter((x:any)=>x&&x!=='Pengurus'&&x!=='Kelompok').join(', ')||'—'}</td><td data-label="Jenjang">{m.member_memberships?.filter(mm=>mm.effective??mm.active).map(mm=>mm.levels?.name).filter(Boolean).join(', ')||'—'}</td><td data-label="Kelas / seksi">{m.member_memberships?.filter(mm=>mm.effective??mm.active).map(mm=>[mm.classes?.name,mm.office,mm.section].filter(Boolean).join(' · ')).filter(Boolean).join(', ')||'—'}</td><td data-label="Aksi"><div className="row">{canWrite&&!archived&&<Link className="smallAction" href={"/database/tambah?id="+m.id}>Edit biodata</Link>}{role==='ADMIN'&&(archived?<><button className="smallAction" disabled={busy} onClick={()=>void action(m.id,'restore')} title="Pulihkan"><RotateCcw size={16}/></button><button className="smallAction danger" disabled={busy} onClick={()=>void action(m.id,'delete')} title="Hapus permanen"><Trash2 size={16}/></button></>:<button className="smallAction" disabled={busy} onClick={()=>void action(m.id,'archive')} title="Arsipkan"><Archive size={16}/></button>)}</div></td></tr>)}{!loading&&!data.length&&<tr><td colSpan={6}><div className="emptyState"><Users size={24}/><p>{archived?'Arsip kosong.':'Belum ada data pada filter ini.'}</p></div></td></tr>}</tbody></table></div>
+    <div className="tableWrap responsiveWrap section databaseDesktopTable"><table className="table responsiveTable"><thead><tr><th><span style={{display:"inline-flex",alignItems:"center",gap:10}}>{canWrite&&!archived&&<input type="checkbox" aria-label="Pilih semua" checked={selectAll} onChange={e=>setSelected(e.target.checked?data.map(x=>x.id):[])}/>}<span>No.</span></span></th><th>Nama</th><th>Program</th><th>Kelas</th><th>Aksi</th></tr></thead><tbody>{loading&&!data.length?<tr><td colSpan={5}>Memuat database…</td></tr>:data.map((m,index)=><tr key={m.id} draggable={canWrite&&!archived} onDragStart={e=>e.dataTransfer.setData('text/member-id',m.id)}><td data-label="No."><span style={{display:"inline-flex",alignItems:"center",gap:10}}>{canWrite&&!archived&&<input type="checkbox" aria-label={`Pilih ${m.name}`} checked={selected.includes(m.id)} onChange={e=>setSelected(v=>e.target.checked?[...v,m.id]:v.filter(x=>x!==m.id))}/>}<span style={{fontVariantNumeric:"tabular-nums"}}>{index+1}</span></span></td><td data-label="Nama"><Link className="personLink" href={'/database/'+m.id}><strong>{m.name}</strong></Link><small className="muted memberPhone">{m.phone||''}</small></td><td data-label="Program">{m.member_memberships?.filter(mm=>mm.effective??mm.active).map(mm=>mm.categories?.name).filter((x:any)=>x&&x!=='Pengurus'&&x!=='Kelompok').join(', ')||'—'}</td><td data-label="Kelas">{m.member_memberships?.filter(mm=>mm.effective??mm.active).map(mm=>mm.classes?.name).filter(Boolean).join(', ')||'—'}</td><td data-label="Aksi"><div className="row">{canWrite&&!archived&&<Link className="smallAction" href={"/database/tambah?id="+m.id}>Edit biodata</Link>}{role==='ADMIN'&&(archived?<><button className="smallAction" disabled={busy} onClick={()=>void action(m.id,'restore')} title="Pulihkan"><RotateCcw size={16}/></button><button className="smallAction danger" disabled={busy} onClick={()=>void action(m.id,'delete')} title="Hapus permanen"><Trash2 size={16}/></button></>:<button className="smallAction" disabled={busy} onClick={()=>void action(m.id,'archive')} title="Arsipkan"><Archive size={16}/></button>)}</div></td></tr>)}{!loading&&!data.length&&<tr><td colSpan={5}><div className="emptyState"><Users size={24}/><p>{archived?'Arsip kosong.':'Belum ada data pada filter ini.'}</p></div></td></tr>}</tbody></table></div>
 
   </>;
 }
