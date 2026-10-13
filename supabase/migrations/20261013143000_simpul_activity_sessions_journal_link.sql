@@ -39,7 +39,7 @@ returns trigger language plpgsql security invoker set search_path='' as $$
 declare v_id uuid;
 begin
   if new.event_id is not null or new.state='ARCHIVED' then return new;end if;
-  select case when count(*)=1 then min(e.id) else null end into v_id
+  select case when count(*)=1 then min(e.id::text)::uuid else null end into v_id
   from public.attendance_events e
   where e.event_date=new.journal_date
     and e.audience=public.journal_audience(new.journal_kind)
@@ -96,7 +96,7 @@ execute function public.simpul_attach_journals_to_new_event();
 
 -- Backfill only unambiguous orphan journals without changing completed attendance.
 with pairs as (
-  select j.id as journal_id,min(e.id) as event_id
+  select j.id as journal_id,min(e.id::text)::uuid as event_id
   from public.journals j join public.attendance_events e
     on e.event_date=j.journal_date
    and e.audience=public.journal_audience(j.journal_kind)
