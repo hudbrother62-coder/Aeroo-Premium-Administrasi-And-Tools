@@ -91,8 +91,8 @@ export default function JournalDashboard(){
     {writable.length>0&&<section className="journalEasyEntry" aria-label="Mulai jurnal tanpa target manual">
       <div className="journalEasyEntryIntro"><strong>Tulis jurnal per pertemuan</strong></div>
       <div className="journalEasyEntryActions">
-        <Link href="/jurnal/tulis"><BookOpenText size={20}/><span><strong>Tulis jurnal</strong><small>Langsung ketik catatan kegiatan</small></span><ArrowRight size={18}/></Link>
-        <Link href="/jurnal/riwayat"><History size={20}/><span><strong>Jurnal tersimpan</strong><small>Lihat hasil dan saran AI</small></span><ArrowRight size={18}/></Link>
+        <Link href="/jurnal/tulis"><BookOpenText size={20}/><span><strong>Tulis jurnal</strong></span><ArrowRight size={18}/></Link>
+        <Link href="/jurnal/riwayat"><History size={20}/><span><strong>Jurnal tersimpan</strong></span><ArrowRight size={18}/></Link>
       </div>
     </section>}
 
@@ -113,27 +113,27 @@ export default function JournalDashboard(){
 
     <div className="journalContentGrid section">
       <section className="card journalChartCard">
-        <div className="cardHead"><div><h2>Aktivitas jurnal</h2><p>Jumlah jurnal per pekan · {monthLabel(month)}</p></div><CalendarDays size={20}/></div>
+        <div className="cardHead"><div><h2>Aktivitas jurnal</h2></div><CalendarDays size={20}/></div>
         <div className="journalBars" role="img" aria-label="Grafik jumlah jurnal per pekan">
           {weeks.map(w=><div className="journalBarCol" key={w.label}><span>{w.count}</span><div className="journalBarTrack"><div className="journalBarFill" style={{height:(w.count?Math.max(9,w.count/maxWeek*100):0)+'%'}}/></div><small>{w.label}</small></div>)}
         </div>
-        <div className="journalChartFooter">Grafik dihitung dari jurnal yang tersimpan, mengikuti pilihan jenjang, kelas dan jenis.</div>
+        
       </section>
       <section className="card journalStartCard">
         <div className="journalStartIcon"><BookOpenText size={23}/></div>
         <h2>Isi jurnal baru</h2>
-        <p>Satu formulir terpandu untuk semua jenis. Pilih jenis jurnal, kemudian sistem menampilkan kolom yang relevan dan data terhubung.</p>
-        <div className="journalStep"><span>01</span> Pilih jenis jurnal dan tanggal</div>
-        <div className="journalStep"><span>02</span> Hubungkan agenda/presensi, jenjang dan kelas</div>
-        <div className="journalStep"><span>03</span> Isi materi, evaluasi dan observasi target</div>
+        
+        
+        
+        
         {canCreate?<Link className="btn journalStartButton" href="/jurnal/buat">Mulai isi jurnal <ArrowRight size={16}/></Link>:<div className="notice">Akun ini belum memiliki akses menulis jurnal.</div>}
       </section>
     </div>
 
     <section className="card section journalRecent">
-      <div className="cardHead"><div><h2>Jurnal terbaru</h2><p>Ringkasan pencatatan sesuai filter yang aktif.</p></div><Link className="btn ghost" href="/jurnal/riwayat">Lihat riwayat <ArrowRight size={16}/></Link></div>
-      {loading?<div className="emptyState">Memuat jurnal…</div>:recent.length?<div className="journalRecentList">{recent.map(j=><div className="journalRecentItem" key={j.id}><div className="journalRecentIcon"><BookOpenText size={18}/></div><div className="journalRecentText"><strong>{j.title}</strong><span>{kindLabels[j.journal_kind]||j.journal_kind} · {j.classes?.name||classes.find(c=>c.id===j.class_id)?.name||'Lintas kelas'} · {j.journal_date}</span></div><span className="badge">{j.state==='COMPLETED'?'Selesai':j.state==='ARCHIVED'?'Arsip':'Draf'}</span><Link className="btn ghost" href={writable.includes(audienceFor(j.journal_kind))?'/jurnal/buat?journal_id='+j.id:'/jurnal/riwayat'}>Lihat <ArrowRight size={14}/></Link></div>)}</div>:<div className="journalEmpty"><BookOpenText size={27}/><strong>Belum ada jurnal untuk filter ini</strong><p>Jurnal yang disimpan akan otomatis muncul di sini dan masuk ke riwayat.</p>{canCreate&&<Link href="/jurnal/buat" className="btn">Tambah jurnal pertama</Link>}</div>}
+      <div className="cardHead"><div><h2>Jurnal terbaru</h2></div><Link className="btn ghost" href="/jurnal/riwayat">Lihat riwayat <ArrowRight size={16}/></Link></div>
+      {loading?<div className="emptyState">Memuat jurnal…</div>:recent.length?<div className="journalRecentList">{recent.map(j=><div className="journalRecentItem" key={j.id}><div className="journalRecentIcon"><BookOpenText size={18}/></div><div className="journalRecentText"><strong>{j.title}</strong><span>{kindLabels[j.journal_kind]||j.journal_kind} · {j.classes?.name||classes.find(c=>c.id===j.class_id)?.name||'Lintas kelas'} · {j.journal_date}</span></div><span className="badge">{j.state==='COMPLETED'?'Selesai':j.state==='ARCHIVED'?'Arsip':'Draf'}</span><Link className="btn ghost" href={writable.includes(audienceFor(j.journal_kind))?'/jurnal/buat?journal_id='+j.id:'/jurnal/riwayat'}>Lihat <ArrowRight size={14}/></Link></div>)}</div>:<div className="journalEmpty"><BookOpenText size={27}/><strong>Belum ada jurnal untuk filter ini</strong>{canCreate&&<Link href="/jurnal/buat" className="btn">Tambah jurnal pertama</Link>}</div>}
     </section>
-    <div className="journalIntegration"><Target size={18}/><span><strong>Terhubung dengan Target & Progres.</strong> Jurnal kelas menjadi sumber analisis kesesuaian target. <Link href="/target">Buka Target & Progres <ArrowRight size={13}/></Link></span></div>
+    <div className="journalIntegration"><Target size={18}/><Link href="/target">Target & Progres <ArrowRight size={13}/></Link></div>
   </div>;
 }

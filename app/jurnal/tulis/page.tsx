@@ -142,29 +142,29 @@ export default function TulisJurnal(){
         {fromAgenda&&<label>Agenda khusus<select value={agendaId} onChange={e=>{const value=e.target.value;setAgendaId(value);setSelectedEvent('');const a=agendaOptions.find(x=>x.id===value);if(a?.class_id)setClassId(a.class_id);}}><option value="">Pilih agenda yang sudah dibuat</option>{agendaOptions.map(a=><option key={a.id} value={a.id}>{a.title}</option>)}</select></label>}
       </div>
       {matching.length>0&&<div className="fj-attendance">
-        <CheckCircle2 size={18}/><div><strong>Presensi tanggal ini ditemukan</strong><p>{matching.length===1?'Jurnal akan otomatis terhubung dengan presensi tersebut.':'Ada beberapa pertemuan. Pilih satu yang sesuai.'}</p></div>
+        <CheckCircle2 size={18}/><div><strong>Presensi tanggal ini ditemukan</strong></div>
         {matching.length>1&&<select aria-label="Pilih presensi terkait" value={selectedEvent} onChange={e=>setSelectedEvent(e.target.value)}><option value="">Pilih pertemuan</option>{matching.map(e=><option value={e.id} key={e.id}>{e.title}</option>)}</select>}
       </div>}
-      {!matching.length&&<div className="fj-hint">Presensi untuk tanggal dan kegiatan ini belum tersedia. Jurnal tetap dapat ditulis; sistem akan menautkannya otomatis saat presensi dibuat.</div>}
-      <label className="fj-field">Judul jurnal (opsional)<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Misal: Pengajian sore kelas 3"/></label>
-      <label className="fj-field">Materi yang disampaikan (opsional)<textarea rows={2} value={material} onChange={e=>setMaterial(e.target.value)} placeholder="Misal: membaca surat pendek, tata krama menjaga kebersihan"/></label>
-      <label className="fj-field"><strong>Cerita kegiatan dan hasilnya</strong><textarea rows={7} value={summary} onChange={e=>setSummary(e.target.value)} placeholder="Ceritakan dengan kata-kata sendiri: hari ini mengajarkan apa, bagaimana suasananya, anak-anak sudah bisa apa, dan bagian mana yang perlu diulang…"/></label>
-      <details className="fj-optional"><summary>Catatan tambahan (jika diperlukan)</summary>
-        <label className="fj-field">Kendala<textarea rows={2} value={obstacles} onChange={e=>setObstacles(e.target.value)} placeholder="Contoh: beberapa peserta masih sulit mengikuti"/></label>
-        <label className="fj-field">Rencana tindak lanjut<textarea rows={2} value={followUp} onChange={e=>setFollowUp(e.target.value)} placeholder="Contoh: diulang pertemuan berikutnya"/></label>
+      {!matching.length&&}
+      <label className="fj-field">Judul<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Judul kegiatan"/></label>
+      <label className="fj-field">Materi<textarea rows={2} value={material} onChange={e=>setMaterial(e.target.value)} placeholder="Materi kegiatan"/></label>
+      <label className="fj-field"><strong>Catatan kegiatan</strong><textarea rows={7} value={summary} onChange={e=>setSummary(e.target.value)} placeholder="Isi jurnal"/></label>
+      <details className="fj-optional"><summary>Tambahan</summary>
+        <label className="fj-field">Kendala<textarea rows={2} value={obstacles} onChange={e=>setObstacles(e.target.value)} placeholder="Kendala"/></label>
+        <label className="fj-field">Rencana tindak lanjut<textarea rows={2} value={followUp} onChange={e=>setFollowUp(e.target.value)} placeholder="Tindak lanjut"/></label>
       </details>
       {error&&<div className="fj-error" role="alert">{error}</div>}
       <div className="fj-actions"><Link href="/jurnal" className="fj-secondary">Batal</Link><button type="button" className="fj-primary" disabled={saving} onClick={()=>void save()}>{saving?<LoaderCircle size={19}/>:<FileText size={19}/>} {saving?'Menyimpan…':'Simpan jurnal'}</button></div>
     </section>:<section className="fj-panel">
-      <div className="fj-success"><CheckCircle2 size={38}/><h2>Jurnal berhasil disimpan</h2><p>Catatan asli tetap tersimpan. AI hanya memberikan saran materi terkait, bukan mengubah nilai pencapaian anak.</p></div>
+      <div className="fj-success"><CheckCircle2 size={38}/><h2>Jurnal berhasil disimpan</h2></div>
       {analyzing&&<div className="fj-status"><Sparkles size={19}/> Groq sedang membaca jurnal dan mencari target yang relevan…</div>}
       {aiError&&<div className="fj-hint" role="status">Analisis AI belum tersedia: {aiError} <button type="button" onClick={()=>void analyze(savedId)} disabled={analyzing}><RefreshCw size={15}/> Coba lagi</button></div>}
       {analysis&&<div className="fj-ai">
-        <h3><Sparkles size={18}/> Hasil pembacaan jurnal oleh AI</h3>
+        <h3><Sparkles size={18}/> Analisis AI</h3>
         <p>{analysis.summary}</p>
-        {analysis.matches.length>0?<div className="fj-matches">{analysis.matches.map(x=><article key={x.target_id}><strong>{x.title}</strong><span>{x.relation==='DIAJARKAN'?'Materi tercatat diajarkan':x.relation==='INDIKASI'?'Kemungkinan terkait':'Belum terbukti'}</span><p>{x.reason}</p><blockquote>“{x.quote}”</blockquote></article>)}</div>:<div className="fj-hint">AI belum menemukan target yang dapat dibuktikan dari isi jurnal. Catatan tetap tersimpan.</div>}
+        {analysis.matches.length>0?<div className="fj-matches">{analysis.matches.map(x=><article key={x.target_id}><strong>{x.title}</strong><span>{x.relation==='DIAJARKAN'?'Materi tercatat diajarkan':x.relation==='INDIKASI'?'Kemungkinan terkait':'Belum terbukti'}</span><p>{x.reason}</p><blockquote>“{x.quote}”</blockquote></article>)}</div>:<div className="fj-hint">Target belum cocok.</div>}
         {analysis.suggestion&&<p className="fj-suggestion"><strong>Saran tindak lanjut:</strong> {analysis.suggestion}</p>}
-        <small>Analisis AI adalah bantuan membaca jurnal. Tidak memberi nilai, tidak menyatakan anak sudah tuntas, dan dapat diperiksa kembali oleh guru.</small>
+        
       </div>}
       <div className="fj-actions"><Link className="fj-secondary" href={"/jurnal/hasil/"+savedId}>Lihat hasil dan AI</Link><Link className="fj-secondary" href="/jurnal/riwayat">Riwayat</Link><Link className="fj-primary" href="/jurnal/tulis">Tulis jurnal baru</Link></div>
     </section>}

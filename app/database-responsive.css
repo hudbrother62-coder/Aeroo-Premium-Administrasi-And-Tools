@@ -63,3 +63,12 @@
   .databasePage .databaseTabs>.tab{font-size:11px;padding-inline:4px}
   .databasePage .databaseActions>.btn{font-size:11px;padding-inline:5px}
 }
+
+/* Mobile member management stays below each row, never hides behind a pop-up. */
+.databasePage .mobileMemberActions{grid-column:1 / -1;min-width:0}
+.databasePage .mobileMemberActions>summary{cursor:pointer;color:var(--text);font-size:12px;font-weight:700;min-height:36px;display:flex;align-items:center;justify-content:flex-end;list-style:none}
+.databasePage .mobileMemberActions>summary::-webkit-details-marker{display:none}
+.databasePage .mobileMemberActionList{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding:4px 0 9px}
+.databasePage .mobileMemberActionList button{border:1px solid var(--border);border-radius:9px;min-height:40px;padding:9px 12px;background:var(--surface);color:var(--text);cursor:pointer}
+.databasePage .mobileMemberActionList button.danger{color:var(--danger,#c24141)}
+.databasePage .mobileMemberActionList button:disabled{opacity:.55;cursor:not-allowed}

@@ -43,11 +43,11 @@ export default function JournalResult(){
         {ai?<><p>{ai.summary}</p>{(ai.matches||[]).length?
           <div className="fj-matches">{ai.matches!.map((m,i)=><article key={m.target_id+i}>
             <strong>{m.title}</strong><span>{m.relation==='DIAJARKAN'?'Tercatat diajarkan':m.relation==='INDIKASI'?'Indikasi keterkaitan':'Belum terbukti'}</span>
-            <p>{m.reason}</p><blockquote>“{m.quote}”</blockquote></article>)}</div>
+            <details><summary>Alasan</summary><p>{m.reason}</p><blockquote>“{m.quote}”</blockquote></details></article>)}</div>
         :<div className="fj-hint">Belum ditemukan kecocokan target dengan bukti yang cukup.</div>}
         {ai.suggestion&&<p><strong>Saran:</strong> {ai.suggestion}</p>}
-        <small>Hanya saran analisis, tidak menghitung nilai individual atau menyatakan target tuntas.</small>
-        </>:<p>Belum ada analisis AI. Jurnal tetap dapat digunakan meskipun Groq belum diaktifkan.</p>}
+        
+        </>:<p>Belum dianalisis.</p>}
         <button type="button" className="fj-secondary" disabled={analyzing||journal.state==='ARCHIVED'} onClick={()=>void analyze()}><RefreshCw size={17}/>{analyzing?'Menganalisis…':ai?'Analisis ulang':'Analisis dengan Groq'}</button>
         {error&&<div className="fj-error" role="alert">{error}</div>}
       </div>

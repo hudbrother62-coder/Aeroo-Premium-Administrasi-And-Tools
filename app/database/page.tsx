@@ -53,12 +53,53 @@ export default function DatabasePage(){
   useEffect(()=>setSelected([]),[segment,classId,statusFilter,sort]);
 
   async function action(id:string,kind:'archive'|'restore'|'delete'){
-    if(!window.confirm(kind==='delete'?'Hapus permanen? Identitas anggota hilang, riwayat kegiatan tetap tersimpan.':kind==='archive'?'Arsipkan anggota ini?':'Pulihkan anggota dari arsip?'))return;
+    if(role!=='ADMIN')return;
+    if(!window.confirm(kind==='delete'?'Hapus permanen? Data identitas tidak dapat dipulihkan. Riwayat kegiatan tetap disimpan.':kind==='archive'?'Arsipkan anggota ini?':'Pulihkan anggota ini?'))return;
     setBusy(true);setMessage('');setError('');
-    const r=await fetch('/api/members/'+id+(kind==='delete'?'?permanent=1':''),{method:kind==='restore'?'PATCH':'DELETE',headers:{'content-type':'application/json'},body:kind==='restore'?JSON.stringify({status:'ACTIVE'}):undefined});
-    const j=await r.json();setBusy(false);
-    if(!r.ok){setError(j.error||'Tindakan gagal.');return}
-    setMessage(kind==='archive'?'Anggota dipindahkan ke arsip.':kind==='restore'?'Anggota dipulihkan.':'Data pribadi dihapus permanen.');await loadMembers(true);
+    try{
+      const r=await fetch('/api/members/'+id+(kind==='delete'?'?permanent=1':''),{
+        method:kind==='restore'?'PATCH':'DELETE',
+        headers:{'content-type':'application/json'},
+        body:kind==='restore'?JSON.stringify({status:'ACTIVE'}):undefined
+      });
+      const j=await r.json();
+      if(!r.ok)throw new Error(j.error||'Tindakan gagal.');
+      setSelected(v=>v.filter(x=>x!==id));
+      setMessage(kind==='archive'?'Anggota diarsipkan.':kind==='restore'?'Anggota dipulihkan.':'Anggota dihapus permanen.');
+      await loadMembers(true);
+    }catch(e){setError(e instanceof Error?e.message:'Tindakan gagal.')}
+    finally{setBusy(false)}
+  }
+  async function bulkLifecycle(kind:'archive'|'restore'|'delete'){
+    if(role!=='ADMIN'||!selected.length||busy)return;
+    const count=selected.length;
+    if(kind==='delete'){
+      if(window.prompt('Hapus permanen '+count+' anggota? Riwayat tetap ada. Ketik HAPUS untuk konfirmasi.')!=='HAPUS')return;
+    }else if(!window.confirm((kind==='archive'?'Arsipkan ':'Pulihkan ')+count+' anggota terpilih?'))return;
+    setBusy(true);setError('');setMessage('');
+    const failed:string[]=[];let succeeded=0;
+    try{
+      for(let i=0;i<selected.length;i+=5){
+        const batch=selected.slice(i,i+5);
+        const results=await Promise.all(batch.map(async id=>{
+          try{
+            const r=await fetch('/api/members/'+id+(kind==='delete'?'?permanent=1':''),{
+              method:kind==='restore'?'PATCH':'DELETE',
+              headers:{'content-type':'application/json'},
+              body:kind==='restore'?JSON.stringify({status:'ACTIVE'}):undefined
+            });
+            if(!r.ok){const j=await r.json();return {id,ok:false,reason:j.error||'Gagal'};}
+            return {id,ok:true,reason:''};
+          }catch(e){return {id,ok:false,reason:e instanceof Error?e.message:'Jaringan bermasalah'};}
+        }));
+        results.forEach(x=>{if(x.ok)succeeded++;else failed.push(x.id)});
+      }
+      setSelected(failed);
+      if(succeeded)setMessage(succeeded+' anggota '+(kind==='archive'?'diarsipkan':kind==='restore'?'dipulihkan':'dihapus permanen')+'.');
+      if(failed.length)setError(failed.length+' anggota gagal diproses. Pilihannya tetap ditandai untuk dicoba lagi.');
+      await loadMembers(true);
+    }catch(e){setError(e instanceof Error?e.message:'Aksi massal gagal.')}
+    finally{setBusy(false)}
   }
   async function addClass(e:FormEvent){
     e.preventDefault();setBusy(true);setError('');
@@ -99,17 +140,35 @@ export default function DatabasePage(){
     {(segment==='CABERAWIT'||segment==='MUDA_MUDI')&&classOptions.length>0&&!archived&&<section className="classLanes section"><div className="cardHead"><div><h2>Kelas</h2></div></div><div className="classLaneList">{classOptions.map(c=><div className="classLane" key={c.id} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const id=e.dataTransfer.getData('text/member-id');if(id)void moveMember(id,c.id)}}><strong>{c.name}</strong><span>{data.filter(m=>m.member_memberships?.some(mm=>mm.effective&&mm.class_id===c.id)).length} anggota</span></div>)}</div></section>}
     
     {message&&<div className="notice success section" role="status">{message}</div>}{error&&<div className="notice error section" role="alert">{error}</div>}
-    {loading&&data.length>0&&<div className="dataRefreshHint">Memperbarui database…</div>}{canWrite&&selected.length>0&&!archived&&<div className="bulkPanel card section"><div><strong>{selected.length} dipilih</strong><p>Centang bagian tujuan; keanggotaan yang sudah ada tidak digandakan.</p></div><div className="chips">{allowedCategories.map(c=><label className="chip" key={c.id}><input type="checkbox" checked={bulkCategories.includes(c.id)} onChange={e=>setBulkCategories(v=>e.target.checked?[...v,c.id]:v.filter(x=>x!==c.id))}/>{c.name}</label>)}</div>{classOptions.length>0&&<select className="select" value={bulkClass} onChange={e=>setBulkClass(e.target.value)}><option value="">Kelas tidak diubah</option>{classOptions.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select>}<button className="btn" disabled={busy||(!bulkClass&&!bulkCategories.length)} onClick={()=>void applyBulk()}>{busy?'Menyimpan…':'Terapkan'}</button></div>}
+    {loading&&data.length>0&&<div className="dataRefreshHint">Memperbarui database…</div>}
+    {canWrite&&selected.length>0&&<div className="bulkPanel card section">
+      <strong>{selected.length} anggota dipilih</strong>
+      {!archived&&<><div className="chips">{allowedCategories.map(c=><label className="chip" key={c.id}><input type="checkbox" checked={bulkCategories.includes(c.id)} onChange={e=>setBulkCategories(v=>e.target.checked?[...v,c.id]:v.filter(x=>x!==c.id))}/>{c.name}</label>)}</div>
+        {classOptions.length>0&&<select className="select" value={bulkClass} onChange={e=>setBulkClass(e.target.value)}><option value="">Kelas tidak diubah</option>{classOptions.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select>}
+        <button className="btn secondary" disabled={busy||(!bulkClass&&!bulkCategories.length)} onClick={()=>void applyBulk()}>Ubah program/kelas</button></>}
+      {role==='ADMIN'&&<div className="row">
+        <button className="btn secondary" type="button" disabled={busy} onClick={()=>void bulkLifecycle(archived?'restore':'archive')}><Archive size={16}/>{archived?'Pulihkan':'Arsipkan'}</button>
+        {archived&&<button className="btn danger" type="button" disabled={busy} onClick={()=>void bulkLifecycle('delete')}><Trash2 size={16}/>Hapus permanen</button>}
+      </div>}
+      <button className="btn ghost" type="button" onClick={()=>setSelected([])} disabled={busy}>Batal pilih</button>
+    </div>
     <div className="mobileMemberList section" aria-label="Daftar nama anggota">
       {loading&&!data.length?<div className="card" role="status">Memuat database…</div>:data.map((m,index)=><div className="mobileMemberRow" key={m.id}>
-        {canWrite&&!archived&&<input className="mobileMemberCheckbox" type="checkbox" aria-label={`Pilih ${m.name}`} checked={selected.includes(m.id)} onChange={e=>setSelected(v=>e.target.checked?[...v,m.id]:v.filter(x=>x!==m.id))}/>}
+        {(canWrite&&!archived||role==='ADMIN')&&<input className="mobileMemberCheckbox" type="checkbox" aria-label={`Pilih ${m.name}`} checked={selected.includes(m.id)} onChange={e=>setSelected(v=>e.target.checked?[...v,m.id]:v.filter(x=>x!==m.id))}/>}
         <span className="mobileMemberNumber">{index+1}.</span>
         <Link className="mobileMemberName" href={'/database/'+m.id}>{m.name}</Link>
         <Link className="mobileMemberDetail" href={'/database/'+m.id} aria-label={`Lihat detail ${m.name}`}>Detail</Link>
+        {role==='ADMIN'&&<details className="mobileMemberActions">
+          <summary aria-label={`Kelola ${m.name}`}>Aksi</summary>
+          <div className="mobileMemberActionList">
+            {archived?<><button type="button" disabled={busy} onClick={()=>void action(m.id,'restore')}>Pulihkan</button><button type="button" disabled={busy} className="danger" onClick={()=>void action(m.id,'delete')}>Hapus permanen</button></>
+            :<button type="button" disabled={busy} onClick={()=>void action(m.id,'archive')}>Arsipkan</button>}
+          </div>
+        </details>
       </div>)}
       {!loading&&!data.length&&<div className="card emptyState">{archived?'Arsip kosong.':'Belum ada data pada filter ini.'}</div>}
     </div>
-    <div className="tableWrap responsiveWrap section databaseDesktopTable"><table className="table responsiveTable"><thead><tr><th><span style={{display:"inline-flex",alignItems:"center",gap:10}}>{canWrite&&!archived&&<input type="checkbox" aria-label="Pilih semua" checked={selectAll} onChange={e=>setSelected(e.target.checked?data.map(x=>x.id):[])}/>}<span>No.</span></span></th><th>Nama</th><th>Program</th><th>Kelas</th><th>Aksi</th></tr></thead><tbody>{loading&&!data.length?<tr><td colSpan={5}>Memuat database…</td></tr>:data.map((m,index)=><tr key={m.id} draggable={canWrite&&!archived} onDragStart={e=>e.dataTransfer.setData('text/member-id',m.id)}><td data-label="No."><span style={{display:"inline-flex",alignItems:"center",gap:10}}>{canWrite&&!archived&&<input type="checkbox" aria-label={`Pilih ${m.name}`} checked={selected.includes(m.id)} onChange={e=>setSelected(v=>e.target.checked?[...v,m.id]:v.filter(x=>x!==m.id))}/>}<span style={{fontVariantNumeric:"tabular-nums"}}>{index+1}</span></span></td><td data-label="Nama"><Link className="personLink" href={'/database/'+m.id}><strong>{m.name}</strong></Link><small className="muted memberPhone">{m.phone||''}</small></td><td data-label="Program">{m.member_memberships?.filter(mm=>mm.effective??mm.active).map(mm=>mm.categories?.name).filter((x:any)=>x&&x!=='Pengurus'&&x!=='Kelompok').join(', ')||'—'}</td><td data-label="Kelas">{m.member_memberships?.filter(mm=>mm.effective??mm.active).map(mm=>mm.classes?.name).filter(Boolean).join(', ')||'—'}</td><td data-label="Aksi"><div className="row">{canWrite&&!archived&&<Link className="smallAction" href={"/database/tambah?id="+m.id}>Edit biodata</Link>}{role==='ADMIN'&&(archived?<><button className="smallAction" disabled={busy} onClick={()=>void action(m.id,'restore')} title="Pulihkan"><RotateCcw size={16}/></button><button className="smallAction danger" disabled={busy} onClick={()=>void action(m.id,'delete')} title="Hapus permanen"><Trash2 size={16}/></button></>:<button className="smallAction" disabled={busy} onClick={()=>void action(m.id,'archive')} title="Arsipkan"><Archive size={16}/></button>)}</div></td></tr>)}{!loading&&!data.length&&<tr><td colSpan={5}><div className="emptyState"><Users size={24}/><p>{archived?'Arsip kosong.':'Belum ada data pada filter ini.'}</p></div></td></tr>}</tbody></table></div>
+    <div className="tableWrap responsiveWrap section databaseDesktopTable"><table className="table responsiveTable"><thead><tr><th><span style={{display:"inline-flex",alignItems:"center",gap:10}}>{(canWrite&&!archived||role==='ADMIN')&&<input type="checkbox" aria-label="Pilih semua" checked={selectAll} onChange={e=>setSelected(e.target.checked?data.map(x=>x.id):[])}/>}<span>No.</span></span></th><th>Nama</th><th>Program</th><th>Kelas</th><th>Aksi</th></tr></thead><tbody>{loading&&!data.length?<tr><td colSpan={5}>Memuat database…</td></tr>:data.map((m,index)=><tr key={m.id} draggable={canWrite&&!archived} onDragStart={e=>e.dataTransfer.setData('text/member-id',m.id)}><td data-label="No."><span style={{display:"inline-flex",alignItems:"center",gap:10}}>{(canWrite&&!archived||role==='ADMIN')&&<input type="checkbox" aria-label={`Pilih ${m.name}`} checked={selected.includes(m.id)} onChange={e=>setSelected(v=>e.target.checked?[...v,m.id]:v.filter(x=>x!==m.id))}/>}<span style={{fontVariantNumeric:"tabular-nums"}}>{index+1}</span></span></td><td data-label="Nama"><Link className="personLink" href={'/database/'+m.id}><strong>{m.name}</strong></Link><small className="muted memberPhone">{m.phone||''}</small></td><td data-label="Program">{m.member_memberships?.filter(mm=>mm.effective??mm.active).map(mm=>mm.categories?.name).filter((x:any)=>x&&x!=='Pengurus'&&x!=='Kelompok').join(', ')||'—'}</td><td data-label="Kelas">{m.member_memberships?.filter(mm=>mm.effective??mm.active).map(mm=>mm.classes?.name).filter(Boolean).join(', ')||'—'}</td><td data-label="Aksi"><div className="row">{canWrite&&!archived&&<Link className="smallAction" href={"/database/tambah?id="+m.id}>Edit biodata</Link>}{role==='ADMIN'&&(archived?<><button className="smallAction" disabled={busy} onClick={()=>void action(m.id,'restore')} title="Pulihkan"><RotateCcw size={16}/> Pulihkan</button><button className="smallAction danger" disabled={busy} onClick={()=>void action(m.id,'delete')} title="Hapus permanen"><Trash2 size={16}/> Hapus</button></>:<button className="smallAction" disabled={busy} onClick={()=>void action(m.id,'archive')} title="Arsipkan"><Archive size={16}/> Arsipkan</button>)}</div></td></tr>)}{!loading&&!data.length&&<tr><td colSpan={5}><div className="emptyState"><Users size={24}/><p>{archived?'Arsip kosong.':'Belum ada data pada filter ini.'}</p></div></td></tr>}</tbody></table></div>
 
   </div>;
 }

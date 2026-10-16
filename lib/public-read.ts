@@ -9,6 +9,7 @@ export function filterPublic(rows:any[],req:NextRequest,resource:string){const q
  if(q.get('audience')&&r.audience!==q.get('audience'))return false;
  if(resource!=='members'&&q.get('class_id')&&r.class_id!==q.get('class_id'))return false;
  if(resource!=='members'&&q.get('level_id')&&r.level_id!==q.get('level_id'))return false;
+ if(resource==='attendance'&&q.get('history')==='1'&&(r.state==='CANCELLED'||!Array.isArray(r.attendance_records)||!r.attendance_records.some((a:any)=>['H','I','A'].includes(a.status))))return false;
  if(resource==='journals'&&((q.get('state')&&r.state!==q.get('state'))||(!q.get('state')&&r.state==='ARCHIVED')||(q.get('month')&&!r.journal_date?.startsWith(q.get('month')))))return false;
  if(q.get('kind')&&r.journal_kind!==q.get('kind'))return false;
  if(q.get('member_id')&&r.member_id!==q.get('member_id'))return false;
