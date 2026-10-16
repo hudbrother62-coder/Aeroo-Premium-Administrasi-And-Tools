@@ -164,7 +164,7 @@ export default function DatabasePage(){
             {archived?<><button type="button" disabled={busy} onClick={()=>void action(m.id,'restore')}>Pulihkan</button><button type="button" disabled={busy} className="danger" onClick={()=>void action(m.id,'delete')}>Hapus permanen</button></>
             :<button type="button" disabled={busy} onClick={()=>void action(m.id,'archive')}>Arsipkan</button>}
           </div>
-        </details>
+        </details>}
       </div>)}
       {!loading&&!data.length&&<div className="card emptyState">{archived?'Arsip kosong.':'Belum ada data pada filter ini.'}</div>}
     </div>
