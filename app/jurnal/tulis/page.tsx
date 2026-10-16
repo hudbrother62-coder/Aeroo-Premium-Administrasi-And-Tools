@@ -145,7 +145,6 @@ export default function TulisJurnal(){
         <CheckCircle2 size={18}/><div><strong>Presensi tanggal ini ditemukan</strong></div>
         {matching.length>1&&<select aria-label="Pilih presensi terkait" value={selectedEvent} onChange={e=>setSelectedEvent(e.target.value)}><option value="">Pilih pertemuan</option>{matching.map(e=><option value={e.id} key={e.id}>{e.title}</option>)}</select>}
       </div>}
-      {!matching.length&&}
       <label className="fj-field">Judul<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Judul kegiatan"/></label>
       <label className="fj-field">Materi<textarea rows={2} value={material} onChange={e=>setMaterial(e.target.value)} placeholder="Materi kegiatan"/></label>
       <label className="fj-field"><strong>Catatan kegiatan</strong><textarea rows={7} value={summary} onChange={e=>setSummary(e.target.value)} placeholder="Isi jurnal"/></label>

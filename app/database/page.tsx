@@ -151,7 +151,7 @@ export default function DatabasePage(){
         {archived&&<button className="btn danger" type="button" disabled={busy} onClick={()=>void bulkLifecycle('delete')}><Trash2 size={16}/>Hapus permanen</button>}
       </div>}
       <button className="btn ghost" type="button" onClick={()=>setSelected([])} disabled={busy}>Batal pilih</button>
-    </div>
+    </div>}
     <div className="mobileMemberList section" aria-label="Daftar nama anggota">
       {loading&&!data.length?<div className="card" role="status">Memuat database…</div>:data.map((m,index)=><div className="mobileMemberRow" key={m.id}>
         {(canWrite&&!archived||role==='ADMIN')&&<input className="mobileMemberCheckbox" type="checkbox" aria-label={`Pilih ${m.name}`} checked={selected.includes(m.id)} onChange={e=>setSelected(v=>e.target.checked?[...v,m.id]:v.filter(x=>x!==m.id))}/>}

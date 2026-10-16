@@ -55,8 +55,6 @@ export default function Page(){
         <div className="row between"><span className="badge">{labels[j.journal_kind]||j.journal_kind}</span><span className="itemMeta">{new Date(j.journal_date+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}</span></div>
         <div className="row between"><span className="badge">{j.state==='COMPLETED'?'Selesai':j.state==='ARCHIVED'?'Arsip':'Draf'}</span>{(scopedWrite??writeScopesForRole(role)).includes((j.journal_kind==='PENGKAJIAN'?'KELOMPOK':j.journal_kind.startsWith('CABERAWIT')?'CABERAWIT':j.journal_kind.startsWith('MUDA_MUDI')?'MUDA_MUDI':j.journal_kind) as any)&&<Link className="btn ghost writeOnly" href={`/jurnal/buat?journal_id=${j.id}`}>Edit</Link>}</div><h3 style={{margin:'12px 0 5px'}}>{index+1}. {j.title}</h3>{j.assessment?.free_form&&<div style={{marginTop:8,display:'flex',gap:9,alignItems:'center',flexWrap:'wrap'}}><Link className="btn secondary" href={'/jurnal/hasil/'+j.id}>Lihat jurnal</Link></div>}
         <div className="itemMeta">{j.classes?.name||j.members?.name||''}{j.assessment?.meeting_type?' · '+j.assessment.meeting_type:''}{j.assessment?.absence&&j.assessment.absence!=='HADIR'?' · '+j.assessment.absence:''}</div>
-        
-        }
       </article>)}
       {!loading&&!selected.length&&<div className="emptyState">Belum ada jurnal.</div>}
     </div>
