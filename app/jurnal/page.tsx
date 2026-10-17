@@ -126,7 +126,7 @@ export default function JournalDashboard(){
         
         
         
-        {canCreate?<Link className="btn journalStartButton" href="/jurnal/buat">Mulai isi jurnal <ArrowRight size={16}/></Link>:<div className="notice">Akun ini belum memiliki akses menulis jurnal.</div>}
+        {canCreate?<Link className="btn journalStartButton" href="/jurnal/tulis">Mulai isi jurnal <ArrowRight size={16}/></Link>:<div className="notice">Akun ini belum memiliki akses menulis jurnal.</div>}
       </section>
     </div>
 
