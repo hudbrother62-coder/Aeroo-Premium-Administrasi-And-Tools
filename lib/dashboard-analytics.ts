@@ -16,6 +16,11 @@ export type DashboardAnalytics={
 
 export function isValidDashboardMonth(month:string){return /^\d{4}-(0[1-9]|1[0-2])$/.test(month);}
 function ratio(present:number,total:number){return total?Math.round(present/total*1000)/10:null;}
+/** Percentages of recorded H/I/A decisions; pending records do not enter the denominator. */
+export function dashboardAttendanceRates(input:{present:number;excused:number;absent:number}){
+ const total=input.present+input.excused+input.absent;
+ return {present:ratio(input.present,total),excused:ratio(input.excused,total),absent:ratio(input.absent,total)};
+}
 function stat(rows:Row[]){
   const present=rows.filter(r=>r.status==='H').length;
   const excused=rows.filter(r=>r.status==='I').length;
