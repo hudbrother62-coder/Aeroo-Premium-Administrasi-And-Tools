@@ -4,9 +4,9 @@ const fs=require('node:fs');
 const ts=require('typescript');
 const vm=require('node:vm');
 const source=fs.readFileSync('lib/journal-kind.ts','utf8');
-const module={exports:{}};
-vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{module,exports:module.exports});
-const {isNotulensi}=module.exports;
+const mod={exports:{}};
+vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{module:mod,exports:mod.exports});
+const {isNotulensi}=mod.exports;
 test('musyawarah legacy and new meeting minutes are separated without changing data',()=>{
   const ordinary={journal_kind:'KELOMPOK',title:'Pengajian rutin',assessment:{meeting_minutes:false}};
   const minutes={journal_kind:'IBU_IBU',title:'Rapat',assessment:{meeting_minutes:true}};
