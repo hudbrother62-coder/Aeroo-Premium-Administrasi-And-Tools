@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import {useEffect,useState,type ReactNode} from 'react';
-import {Activity,ArrowRight,BarChart3,BookOpen,CalendarDays,CheckCircle2,ChevronRight,ClipboardCheck,Clock3,Download,Eye,GraduationCap,LogIn,RefreshCw,Target,Users,AlertCircle} from 'lucide-react';
+import {Activity,ArrowRight,BarChart3,BookOpen,CalendarDays,CheckCircle2,ChevronRight,ClipboardCheck,Clock3,Download,FileText,Eye,GraduationCap,LogIn,RefreshCw,Target,Users,AlertCircle} from 'lucide-react';
 import {dashboardAttendanceRates,type DashboardAnalytics,type DashboardBucket,type DashboardGroup} from '@/lib/dashboard-analytics';
 import './dashboard.css';
 
