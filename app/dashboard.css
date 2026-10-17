@@ -142,3 +142,33 @@ html[data-theme="dark"] .simDashboard{
 .simOfflineState{border:1px solid var(--sim-border);border-radius:16px;background:var(--sim-panel);padding:28px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:9px;color:var(--sim-muted)}
 .simOfflineState strong{color:var(--sim-text)}
 .simOfflineState p{max-width:370px;color:var(--sim-muted);font-size:12px}
+
+/* Primary monthly attendance summary; clear in light and dark themes. */
+.simRates{display:grid;gap:14px;background:var(--sim-panel);border:1px solid var(--sim-border);padding:20px;border-radius:17px}
+.simRatesHead{display:flex;justify-content:space-between;align-items:start;gap:12px}
+.simRatesHead h2{font-size:17px;letter-spacing:-.02em}
+.simRatesHead p{font-size:12px;color:var(--sim-muted);margin-top:5px}
+.simRateGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.simRateCard{min-width:0;border:1px solid var(--sim-border);border-radius:13px;background:var(--sim-surface);padding:17px;display:grid;gap:8px}
+.simRateCard>span{font-weight:750;font-size:13px;color:var(--sim-muted)}
+.simRateCard>strong{font-size:clamp(25px,3vw,40px);line-height:1.15;letter-spacing:-.04em}
+.simRateCard>small{font-size:11px;color:var(--sim-muted)}
+.simRateTrack{height:7px;border-radius:20px;overflow:hidden;background:var(--sim-track)}
+.simRateTrack i{display:block;height:100%;border-radius:20px;background:var(--rate-color)}
+.simRate-green{--rate-color:var(--sim-green)}
+.simRate-amber{--rate-color:var(--sim-amber)}
+.simRate-red{--rate-color:var(--sim-red)}
+.simRateNote{font-size:11px;color:var(--sim-muted);line-height:1.6}
+.simRateNote strong{color:var(--sim-text)}
+.simMoreAnalytics{border:1px solid var(--sim-border);background:var(--sim-panel);border-radius:16px;min-width:0}
+.simMoreAnalytics>summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer;padding:18px 20px;color:var(--sim-text)}
+.simMoreAnalytics>summary::-webkit-details-marker{display:none}
+.simMoreAnalytics>summary span{display:grid;gap:5px}
+.simMoreAnalytics>summary strong{font-size:14px}
+.simMoreAnalytics>summary small{font-size:11px;color:var(--sim-muted)}
+.simMoreAnalytics>summary>svg{transition:transform .2s ease}
+.simMoreAnalytics[open]>summary>svg{transform:rotate(90deg)}
+.simMoreBody{display:grid;gap:14px;padding:0 14px 14px}
+.simMoreBody .simPanel{background:var(--sim-surface)}
+@media(max-width:760px){.simRateGrid{gap:8px}.simRateCard{padding:12px}.simRates{padding:14px}.simRatesHead{flex-wrap:wrap}.simRateCard>small{font-size:10px}}
+@media(max-width:390px){.simRateGrid{grid-template-columns:minmax(0,1fr)}.simRateCard{grid-template-columns:1fr auto;align-items:center}.simRateCard .simRateTrack,.simRateCard>small{grid-column:1/-1}}
