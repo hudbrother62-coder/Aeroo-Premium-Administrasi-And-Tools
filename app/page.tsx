@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {useEffect,useState,type ReactNode} from 'react';
 import {Activity,ArrowRight,BarChart3,BookOpen,CalendarDays,CheckCircle2,ChevronRight,ClipboardCheck,Clock3,Download,Eye,GraduationCap,LogIn,RefreshCw,Target,Users,AlertCircle} from 'lucide-react';
-import type {DashboardAnalytics,DashboardBucket,DashboardGroup} from '@/lib/dashboard-analytics';
+import {dashboardAttendanceRates,type DashboardAnalytics,type DashboardBucket,type DashboardGroup} from '@/lib/dashboard-analytics';
 import './dashboard.css';
 
 type Task={id:string;title:string;journal_id?:string};
@@ -66,6 +66,12 @@ function monthLabel(month:string){
   try{return new Intl.DateTimeFormat('id-ID',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(month+'-01T00:00:00Z'));}
   catch{return month;}
 }
+function periodName(month:string,span:number){
+ if(span===1)return monthLabel(month);
+ const y=Number(month.slice(0,4)),m=Number(month.slice(5,7));
+ const first=new Date(Date.UTC(y,m-span,1)).toISOString().slice(0,7);
+ return monthLabel(first)+' – '+monthLabel(month);
+}
 export default function Home(){
   const [data,setData]=useState<Dashboard|null>(null);
   const [loggedIn,setLoggedIn]=useState(false);
@@ -85,7 +91,7 @@ export default function Home(){
     let alive=true;
     const controller=new AbortController();
     async function load(){
-      setLoading(true);setError('');
+      setLoading(true);setError('');setData(null);
       try{
         const auth=await fetch('/api/auth/me',{cache:'no-store',signal:controller.signal});
         if(!auth.ok)throw new Error('Tidak dapat memeriksa akses pengguna.');
@@ -140,37 +146,52 @@ export default function Home(){
     setVisitMessage(r.ok?'Nama kunjungan tercatat.':'Gagal mencatat kunjungan.');
   }
   const attendance=data?.attendance;
+  const rates=attendance?dashboardAttendanceRates(attendance):null;
   const levelName=level?data?.levels?.find(x=>x.id===level)?.name||'Jenjang':'Semua Jenjang';
   const trend=data?.trend||[];
   const checklist=0;
   const hasActions=Boolean(tasks?.unfinishedAttendance?.length||tasks?.draftJournals?.length||tasks?.overdueDecisions?.length);
-  const period=span===1?'bulan ini':span+' bulan';
+  const period=periodName(month,span);
   return <div className="simDashboard">
     <div className="simHero">
-      <div><span className="simEyebrow"><Activity size={14}/> PUSAT ANALISIS SIMPUL</span><h1>Ringkasan Organisasi</h1><p>Pantau presensi, kegiatan, dan perkembangan setiap jenjang dalam satu tampilan.</p></div>
+      <div><span className="simEyebrow"><Activity size={14}/> PUSAT ANALISIS SIMPUL</span><h1>Ringkasan Organisasi</h1><p>Ringkasan bulanan yang mudah dibaca oleh seluruh pengurus.</p></div>
       <div className="simHeroLogo"><Image src="/simpul-logo.webp" alt="Simpul" width={64} height={64} priority/></div>
     </div>
     <div className="simControls">
       <div className="simFilterGroup">
         <label><span><GraduationCap size={15}/> Jenjang</span><select className="simSelect" aria-label="Pilih jenjang dashboard" value={level} onChange={e=>setLevel(e.target.value)}><option value="">Semua Jenjang</option>{(data?.levels||[]).map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
         <label><span><CalendarDays size={15}/> Bulan</span><input type="month" className="simSelect" aria-label="Pilih bulan dashboard" value={month} onChange={e=>setMonth(e.target.value)}/></label>
-        <label><span><Clock3 size={15}/> Periode</span><select className="simSelect" aria-label="Pilih periode grafik" value={span} onChange={e=>setSpan(Number(e.target.value) as 1|3|6)}><option value="1">1 bulan</option><option value="3">3 bulan</option><option value="6">6 bulan</option></select></label>
+        <label><span><Clock3 size={15}/> Periode</span><select className="simSelect" aria-label="Pilih periode grafik" value={span} onChange={e=>setSpan(Number(e.target.value) as 1|3|6)}><option value="1">Bulan terpilih</option><option value="3">3 bulan</option><option value="6">6 bulan</option></select></label>
       </div>
       <div className="simControlActions"><button className="simIconButton" aria-label="Segarkan grafik" title="Segarkan dari database" onClick={()=>setReload(x=>x+1)} disabled={loading}><RefreshCw size={18} className={loading?'simSpin':''}/></button><Link className="simReportLink" href="/laporan"><Download size={16}/> Laporan</Link></div>
     </div>
-    <div className="simScope"><span className="simDot"/> Menampilkan <strong>{levelName}</strong> · {monthLabel(month)} · {period}{loading&&<span className="simLoadingNote"> · Memuat data…</span>}</div>
+    <div className="simScope"><span className="simDot"/> Menampilkan <strong>{levelName}</strong> · {period}{loading&&<span className="simLoadingNote"> · Memuat data…</span>}</div>
     {error&&<div className="notice error simError"><AlertCircle size={17}/>{error}<button onClick={()=>setReload(x=>x+1)}>Coba lagi</button></div>}
     {!loggedIn&&!loading&&data&&<div className="simViewerHint"><Eye size={17}/><span>Mode viewer: grafik menggunakan data publik dan hanya bisa dibaca.</span><Link href="/login"><LogIn size={15}/> Masuk</Link></div>}
-    {canOperate&&<div className="simQuickActions"><Link href="/agenda?create=1"><CalendarDays size={16}/> Buat Agenda</Link><Link href="/presensi/buat"><ClipboardCheck size={16}/> Presensi</Link><Link href="/jurnal/buat"><BookOpen size={16}/> Tulis Jurnal</Link></div>}
+    {canOperate&&<div className="simQuickActions"><Link href="/agenda?create=1"><CalendarDays size={16}/> Buat Agenda</Link><Link href="/presensi/buat"><ClipboardCheck size={16}/> Presensi</Link><Link href="/jurnal/tulis"><BookOpen size={16}/> Tulis Jurnal</Link><Link href="/notulensi"><FileText size={16}/> Notulensi</Link></div>}
     {loading&&!data?<div className="simLoadingGrid" role="status" aria-label="Memuat ringkasan"><div className="simSkeleton"/><div className="simSkeleton"/><div className="simSkeleton"/><div className="simSkeleton"/></div>:data?<>
       <div className="simStats">
-        <StatCard href="/database" icon={<Users size={22}/>} tone="purple" label="Total Anggota" value={number.format(data.members)} detail={level?'Aktif pada jenjang ini':'Anggota aktif dalam cakupan akses'}/>
-        <StatCard href="/rekap-presensi" icon={<CheckCircle2 size={22}/>} tone="blue" label="Tingkat Kehadiran" value={pct(attendance?.percentage)} detail={attendance?.total?number.format(attendance.total)+' status presensi tercatat':'Belum ada status presensi'}/>
-        <StatCard href="/agenda" icon={<CalendarDays size={22}/>} tone="cyan" label="Pertemuan" value={number.format(attendance?.meetings||0)} detail={'Sesi presensi · '+period}/>
-        <StatCard href="/target" icon={<Target size={22}/>} tone="green" label="Capaian Target" value={pct(data.targets.percentage)} detail={data.targets.assessed?number.format(data.targets.assessed)+' penilaian tercatat':'Belum ada penilaian target'}/>
+        <StatCard href="/rekap-presensi" icon={<CheckCircle2 size={22}/>} tone="blue" label="Rata-rata Kehadiran" value={pct(attendance?.percentage)} detail={attendance?.total?number.format(attendance.total)+' status telah diisi':'Belum ada presensi terisi'}/>
+        <StatCard href="/database" icon={<Users size={22}/>} tone="purple" label="Anggota Aktif" value={number.format(data.members)} detail="Jumlah orang aktif, bukan jumlah presensi"/>
+        <StatCard href="/agenda" icon={<CalendarDays size={22}/>} tone="cyan" label="Sesi Pertemuan" value={number.format(attendance?.meetings||0)} detail="Jumlah sesi pada periode terpilih"/>
+        <StatCard href="/jurnal" icon={<BookOpen size={22}/>} tone="green" label="Catatan Selesai" value={number.format(data.journals)} detail="Jurnal dan notulensi selesai"/>
       </div>
+      <section className="simRates" aria-label="Komposisi hasil presensi">
+        <div className="simRatesHead"><div><h2>Komposisi Kehadiran</h2><p>Persentase status yang sudah diisi selama {period}.</p></div><Link href="/rekap-presensi" className="simTextLink">Buka rekap <ArrowRight size={15}/></Link></div>
+        <div className="simRateGrid">
+          {([{name:'Hadir',value:rates?.present,count:attendance?.present??0,tone:'green'},
+             {name:'Izin',value:rates?.excused,count:attendance?.excused??0,tone:'amber'},
+             {name:'Alfa',value:rates?.absent,count:attendance?.absent??0,tone:'red'}] as const).map(item=>
+             <div key={item.name} className={'simRateCard simRate-'+item.tone}>
+               <span>{item.name}</span><strong>{pct(item.value)}</strong>
+               <div className="simRateTrack"><i style={{width:(item.value??0)+'%'}}/></div>
+               <small>{number.format(item.count)} dari {number.format(attendance?.total??0)} status terisi</small>
+             </div>)}
+        </div>
+        <p className="simRateNote">Rumus: Hadir ÷ (Hadir + Izin + Alfa) × 100%. Sebanyak <strong>{number.format(attendance?.pending??0)}</strong> status belum diisi tidak dihitung sebagai alfa. Kehadiran dihitung per pertemuan, bukan orang unik.</p>
+      </section>
       <div className="simMajor">
-        <ChartCard title="Tren Kehadiran" subtitle={'Persentase hadir dari status H, I, A yang sudah dicatat · '+period} action={<Link href="/rekap-presensi" className="simTextLink">Detail <ArrowRight size={15}/></Link>}>
+        <ChartCard title="Tren Kehadiran" subtitle={'Persentase hadir dari status terisi · '+period} action={<Link href="/rekap-presensi" className="simTextLink">Detail <ArrowRight size={15}/></Link>}>
           {chartLine(trend)}
           <div className="simLegend"><span><i className="simBlueLegend"/> Kehadiran aktual</span><span>Pending tidak dihitung dalam persentase</span></div>{data.levelMapping?.inferred>0&&<div className="simLegacyNotice">{number.format(data.levelMapping.inferred)} catatan lama dipetakan menurut kelas / keanggotaan yang tersedia. <span>Data asli tidak diubah.</span></div>}
         </ChartCard>
@@ -179,6 +200,9 @@ export default function Home(){
           <div className="simCardFoot"><ClipboardCheck size={15}/> {number.format(attendance?.pending||0)} status presensi belum diisi</div>
         </ChartCard>
       </div>
+      <details className="simMoreAnalytics">
+        <summary><span><strong>Lihat analisis tambahan</strong><small>Target, sebaran anggota, aktivitas dan tindak lanjut</small></span><ChevronRight size={20}/></summary>
+        <div className="simMoreBody">
       <div className="simTriple">
         <ChartCard title="Progres Pembelajaran" subtitle="Nilai progres terbaru dari jurnal yang dinilai">
           {data.targets.assessed?<HorizontalStats mode="progress" items={data.targetByLevel.filter(x=>x.assessed>0).map(x=>({id:x.id,name:x.name,count:x.assessed,present:0,total:0,percentage:x.percentage}))}/>:<div className="simSpecialEmpty"><Target size={24}/><strong>Belum ada progres dinilai</strong><p>Grafik akan muncul setelah target dan penilaian jurnal tercatat.</p></div>}
@@ -192,9 +216,9 @@ export default function Home(){
         </ChartCard>
       </div>
       <div className="simBottomGrid">
-        <ChartCard title="Komposisi Presensi" subtitle={'Status selama '+period}>
+        <ChartCard title="Komposisi Presensi" subtitle={'Proporsi status presensi yang sudah diisi · '+period}>
           {attendance?.total||attendance?.pending?<div className="simAttendanceBreakdown">
-            <div className="simDonut" style={{background:'conic-gradient(var(--sim-green) 0 '+((attendance.present/(attendance.total+attendance.pending))*100)+'%, var(--sim-amber) '+((attendance.present/(attendance.total+attendance.pending))*100)+'% '+(((attendance.present+attendance.excused)/(attendance.total+attendance.pending))*100)+'%, var(--sim-red) '+(((attendance.present+attendance.excused)/(attendance.total+attendance.pending))*100)+'% '+((attendance.total/(attendance.total+attendance.pending))*100)+'%, var(--sim-subtle) '+((attendance.total/(attendance.total+attendance.pending))*100)+'% 100%)'}}><div><b>{pct(attendance.percentage)}</b><small>Hadir</small></div></div>
+            <div className="simDonut" style={{background:'conic-gradient(var(--sim-green) 0 '+((attendance.present/Math.max(1,attendance.total))*100)+'%, var(--sim-amber) '+((attendance.present/Math.max(1,attendance.total))*100)+'% '+(((attendance.present+attendance.excused)/Math.max(1,attendance.total))*100)+'%, var(--sim-red) '+(((attendance.present+attendance.excused)/Math.max(1,attendance.total))*100)+'% '+((attendance.total/Math.max(1,attendance.total))*100)+'%, var(--sim-subtle) '+((attendance.total/Math.max(1,attendance.total))*100)+'% 100%)'}}><div><b>{pct(attendance.percentage)}</b><small>Hadir</small></div></div>
             <div className="simBreakdownLegend"><div><i style={{background:'var(--sim-green)'}}/>Hadir <strong>{number.format(attendance.present)}</strong></div><div><i style={{background:'var(--sim-amber)'}}/>Izin <strong>{number.format(attendance.excused)}</strong></div><div><i style={{background:'var(--sim-red)'}}/>Alpa <strong>{number.format(attendance.absent)}</strong></div><div><i style={{background:'var(--sim-subtle)'}}/>Belum diisi <strong>{number.format(attendance.pending)}</strong></div></div>
           </div>:<div className="simSpecialEmpty"><ClipboardCheck size={25}/><p>Belum ada presensi pada periode ini.</p></div>}
         </ChartCard>
@@ -212,6 +236,8 @@ export default function Home(){
           {loggedIn&&tasksLoading?<div className="simSpecialEmpty"><RefreshCw className="simSpin" size={21}/><p>Memuat agenda hari ini…</p></div>:loggedIn&&tasksError?<div className="simSpecialEmpty"><AlertCircle size={21}/><p>Agenda hari ini belum bisa dimuat. Grafik lainnya tetap tersedia.</p></div>:tasks?.todayEvents?.length?<div className="simTaskList">{tasks.todayEvents.slice(0,4).map(x=><Link key={x.id} href={'/agenda'}><span className="simTaskIcon"><CalendarDays size={18}/></span><span><strong>{x.title}</strong><small>Kegiatan hari ini</small></span><ChevronRight size={15}/></Link>)}</div>:<div className="simSpecialEmpty"><CalendarDays size={24}/><strong>Belum ada pertemuan hari ini</strong><p>Lihat kalender untuk jadwal kegiatan berikutnya.</p></div>}
         </ChartCard>
       </div>
+        </div>
+      </details>
       {!loggedIn&&<div className="simVisit"><span>Kunjungan publik (opsional)</span><input value={visitorName} onChange={e=>setVisitorName(e.target.value)} maxLength={80} placeholder="Nama pengunjung" aria-label="Nama pengunjung"/><button disabled={!visitorName.trim()} onClick={()=>void identify()}>Catat kunjungan</button>{visitMessage&&<small>{visitMessage}</small>}</div>}
     </>:!loading&&<div className="simOfflineState"><AlertCircle size={20}/><strong>Grafik belum bisa dimuat.</strong><p>Data dari database sedang tidak tersedia. Silakan coba lagi, data yang tersimpan tidak berubah.</p><button className="simRetryMini" onClick={()=>setReload(x=>x+1)}>Coba muat lagi</button></div>}
   </div>;
