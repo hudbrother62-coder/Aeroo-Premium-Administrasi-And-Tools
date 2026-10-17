@@ -80,7 +80,7 @@ export function teacherGuidance({title,subject,parent,level}:TeacherContext):Tea
       evidence:'Amati ketepatan dan kelancaran pelafalan pada bagian yang dipelajari; catat bagian yang masih perlu pendampingan, tanpa menganggap belum dinilai sebagai gagal.'
     };
   }
-  if(/(tilawaty|membaca|bacaan|al.qur.an|qur.an)/.test(topic)){
+  if(/(tilawati|tilawaty|membaca|bacaan|al.qur.an|qur.an)/.test(topic)){
     return {
       focus:'Mengembangkan keterampilan mengenali dan membaca materi sesuai jenjang tanpa melompati kemampuan awal peserta didik.',
       activity:'Berikan contoh bacaan, latihan bertahap, dan kesempatan membaca satu per satu dengan umpan balik yang jelas.',

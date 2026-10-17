@@ -35,3 +35,10 @@ test('source metadata is not confused with teacher guidance',()=>{
   assert.match(g.activity,/penjelasan|ilustrasi|contoh/i);
   assert.ok(!g.focus.includes('Sheet1'));
 });
+test('Tilawati spelling, including level 3, invokes Quran reading guidance',()=>{
+  for(const title of ['Tilawati 3','Tilawati PAUD','Tilawaty 5']){
+    const g=teacherGuidance({title,subject:'',level:'SD 2'});
+    assert.match(g.focus,/membaca|bacaan/i);
+    assert.match(g.evidence,/kelancaran/i);
+  }
+});
