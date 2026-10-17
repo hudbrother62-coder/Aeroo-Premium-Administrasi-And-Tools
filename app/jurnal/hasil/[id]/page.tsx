@@ -38,7 +38,7 @@ export default function JournalResult(){
       {isMeeting?<>
         {(journal.assessment?.proposal||journal.summary)&&<div className="fj-textblock"><strong>Usulan</strong><p>{journal.assessment?.proposal||journal.summary}</p></div>}
         {journal.decisions&&<div className="fj-textblock"><strong>Keputusan</strong><p>{journal.decisions}</p></div>}
-        {journal.notes&&<div className="fj-textblock"><strong>Catatan</strong><p>{journal.notes}</p></div>}
+        {(journal.notes||(journal.assessment?.proposal&&journal.summary!==journal.assessment.proposal?journal.summary:''))&&<div className="fj-textblock"><strong>Catatan</strong><p>{journal.notes||(journal.assessment?.proposal&&journal.summary!==journal.assessment.proposal?journal.summary:'')}</p></div>}
       </>:<>
         {journal.material&&<div className="fj-textblock"><strong>Materi</strong><p>{journal.material}</p></div>}
         {journal.summary&&<div className="fj-textblock"><strong>Catatan guru</strong><p>{journal.summary}</p></div>}
