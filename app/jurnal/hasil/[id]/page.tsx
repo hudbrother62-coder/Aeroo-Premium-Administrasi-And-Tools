@@ -6,7 +6,7 @@ import {ArrowLeft,BookOpen,RefreshCw,Sparkles} from 'lucide-react';
 import '../../tulis/tulis.css';
 
 type Analysis={status?:string;created_at?:string;summary?:string;suggestion?:string;matches?:Array<{target_id:string;title:string;relation:string;reason:string;quote:string}>;numeric_progress_updated?:boolean};
-type Journal={id:string;title:string;journal_date:string;journal_kind:string;material?:string;summary?:string;obstacles?:string;follow_up?:string;assessment?:{ai_target_analysis?:Analysis};state:string};
+type Journal={id:string;title:string;journal_date:string;journal_kind:string;started_at?:string;ended_at?:string;material?:string;summary?:string;decisions?:string;notes?:string;obstacles?:string;follow_up?:string;assessment?:{meeting_minutes?:boolean;proposal?:string;ai_target_analysis?:Analysis};state:string};
 export default function JournalResult(){
  const {id}=useParams<{id:string}>();
  const [journal,setJournal]=useState<Journal|null>(null);
@@ -28,17 +28,24 @@ export default function JournalResult(){
    catch(e){setError((e as Error).message)}finally{setAnalyzing(false)}
  }
  const ai=journal?.assessment?.ai_target_analysis;
+ const isMeeting=journal?.journal_kind==='PENGURUS'||journal?.assessment?.meeting_minutes===true;
  return <main className="fj-shell">
    <Link className="fj-back" href="/jurnal/riwayat"><ArrowLeft size={17}/> Kembali ke riwayat</Link>
    <header className="fj-header"><span><BookOpen size={18}/> JURNAL TERSIMPAN</span><h1>{journal?.title||'Hasil Jurnal'}</h1>
-     <p>{journal?.journal_date||''} · {journal?.journal_kind||''}</p></header>
+     <p>{journal?.journal_date||''} · {journal?.journal_kind||''}{journal?.started_at||journal?.ended_at?' · '+[journal?.started_at?.slice(0,5),journal?.ended_at?.slice(0,5)].filter(Boolean).join(' – '):''}</p></header>
    <section className="fj-panel">
     {loading?<p>Memuat jurnal…</p>:!journal?<p>{error||'Jurnal tidak ditemukan.'}</p>:<>
-      {journal.material&&<div className="fj-textblock"><strong>Materi</strong><p>{journal.material}</p></div>}
-      {journal.summary&&<div className="fj-textblock"><strong>Catatan guru</strong><p>{journal.summary}</p></div>}
-      {journal.obstacles&&<div className="fj-textblock"><strong>Kendala</strong><p>{journal.obstacles}</p></div>}
-      {journal.follow_up&&<div className="fj-textblock"><strong>Tindak lanjut</strong><p>{journal.follow_up}</p></div>}
-      <div className="fj-ai">
+      {isMeeting?<>
+        {(journal.assessment?.proposal||journal.summary)&&<div className="fj-textblock"><strong>Usulan</strong><p>{journal.assessment?.proposal||journal.summary}</p></div>}
+        {journal.decisions&&<div className="fj-textblock"><strong>Keputusan</strong><p>{journal.decisions}</p></div>}
+        {journal.notes&&<div className="fj-textblock"><strong>Catatan</strong><p>{journal.notes}</p></div>}
+      </>:<>
+        {journal.material&&<div className="fj-textblock"><strong>Materi</strong><p>{journal.material}</p></div>}
+        {journal.summary&&<div className="fj-textblock"><strong>Catatan guru</strong><p>{journal.summary}</p></div>}
+        {journal.obstacles&&<div className="fj-textblock"><strong>Kendala</strong><p>{journal.obstacles}</p></div>}
+        {journal.follow_up&&<div className="fj-textblock"><strong>Tindak lanjut</strong><p>{journal.follow_up}</p></div>}
+      </>}
+      {!isMeeting&&<div className="fj-ai">
         <h3><Sparkles size={18}/> Pencocokan dengan target</h3>
         {ai?<><p>{ai.summary}</p>{(ai.matches||[]).length?
           <div className="fj-matches">{ai.matches!.map((m,i)=><article key={m.target_id+i}>
@@ -50,7 +57,7 @@ export default function JournalResult(){
         </>:<p>Belum dianalisis.</p>}
         <button type="button" className="fj-secondary" disabled={analyzing||journal.state==='ARCHIVED'} onClick={()=>void analyze()}><RefreshCw size={17}/>{analyzing?'Menganalisis…':ai?'Analisis ulang':'Analisis dengan Groq'}</button>
         {error&&<div className="fj-error" role="alert">{error}</div>}
-      </div>
+      </div>}
       <div className="fj-actions"><Link className="fj-secondary" href="/jurnal/riwayat">Riwayat</Link><Link className="fj-primary" href="/jurnal/tulis">Tulis jurnal lagi</Link></div>
     </>}
    </section>
