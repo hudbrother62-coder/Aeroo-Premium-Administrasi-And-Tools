@@ -7,7 +7,7 @@ import {FormEvent,useEffect,useMemo,useRef,useState} from 'react';
 import {CalendarPlus,ChevronLeft,ChevronRight,Download,MapPin,UserRound,Clock3,BookOpen,ClipboardCheck,Search,RotateCw} from 'lucide-react';
 
 type Activity={id:string;name:string;audience:string};
-type Agenda={routine_id?:string|null;audience:string;class_id?:string;level_id?:string;participant_ids?:string[];person_in_charge?:string;attendance_enabled?:boolean;journal_required?:boolean;documentation_required?:boolean;target_tracking_enabled?:boolean;status?:string;series_id?:string;recurrence?:string;revision:number;attendance_event_id?:string|null;journal_id?:string|null;id:string;title:string;starts_at:string;ends_at?:string;location?:string;presenter?:string;notes?:string;activity_type_id?:string;activity_types?:{name?:string}};
+type Agenda={is_information?:boolean;organizer_level?:string;info_start?:string|null;info_end?:string|null;routine_id?:string|null;audience:string;class_id?:string;level_id?:string;participant_ids?:string[];person_in_charge?:string;attendance_enabled?:boolean;journal_required?:boolean;documentation_required?:boolean;target_tracking_enabled?:boolean;status?:string;series_id?:string;recurrence?:string;revision:number;attendance_event_id?:string|null;journal_id?:string|null;id:string;title:string;starts_at:string;ends_at?:string;location?:string;presenter?:string;notes?:string;activity_type_id?:string;activity_types?:{name?:string}};
 const dateKey=(d:Date)=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const monthKey=(d:Date)=>dateKey(d).slice(0,7);
 const localDay=(iso:string)=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Jakarta',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(iso));
@@ -89,14 +89,18 @@ export default function AgendaContent({mode}:{mode:'list'|'calendar'}){
     const text=(e.title+' '+(e.location||'')+' '+(e.person_in_charge||'')+' '+(e.presenter||'')).toLocaleLowerCase('id-ID');
     return (statusFilter==='ALL'||(e.status||'SCHEDULED')===statusFilter)&&text.includes(search.trim().toLocaleLowerCase('id-ID'));
   }),[sortedEvents,statusFilter,search]);
-  const canEdit=(e:Agenda)=>canWrite&&(scopedWrite??writeScopesForRole(role)).includes(e.audience as Audience);
+  const canEdit=(e:Agenda)=>!e.is_information&&canWrite&&(scopedWrite??writeScopesForRole(role)).includes(e.audience as Audience);
   const attendanceHref=(e:Agenda)=>'/presensi/buat?'+(e.attendance_event_id?'event_id='+e.attendance_event_id:'agenda_id='+e.id);
   const journalHref=(e:Agenda)=>'/jurnal/buat?'+(e.journal_id?'journal_id='+e.journal_id:'agenda_id='+e.id);
+  const infoColors:Record<string,string>={PUSAT:'#c026d3',DAERAH:'#3b82f6',DESA:'#65a30d',KELOMPOK:'#eab308',UMUM:'#64748b'};
+  const infoColor=(e:Agenda)=>e.is_information?(infoColors[e.organizer_level||'UMUM']||infoColors.UMUM):undefined;
+  const showStart=(e:Agenda)=>e.is_information?(e.info_start||'Waktu belum ditentukan'):time(e.starts_at);
+  const showEnd=(e:Agenda)=>e.is_information?(e.info_end||''):e.ends_at?time(e.ends_at):'';
   const statusText=(value?:string)=>value==='CANCELLED'?'Dibatalkan':value==='COMPLETED'?'Selesai':value==='ACTIVE'?'Berlangsung':value==='LOCKED'?'Terkunci':value==='DRAFT'?'Draf':'Terjadwal';
 
   return <>
     <div className="pageHeader agendaNewHeader">
-      <div><h1>{mode==='calendar'?'Kalender Kegiatan':'Daftar & Kelola Agenda'}</h1><p>{mode==='calendar'?'Pilih tanggal untuk melihat kegiatan yang sudah dijadwalkan.':'Kelola jadwal dan lanjutkan ke presensi atau jurnal dari kegiatan yang sama.'}</p></div>
+      <div><h1>{mode==='calendar'?'Kalender Kegiatan':'Daftar & Kelola Agenda'}</h1><p>{mode==='calendar'?'Lihat agenda dan informasi kegiatan sesuai tanggal.':'Jadwal informasi organisasi dan agenda operasional dalam satu daftar.'}</p></div>
       <div className="row agendaHeaderActions">
         <button type="button" className="btn ghost" onClick={()=>void downloadTemplate()}><Download size={16}/>Template Excel</button>
         <button type="button" className="btn ghost" onClick={()=>void exportExcel()}><Download size={16}/>Ekspor Excel</button>
@@ -121,19 +125,19 @@ export default function AgendaContent({mode}:{mode:'list'|'calendar'}){
       <section className="card section agendaPanel agendaCompactCalendar">
         <div className="calendarHead">
           <button type="button" className="smallAction" onClick={()=>changeMonth(-1)} aria-label="Bulan sebelumnya"><ChevronLeft/></button>
-          <div><h2>{month.toLocaleDateString('id-ID',{month:'long',year:'numeric'})}</h2><small>{data.filter(e=>e.status!=='CANCELLED').length} kegiatan aktif</small></div>
+          <div><h2>{month.toLocaleDateString('id-ID',{month:'long',year:'numeric'})}</h2><small>{data.filter(e=>e.status!=='CANCELLED').length} jadwal & kegiatan</small></div>
           <button type="button" className="smallAction" onClick={()=>changeMonth(1)} aria-label="Bulan berikutnya"><ChevronRight/></button>
         </div>
         <div className="calendarGrid agendaCalendar">{['Sen','Sel','Rab','Kam','Jum','Sab','Min'].map(d=><div className="calendarDayName" key={d}>{d}</div>)}{cells.map((c,i)=>c?<button type="button" className={'calendarCell agendaCell'+(selected===c.date?' selected':'')+(c.date===jakartaDate()?' today':'')} key={c.date} aria-label={c.date+': '+c.events.length+' agenda'} aria-pressed={selected===c.date} onClick={()=>setSelected(c.date)}>
-          <span className="calendarDate">{c.day}</span>{c.events.length>0&&<span className="agendaDots" aria-hidden="true">{c.events.slice(0,3).map(e=><i key={e.id} className={e.status==='CANCELLED'?'cancelled':''}/>)}</span>}
+          <span className="calendarDate">{c.day}</span>{c.events.length>0&&<span className="agendaDots" aria-hidden="true">{c.events.slice(0,3).map(e=><i key={e.id} className={e.status==='CANCELLED'?'cancelled':''} style={e.is_information?{backgroundColor:infoColor(e)}:undefined}/>)}</span>}
           <span className="agendaCount">{c.events.length?c.events.length:''}</span>
         </button>:<span key={'empty-'+i}/>)}</div>
       </section>
       <section className="card section agendaDayPanel" aria-label="Kegiatan pada tanggal terpilih">
         <div className="cardHead agendaSelectedHeader"><div><h2>{new Date(selected+'T12:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</h2><p>{selectedEvents.length} kegiatan pada tanggal ini</p></div>{canWrite&&<button type="button" className="btn secondary" onClick={()=>void openFor(selected)}>+ Tanggal ini</button>}</div>
-        <div className="agendaCards agendaDayEvents">{selectedEvents.map(e=><article className="agendaEntry" key={e.id}>
-          <div className="agendaEntryTime"><Clock3 size={16}/><strong>{time(e.starts_at)}</strong>{e.ends_at&&<small>– {time(e.ends_at)}</small>}</div>
-          <div className="agendaEntryBody"><div className="agendaEntryTop"><h3>{e.title}{e.routine_id&&<small title="Dibuat otomatis dari jadwal mingguan"> · Rutin</small>}</h3><span className={'agendaStatus '+(e.status||'SCHEDULED').toLowerCase()}>{statusText(e.status)}</span></div>
+        <div className="agendaCards agendaDayEvents">{selectedEvents.map(e=><article className="agendaEntry" key={e.id} style={e.is_information?{borderLeft:'4px solid '+infoColor(e)}:undefined}>
+          <div className="agendaEntryTime"><Clock3 size={16}/><strong>{showStart(e)}</strong>{showEnd(e)&&<small>– {showEnd(e)}</small>}</div>
+          <div className="agendaEntryBody"><div className="agendaEntryTop"><h3>{e.title}{e.routine_id&&<small title="Dibuat otomatis dari jadwal mingguan"> · Rutin</small>}{e.is_information&&<small style={{color:infoColor(e)}}> · Info {e.organizer_level==='UMUM'?'Umum':e.organizer_level?.toLowerCase()}</small>}</h3><span className={'agendaStatus '+(e.status||'SCHEDULED').toLowerCase()}>{e.is_information?'Informasi':statusText(e.status)}</span></div>
             <div className="agendaMeta">{e.location&&<span><MapPin size={15}/>{e.location}</span>}{(e.person_in_charge||e.presenter)&&<span><UserRound size={15}/>{e.person_in_charge||e.presenter}</span>}</div>
             {e.notes&&<p className="agendaDescription">{e.notes}</p>}
             <div className="agendaEntryActions">{canEdit(e)&&e.status!=='CANCELLED'&&<>{e.attendance_enabled!==false&&<Link href={attendanceHref(e)} className="btn secondary"><ClipboardCheck size={15}/>{e.attendance_event_id?'Buka presensi':'Mulai presensi'}</Link>}<Link href={journalHref(e)} className="btn ghost"><BookOpen size={15}/>{e.journal_id?'Buka jurnal':'Isi jurnal'}</Link></>}{canEdit(e)&&<button type="button" className="smallAction" onClick={()=>void editEvent(e)}>Edit</button>}{canEdit(e)&&e.status!=='CANCELLED'&&<button type="button" className="smallAction danger" onClick={()=>void remove(e)}>Batalkan</button>}</div>
@@ -144,18 +148,19 @@ export default function AgendaContent({mode}:{mode:'list'|'calendar'}){
             {sortedEvents.filter(e=>e.status!=='CANCELLED').slice(0,4).map(e=><button type="button" key={e.id} className="agendaNearbyItem" onClick={()=>setSelected(localDay(e.starts_at))}>
               <span>{new Date(localDay(e.starts_at)+'T12:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'short'})}</span>
               <strong>{e.title}</strong>
-              <small>{time(e.starts_at)}</small>
+              <small>{showStart(e)}</small>
               <ChevronRight size={15}/>
             </button>)}
           </div>}</div>
       </section>
     </div>:<section className="section agendaCards">
       <div className="agendaListTitle"><div><h2>Jadwal {month.toLocaleDateString('id-ID',{month:'long',year:'numeric'})}</h2><p>{displayedEvents.length} dari {data.length} kegiatan</p></div></div>
-      {displayedEvents.map(e=><article className="agendaEntry" key={e.id}>
-        <div className="agendaEntryTime"><strong>{new Date(localDay(e.starts_at)+'T12:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short'})}</strong><small>{time(e.starts_at)}{e.ends_at?'–'+time(e.ends_at):''}</small></div>
+      {displayedEvents.map(e=><article className="agendaEntry" key={e.id} style={e.is_information?{borderLeft:'4px solid '+infoColor(e)}:undefined}>
+        <div className="agendaEntryTime"><strong>{new Date(localDay(e.starts_at)+'T12:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short'})}</strong><small>{showStart(e)}{showEnd(e)?'–'+showEnd(e):''}</small></div>
         <div className="agendaEntryBody">
-          <div className="agendaEntryTop"><div><h3>{e.title}{e.routine_id&&<small title="Dibuat otomatis dari jadwal mingguan"> · Rutin</small>}</h3><small>{e.activity_types?.name||'Kegiatan'} · {audienceLabels[e.audience as Audience]||e.audience}</small></div><span className={'agendaStatus '+(e.status||'SCHEDULED').toLowerCase()}>{statusText(e.status)}</span></div>
+          <div className="agendaEntryTop"><div><h3>{e.title}{e.routine_id&&<small title="Dibuat otomatis dari jadwal mingguan"> · Rutin</small>}{e.is_information&&<small style={{color:infoColor(e)}}> · Info {e.organizer_level==='UMUM'?'Umum':e.organizer_level?.toLowerCase()}</small>}</h3><small>{e.is_information?'Referensi organisasi · '+(e.organizer_level||'Umum'):((e.activity_types?.name||'Kegiatan')+' · '+(audienceLabels[e.audience as Audience]||e.audience))}</small></div><span className={'agendaStatus '+(e.status||'SCHEDULED').toLowerCase()}>{e.is_information?'Informasi':statusText(e.status)}</span></div>
           <div className="agendaMeta">{e.location&&<span><MapPin size={15}/>{e.location}</span>}{(e.person_in_charge||e.presenter)&&<span><UserRound size={15}/>{e.person_in_charge||e.presenter}</span>}</div>
+          {e.notes&&<p className="agendaDescription">{e.notes}</p>}
           <div className="agendaEntryActions">{canEdit(e)&&e.status!=='CANCELLED'&&<>{e.attendance_enabled!==false&&<Link href={attendanceHref(e)} className="btn secondary"><ClipboardCheck size={15}/>{e.attendance_event_id?'Buka presensi':'Mulai presensi'}</Link>}<Link href={journalHref(e)} className="btn ghost"><BookOpen size={15}/>{e.journal_id?'Buka jurnal':'Isi jurnal'}</Link></>}{canEdit(e)&&<button type="button" className="smallAction" onClick={()=>void editEvent(e)}>Edit</button>}{canEdit(e)&&e.status!=='CANCELLED'&&<button type="button" className="smallAction danger" onClick={()=>void remove(e)}>Batalkan</button>}</div>
         </div>
       </article>)}
