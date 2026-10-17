@@ -36,6 +36,11 @@ export default function TulisJurnal(){
   const [agendaId,setAgendaId]=useState('');
   const [agendaOptions,setAgendaOptions]=useState<AgendaRow[]>([]);
   const [title,setTitle]=useState('');
+  const [startedAt,setStartedAt]=useState('');
+  const [endedAt,setEndedAt]=useState('');
+  const [proposal,setProposal]=useState('');
+  const [decisions,setDecisions]=useState('');
+  const [meetingNotes,setMeetingNotes]=useState('');
   const [material,setMaterial]=useState('');
   const [summary,setSummary]=useState('');
   const [obstacles,setObstacles]=useState('');
@@ -51,6 +56,8 @@ export default function TulisJurnal(){
   const availableClasses=classes.filter(c=>c.audience===scope);
   const availableActivities=activities.filter(a=>a.audience===scope);
   const selectedAgenda=agendaOptions.find(a=>a.id===agendaId);
+  const selectedActivity=availableActivities.find(a=>a.id===activityId);
+  const isMeeting=kind==='PENGURUS'||/musyawarah|rapat|notulen/i.test([selectedAgenda?.title,selectedActivity?.name].filter(Boolean).join(' '));
   useEffect(()=>{
     setActivityId(previous=>activities.some(a=>a.id===previous&&a.audience===scope)?previous:activities.find(a=>a.audience===scope)?.id||'');
   },[scope,activities]);
@@ -102,7 +109,10 @@ export default function TulisJurnal(){
   }
   async function save(){
     if(saving||!scopes.includes(scope))return;
-    if(!date||!summary.trim()&&!material.trim()){setError('Tuliskan isi jurnal atau materi kegiatan terlebih dahulu.');return;}
+    if(!date){setError('Pilih tanggal jurnal.');return;}
+    if(isMeeting&&!proposal.trim()&&!decisions.trim()&&!meetingNotes.trim()){setError('Isi usulan, keputusan, atau catatan musyawarah.');return;}
+    if(!isMeeting&&!summary.trim()&&!material.trim()){setError('Tuliskan isi jurnal atau materi kegiatan terlebih dahulu.');return;}
+    if(startedAt&&endedAt&&startedAt===endedAt){setError('Jam mulai dan selesai tidak boleh sama.');return;}
     if(fromAgenda&&!selectedAgenda){setError('Pilih agenda khusus terlebih dahulu.');return;}
     if(!fromAgenda&&!activityId){setError('Pilih jenis kegiatan terlebih dahulu.');return;}
     if(classRequired&&!classId&&!selectedAgenda?.class_id){setError('Pilih kelas supaya jurnal sesuai dengan peserta dan target.');return;}
@@ -115,14 +125,21 @@ export default function TulisJurnal(){
       const body={
         journal_kind:kind,journal_date:date,title:title.trim()||'Jurnal '+(selectedAgenda?.title||availableActivities.find(a=>a.id===activityId)?.name||journalKinds.find(x=>x.value===kind)?.label||'kegiatan')+' - '+date,
         event_id:e?.id||null,agenda_id:e?.agenda_id||selectedAgenda?.id||null,class_id:linkedClass||null,activity_type_id:e?.activity_type_id||selectedAgenda?.activity_type_id||activityId||null,
-        material:material.trim()||null,summary:summary.trim()||null,obstacles:obstacles.trim()||null,follow_up:followUp.trim()||null,
-        assessment:{free_form:true,source:'TEACHER_TEXT',class_assessment:{level_id:classroom?.level_id||null}},
+        started_at:startedAt||null,ended_at:endedAt||null,
+        material:isMeeting?null:material.trim()||null,
+        summary:isMeeting?proposal.trim()||null:summary.trim()||null,
+        decisions:isMeeting?decisions.trim()||null:null,
+        notes:isMeeting?meetingNotes.trim()||null:null,
+        obstacles:isMeeting?null:obstacles.trim()||null,
+        follow_up:isMeeting?null:followUp.trim()||null,
+        assessment:{free_form:true,source:'TEACHER_TEXT',meeting_minutes:isMeeting,proposal:isMeeting?proposal.trim():null,class_assessment:{level_id:classroom?.level_id||null}},
         progress:[],revision:0,state:'COMPLETED'
       };
       const response=await fetch('/api/journals',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
       const result=await response.json();if(!response.ok)throw Error(result.error||'Jurnal gagal disimpan.');
       if(!result.id)throw Error('Respons penyimpanan belum memberi ID. Periksa riwayat sebelum mengulangi.');
-      setSavedId(result.id);await analyze(result.id);
+      setSavedId(result.id);
+      if(!isMeeting)await analyze(result.id);
     }catch(e){setError((e as Error).message)}finally{setSaving(false)}
   }
   if(!ready)return <div className="fj-shell"><div className="card section">Memuat formulir jurnal…</div></div>;
@@ -146,19 +163,29 @@ export default function TulisJurnal(){
         {matching.length>1&&<select aria-label="Pilih presensi terkait" value={selectedEvent} onChange={e=>setSelectedEvent(e.target.value)}><option value="">Pilih pertemuan</option>{matching.map(e=><option value={e.id} key={e.id}>{e.title}</option>)}</select>}
       </div>}
       <label className="fj-field">Judul<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Judul kegiatan"/></label>
-      <label className="fj-field">Materi<textarea rows={2} value={material} onChange={e=>setMaterial(e.target.value)} placeholder="Materi kegiatan"/></label>
-      <label className="fj-field"><strong>Catatan kegiatan</strong><textarea rows={7} value={summary} onChange={e=>setSummary(e.target.value)} placeholder="Isi jurnal"/></label>
-      <details className="fj-optional"><summary>Tambahan</summary>
-        <label className="fj-field">Kendala<textarea rows={2} value={obstacles} onChange={e=>setObstacles(e.target.value)} placeholder="Kendala"/></label>
-        <label className="fj-field">Rencana tindak lanjut<textarea rows={2} value={followUp} onChange={e=>setFollowUp(e.target.value)} placeholder="Tindak lanjut"/></label>
-      </details>
+      <div className="fj-row">
+        <label>Jam mulai<input type="time" value={startedAt} onChange={e=>setStartedAt(e.target.value)}/></label>
+        <label>Jam selesai<input type="time" value={endedAt} onChange={e=>setEndedAt(e.target.value)}/></label>
+      </div>
+      {isMeeting?<>
+        <label className="fj-field">Usulan<textarea rows={3} value={proposal} onChange={e=>setProposal(e.target.value)} placeholder="Usulan yang disampaikan"/></label>
+        <label className="fj-field">Keputusan<textarea rows={3} value={decisions} onChange={e=>setDecisions(e.target.value)} placeholder="Keputusan musyawarah"/></label>
+        <label className="fj-field">Catatan<textarea rows={4} value={meetingNotes} onChange={e=>setMeetingNotes(e.target.value)} placeholder="Catatan penting"/></label>
+      </>:<>
+        <label className="fj-field">Materi<textarea rows={2} value={material} onChange={e=>setMaterial(e.target.value)} placeholder="Materi kegiatan"/></label>
+        <label className="fj-field"><strong>Catatan kegiatan</strong><textarea rows={7} value={summary} onChange={e=>setSummary(e.target.value)} placeholder="Isi jurnal"/></label>
+        <details className="fj-optional"><summary>Tambahan</summary>
+          <label className="fj-field">Kendala<textarea rows={2} value={obstacles} onChange={e=>setObstacles(e.target.value)} placeholder="Kendala"/></label>
+          <label className="fj-field">Rencana tindak lanjut<textarea rows={2} value={followUp} onChange={e=>setFollowUp(e.target.value)} placeholder="Tindak lanjut"/></label>
+        </details>
+      </>}
       {error&&<div className="fj-error" role="alert">{error}</div>}
       <div className="fj-actions"><Link href="/jurnal" className="fj-secondary">Batal</Link><button type="button" className="fj-primary" disabled={saving} onClick={()=>void save()}>{saving?<LoaderCircle size={19}/>:<FileText size={19}/>} {saving?'Menyimpan…':'Simpan jurnal'}</button></div>
     </section>:<section className="fj-panel">
       <div className="fj-success"><CheckCircle2 size={38}/><h2>Jurnal berhasil disimpan</h2></div>
       {analyzing&&<div className="fj-status"><Sparkles size={19}/> Groq sedang membaca jurnal dan mencari target yang relevan…</div>}
       {aiError&&<div className="fj-hint" role="status">Analisis AI belum tersedia: {aiError} <button type="button" onClick={()=>void analyze(savedId)} disabled={analyzing}><RefreshCw size={15}/> Coba lagi</button></div>}
-      {analysis&&<div className="fj-ai">
+      {!isMeeting&&analysis&&<div className="fj-ai">
         <h3><Sparkles size={18}/> Analisis AI</h3>
         <p>{analysis.summary}</p>
         {analysis.matches.length>0?<div className="fj-matches">{analysis.matches.map(x=><article key={x.target_id}><strong>{x.title}</strong><span>{x.relation==='DIAJARKAN'?'Materi tercatat diajarkan':x.relation==='INDIKASI'?'Kemungkinan terkait':'Belum terbukti'}</span><p>{x.reason}</p><blockquote>“{x.quote}”</blockquote></article>)}</div>:<div className="fj-hint">Target belum cocok.</div>}
