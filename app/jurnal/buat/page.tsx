@@ -44,7 +44,7 @@ export default function Page(){
   const cabClasses=useMemo(()=>classes.filter(c=>c.audience===(form.journal_kind.startsWith('MUDA_MUDI')?'MUDA_MUDI':'CABERAWIT')&&(!effectiveLevel||!c.level_id||c.level_id===effectiveLevel)),[classes,form.journal_kind,effectiveLevel]);
   const currentAudience=form.journal_kind==='IBU_IBU'?'IBU_IBU':form.journal_kind==='PENGURUS'?'PENGURUS':form.journal_kind.startsWith('CABERAWIT')?'CABERAWIT':form.journal_kind.startsWith('MUDA_MUDI')?'MUDA_MUDI':'KELOMPOK';
   const currentActivities=activities.filter(a=>a.audience===currentAudience);
-  const isMeetingJournal=form.journal_kind==='PENGURUS'||meetingMinutes||/musyawarah|rapat|notulen/i.test([form.title,activities.find(a=>a.id===form.activity_type_id)?.name].filter(Boolean).join(' '));
+  const isMeetingJournal=form.journal_kind!=='PENGKAJIAN'&&(form.journal_kind==='PENGURUS'||meetingMinutes||/musyawarah|rapat|notulen/i.test([form.title,activities.find(a=>a.id===form.activity_type_id)?.name].filter(Boolean).join(' ')));
   const targetOptions=targets.filter(t=>(!effectiveLevel||!t.level_id||t.level_id===effectiveLevel)&&
     (!form.class_id||!t.class_id||t.class_id===form.class_id)&&
     (!t.target_month||t.target_month.slice(0,7)===form.journal_date.slice(0,7)));
