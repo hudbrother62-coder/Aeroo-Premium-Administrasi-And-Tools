@@ -53,3 +53,12 @@ test('unmapped events retain total counts but no fabricated level percentages',(
   assert.equal(paud.attendance.meetings,0);
   assert.equal(paud.attendance.percentage,null);
 });
+
+test('percentage shares exclude pending and sum across recorded H/I/A',()=>{
+ const shares=analytics.dashboardAttendanceRates({present:7,excused:2,absent:1});
+ assert.equal(shares.present,70);assert.equal(shares.excused,20);assert.equal(shares.absent,10);
+ assert.equal(analytics.dashboardAttendanceRates({present:0,excused:0,absent:0}).present,null);
+ const event={id:'meeting',event_date:'2026-10-18',state:'COMPLETED',attendance_records:[{status:'H'},{status:'H'},{status:'I'},{status:'A'},{status:null}]};
+ const view=analytics.buildDashboardAnalytics({people:[],events:[event],journals:[],levels:[],classes:[],month:'2026-10',span:1});
+ assert.equal(view.attendance.total,4);assert.equal(view.attendance.pending,1);assert.equal(view.attendance.percentage,50);
+});
