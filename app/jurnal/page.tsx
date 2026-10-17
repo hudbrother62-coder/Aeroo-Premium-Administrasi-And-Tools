@@ -4,9 +4,10 @@ import Link from 'next/link';
 import {useEffect,useMemo,useState} from 'react';
 import {BookOpenText,ArrowRight,ClipboardList,Target,CheckCheck,UsersRound,CalendarDays,History,Plus} from 'lucide-react';
 import {jakartaDate} from '@/lib/domain';
+import {isNotulensi} from '@/lib/journal-kind';
 import {readScopesForRole,writeScopesForRole,type Audience} from '@/lib/access';
 
-type Journal={id:string;class_id?:string;journal_date:string;journal_kind:string;title:string;state?:string;follow_up?:string;classes?:{id?:string;name?:string;level_id?:string};assessment?:{class_assessment?:{level_id?:string};ai_target_analysis?:{matches?:Array<{target_id:string;relation?:string}>}};journal_progress?:Array<{member_id?:string;participant_key?:string;target_id?:string;progress_value?:number|null}>};
+type Journal={id:string;class_id?:string;journal_date:string;journal_kind:string;title:string;state?:string;follow_up?:string;classes?:{id?:string;name?:string;level_id?:string};assessment?:{meeting_minutes?:boolean;class_assessment?:{level_id?:string};ai_target_analysis?:{matches?:Array<{target_id:string;relation?:string}>}};journal_progress?:Array<{member_id?:string;participant_key?:string;target_id?:string;progress_value?:number|null}>};
 type Level={id:string;name:string};
 type ClassRow={id:string;name:string;level_id?:string;audience:string};
 const kindLabels:Record<string,string>={PENGKAJIAN:'Pengkajian',KELOMPOK:'Kelompok',IBU_IBU:'Ibu-Ibu',PENGURUS:'Musyawarah',CABERAWIT_CLASS:'Caberawit Kelas',MUDA_MUDI_CLASS:'Muda-Mudi Kelas'};
@@ -57,6 +58,7 @@ export default function JournalDashboard(){
   const writable=writeScopes??writeScopesForRole(role);
   const availableKinds=Object.entries(kindLabels).filter(([k])=>readable.includes(audienceFor(k)));
   const filtered=useMemo(()=>journals.filter(j=>{
+    if(isNotulensi(j))return false;
     if(!readable.includes(audienceFor(j.journal_kind)))return false;
     if(kind&&j.journal_kind!==kind)return false;
     if(classId&&(j.classes?.id||j.class_id)!==classId)return false;
@@ -80,12 +82,12 @@ export default function JournalDashboard(){
   const canCreate=writable.length>0;
   return <div className="journalWorkspace">
     <header className="pageHeader journalMainHeader">
-      <div><span className="journalEyebrow"><BookOpenText size={15}/> Pencatatan kegiatan & pembinaan</span><h1>Dashboard Jurnal</h1></div>
+      <div><span className="journalEyebrow"><BookOpenText size={15}/> Pencatatan kegiatan & pembinaan</span><h1>Jurnal Kegiatan</h1></div>
       <div className="journalHeaderActions"><Link className="btn ghost" href="/jurnal/riwayat"><History size={16}/> Riwayat Jurnal</Link>{canCreate&&<Link className="btn" href="/jurnal/tulis"><Plus size={16}/> Tulis Jurnal</Link>}</div>
     </header>
 
     <nav className="journalSubnav" aria-label="Navigasi jurnal">
-      <Link className="journalNavActive" href="/jurnal">Dashboard</Link><Link href="/jurnal/tulis">Tulis Jurnal</Link><Link href="/jurnal/buat">Formulir Lengkap</Link><Link href="/jurnal/riwayat">Riwayat Jurnal</Link>
+      <Link className="journalNavActive" href="/jurnal">Dashboard</Link><Link href="/jurnal/tulis">Tulis Jurnal</Link><Link href="/jurnal/buat">Formulir Lengkap</Link><Link href="/jurnal/riwayat">Riwayat Jurnal</Link><Link href="/notulensi">Notulensi</Link>
     </nav>
 
     {writable.length>0&&<section className="journalEasyEntry" aria-label="Mulai jurnal tanpa target manual">
@@ -93,6 +95,7 @@ export default function JournalDashboard(){
       <div className="journalEasyEntryActions">
         <Link href="/jurnal/tulis"><BookOpenText size={20}/><span><strong>Tulis jurnal</strong></span><ArrowRight size={18}/></Link>
         <Link href="/jurnal/riwayat"><History size={20}/><span><strong>Jurnal tersimpan</strong></span><ArrowRight size={18}/></Link>
+        <Link href="/notulensi"><ClipboardList size={20}/><span><strong>Notulensi musyawarah</strong></span><ArrowRight size={18}/></Link>
       </div>
     </section>}
 
