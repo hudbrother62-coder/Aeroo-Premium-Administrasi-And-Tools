@@ -27,6 +27,7 @@ export default function TulisJurnal(){
   const [activities,setActivities]=useState<Activity[]>([]);
   const [events,setEvents]=useState<EventRow[]>([]);
   const [ready,setReady]=useState(false);
+  const [minutesMode,setMinutesMode]=useState(false);
   const [date,setDate]=useState(jakartaDate());
   const [kind,setKind]=useState('KELOMPOK');
   const [classId,setClassId]=useState('');
@@ -52,12 +53,12 @@ export default function TulisJurnal(){
   const [savedId,setSavedId]=useState('');
   const [analysis,setAnalysis]=useState<Analysis|null>(null);
   const scope=(journalKinds.find(x=>x.value===kind)?.audience||'KELOMPOK') as Audience;
-  const options=journalKinds.filter(k=>scopes.includes(k.audience as Audience));
+  const options=journalKinds.filter(k=>scopes.includes(k.audience as Audience)&&(minutesMode?k.value==='PENGURUS':k.value!=='PENGURUS'));
   const availableClasses=classes.filter(c=>c.audience===scope);
   const availableActivities=activities.filter(a=>a.audience===scope);
   const selectedAgenda=agendaOptions.find(a=>a.id===agendaId);
   const selectedActivity=availableActivities.find(a=>a.id===activityId);
-  const isMeeting=kind==='PENGURUS'||/musyawarah|rapat|notulen/i.test([selectedAgenda?.title,selectedActivity?.name].filter(Boolean).join(' '));
+  const isMeeting=minutesMode||kind==='PENGURUS'||/musyawarah|rapat|notulen/i.test([selectedAgenda?.title,selectedActivity?.name].filter(Boolean).join(' '));
   useEffect(()=>{
     setActivityId(previous=>activities.some(a=>a.id===previous&&a.audience===scope)?previous:activities.find(a=>a.audience===scope)?.id||'');
   },[scope,activities]);
@@ -80,9 +81,11 @@ export default function TulisJurnal(){
       setRole(u.role||'VIEWER');
       const allowed=(Array.isArray(u.write_scopes)?u.write_scopes:writeScopesForRole(u.role||'VIEWER')) as Audience[];
       setScopes(allowed);setClasses(Array.isArray(c)?c:[]);setActivities(Array.isArray(a)?a:[]);
-      const requested=new URLSearchParams(window.location.search).get('kind');
-      const first=journalKinds.find(x=>x.value===requested&&allowed.includes(x.audience as Audience))||
-        journalKinds.find(x=>allowed.includes(x.audience as Audience));
+      const params=new URLSearchParams(window.location.search);
+      const minutes=params.get('mode')==='notulensi';setMinutesMode(minutes);
+      const requested=params.get('kind');
+      const first=minutes?journalKinds.find(x=>x.value==='PENGURUS'):journalKinds.find(x=>x.value===requested&&x.value!=='PENGURUS'&&allowed.includes(x.audience as Audience))||
+        journalKinds.find(x=>x.value!=='PENGURUS'&&allowed.includes(x.audience as Audience));
       if(first)setKind(first.value);
       setReady(true);
     }).catch(()=>{setError('Data awal tidak dapat dimuat.');setReady(true)});
@@ -143,14 +146,14 @@ export default function TulisJurnal(){
     }catch(e){setError((e as Error).message)}finally{setSaving(false)}
   }
   if(!ready)return <div className="fj-shell"><div className="card section">Memuat formulir jurnal…</div></div>;
-  if(!options.length)return <div className="fj-shell"><p className="notice">Akun ini belum diberi izin menulis jurnal.</p><Link href="/jurnal">Kembali ke Jurnal</Link></div>;
+  if(!options.length)return <div className="fj-shell"><p className="notice">Akun ini belum diberi izin menulis {minutesMode?'notulensi':'jurnal'}.</p><Link href={minutesMode?'/notulensi':'/jurnal'}>Kembali</Link></div>;
 
   return <main className="fj-shell">
-    <Link href="/jurnal" className="fj-back"><ArrowLeft size={17}/> Kembali ke Jurnal</Link>
-    <header className="fj-header"><span><BookOpen size={18}/> CATATAN GURU</span><h1>Tulis Jurnal</h1></header>
+    <Link href={minutesMode?'/notulensi':'/jurnal'} className="fj-back"><ArrowLeft size={17}/> Kembali</Link>
+    <header className="fj-header"><span><BookOpen size={18}/> {minutesMode?'CATATAN MUSYAWARAH':'CATATAN GURU'}</span><h1>{minutesMode?'Tulis Notulensi':'Tulis Jurnal'}</h1></header>
     {!savedId?<section className="fj-panel">
       <div className="fj-row">
-        <label>Jenis kegiatan<select value={kind} onChange={e=>{setKind(e.target.value);setClassId('');setActivityId('');setSelectedEvent('');setFromAgenda(false);setAgendaId('')}}>{options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
+        {!minutesMode&&<label>Jenis kegiatan<select value={kind} onChange={e=>{setKind(e.target.value);setClassId('');setActivityId('');setSelectedEvent('');setFromAgenda(false);setAgendaId('')}}>{options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>}
         <label>Tanggal<input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label>
         {classRequired&&<label>Kelas<select value={classId} onChange={e=>{setClassId(e.target.value);setSelectedEvent('')}}><option value="">Pilih kelas</option>{availableClasses.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
         <label>Kegiatan<select value={fromAgenda?'AGENDA':activityId} onChange={e=>{const value=e.target.value;setFromAgenda(value==='AGENDA');setAgendaId('');setSelectedEvent('');setActivityId(value==='AGENDA'?'':value);}}>
@@ -180,9 +183,9 @@ export default function TulisJurnal(){
         </details>
       </>}
       {error&&<div className="fj-error" role="alert">{error}</div>}
-      <div className="fj-actions"><Link href="/jurnal" className="fj-secondary">Batal</Link><button type="button" className="fj-primary" disabled={saving} onClick={()=>void save()}>{saving?<LoaderCircle size={19}/>:<FileText size={19}/>} {saving?'Menyimpan…':'Simpan jurnal'}</button></div>
+      <div className="fj-actions"><Link href="/jurnal" className="fj-secondary">Batal</Link><button type="button" className="fj-primary" disabled={saving} onClick={()=>void save()}>{saving?<LoaderCircle size={19}/>:<FileText size={19}/>} {saving?'Menyimpan…':minutesMode?'Simpan notulensi':'Simpan jurnal'}</button></div>
     </section>:<section className="fj-panel">
-      <div className="fj-success"><CheckCircle2 size={38}/><h2>Jurnal berhasil disimpan</h2></div>
+      <div className="fj-success"><CheckCircle2 size={38}/><h2>{minutesMode?'Notulensi berhasil disimpan':'Jurnal berhasil disimpan'}</h2></div>
       {analyzing&&<div className="fj-status"><Sparkles size={19}/> Groq sedang membaca jurnal dan mencari target yang relevan…</div>}
       {aiError&&<div className="fj-hint" role="status">Analisis AI belum tersedia: {aiError} <button type="button" onClick={()=>void analyze(savedId)} disabled={analyzing}><RefreshCw size={15}/> Coba lagi</button></div>}
       {!isMeeting&&analysis&&<div className="fj-ai">
@@ -192,7 +195,7 @@ export default function TulisJurnal(){
         {analysis.suggestion&&<p className="fj-suggestion"><strong>Saran tindak lanjut:</strong> {analysis.suggestion}</p>}
         
       </div>}
-      <div className="fj-actions"><Link className="fj-secondary" href={"/jurnal/hasil/"+savedId}>Lihat hasil dan AI</Link><Link className="fj-secondary" href="/jurnal/riwayat">Riwayat</Link><Link className="fj-primary" href="/jurnal/tulis">Tulis jurnal baru</Link></div>
+      <div className="fj-actions"><Link className="fj-secondary" href={"/jurnal/hasil/"+savedId}>Lihat hasil dan AI</Link><Link className="fj-secondary" href={minutesMode?'/notulensi':'/jurnal/riwayat'}>Riwayat</Link><Link className="fj-primary" href={minutesMode?'/jurnal/tulis?mode=notulensi':'/jurnal/tulis'}>{minutesMode?'Buat notulensi lagi':'Tulis jurnal baru'}</Link></div>
     </section>}
   </main>;
 }
