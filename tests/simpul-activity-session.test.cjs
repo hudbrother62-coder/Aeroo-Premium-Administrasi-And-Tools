@@ -19,7 +19,7 @@ test('calendar does not regenerate routine agenda rows',()=>{
 test('journals find the matching activity session in either creation order',()=>{
  assert.match(journal,/e\.activity_type_id===activityId/);
  assert.match(journal,/setFromAgenda/);
- assert.match(journal,/Jurnal tetap dapat ditulis/);
+ assert.match(journal,/event_id:e\?\.id\|\|null/);
  assert.match(migration,/before insert on public.journals/);
  assert.match(migration,/after insert on public.attendance_events/);
  assert.match(migration,/competing/);
