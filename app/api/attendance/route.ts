@@ -3,6 +3,27 @@ import {db} from '@/lib/supabase-server';
 import {publicProjection} from '@/lib/public-read';
 
 export async function GET(req:NextRequest){
+  // Calendar history uses a narrow, permission-checked database aggregate.
+  // It must run before the general public projection, which reads every historical row.
+  if(req.nextUrl.searchParams.get('history')==='1'){
+    const params=req.nextUrl.searchParams;
+    const from=params.get('from')||'',to=params.get('to')||'';
+    const classId=params.get('class_id')||null;
+    if(!/^\\d{4}-(0[1-9]|1[0-2])-\\d{2}$/.test(from)
+      ||!/^\\d{4}-(0[1-9]|1[0-2])-\\d{2}$/.test(to)
+      ||from.slice(0,7)!==to.slice(0,7)||from>to
+      ||(classId&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classId)))
+      return NextResponse.json({error:'Rentang tanggal atau kelas tidak valid.'},{status:400});
+    try{
+      const s=await db();
+      const {data,error}=await s.rpc('simpul_attendance_history_month',{
+        p_month:from.slice(0,7),p_audience:params.get('audience')||null,p_class_id:classId
+      });
+      if(error)return NextResponse.json({error:error.message},{status:400});
+      const rows=Array.isArray(data)?data.filter((event:{event_date:string})=>event.event_date>=from&&event.event_date<=to):[];
+      return NextResponse.json(rows,{headers:{'Cache-Control':'private, no-store'}});
+    }catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Riwayat tidak dapat dimuat.'},{status:500});}
+  }
   const publicResult=await publicProjection(req,'attendance');if(publicResult)return publicResult;
   const s=await db();
   const from=req.nextUrl.searchParams.get('from');
