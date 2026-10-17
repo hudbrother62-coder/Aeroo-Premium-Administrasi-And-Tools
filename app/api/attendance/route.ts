@@ -9,8 +9,8 @@ export async function GET(req:NextRequest){
     const params=req.nextUrl.searchParams;
     const from=params.get('from')||'',to=params.get('to')||'';
     const classId=params.get('class_id')||null;
-    if(!/^\\d{4}-(0[1-9]|1[0-2])-\\d{2}$/.test(from)
-      ||!/^\\d{4}-(0[1-9]|1[0-2])-\\d{2}$/.test(to)
+    if(!/^\d{4}-(0[1-9]|1[0-2])-\d{2}$/.test(from)
+      ||!/^\d{4}-(0[1-9]|1[0-2])-\d{2}$/.test(to)
       ||from.slice(0,7)!==to.slice(0,7)||from>to
       ||(classId&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(classId)))
       return NextResponse.json({error:'Rentang tanggal atau kelas tidak valid.'},{status:400});
