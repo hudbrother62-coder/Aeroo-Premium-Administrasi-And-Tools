@@ -15,19 +15,33 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}
 
   let records=data.attendance_records||[];
   const today=new Date(Date.now()+7*60*60*1000).toISOString().slice(0,10);
-  // A routine class roster can change while today's session is already open.
-  // Never rewrite earlier attendance or custom-agenda participant snapshots.
-  if(data.audience==='CABERAWIT'&&data.class_id&&!data.agenda_id&&data.event_date>=today){
-    const {data:canWrite}=await s.rpc('can_write_scoped_audience',{p_audience:data.audience,p_class_id:data.class_id});
-    if(canWrite){
-      const {data:memberIds,error:syncError}=await s.rpc('sync_caberawit_attendance_roster',{p_event_id:id});
-      if(syncError)return NextResponse.json({error:syncError.message},{status:400});
-      if(Array.isArray(memberIds)){
-        const {data:currentRecords,error:recordsError}=await s.from('attendance_records')
-          .select('*,attendance_changes(*)').eq('event_id',id);
-        if(recordsError)return NextResponse.json({error:recordsError.message},{status:400});
-        const currentMembers=new Set<string>(memberIds);
-        records=(currentRecords||[]).filter((r:any)=>r.member_id&&currentMembers.has(r.member_id));
+  // Past sessions may predate the original member import (6-7 October 2026).
+  // Repair EMPTY routine rosters only; existing marked snapshots are immutable here.
+  // Today's sessions retain the existing current-roster synchronization behavior.
+  if(data.audience==='CABERAWIT'&&data.class_id&&!data.agenda_id){
+    const {data:canWrite,error:scopeError}=await s.rpc('can_write_scoped_audience',{p_audience:data.audience,p_class_id:data.class_id});
+    const {data:writePermission,error:writeError}=await s.rpc('has_app_permission',{p_permission:'attendance.write'});
+    if(scopeError||writeError)return NextResponse.json({error:'Gagal memeriksa izin presensi.'},{status:403});
+    if(canWrite&&writePermission){
+      if(data.event_date>=today){
+        const {data:memberIds,error:syncError}=await s.rpc('sync_caberawit_attendance_roster',{p_event_id:id});
+        if(syncError)return NextResponse.json({error:syncError.message},{status:400});
+        if(Array.isArray(memberIds)){
+          const {data:currentRecords,error:recordsError}=await s.from('attendance_records')
+            .select('*,attendance_changes(*)').eq('event_id',id);
+          if(recordsError)return NextResponse.json({error:recordsError.message},{status:400});
+          const currentMembers=new Set<string>(memberIds);
+          records=(currentRecords||[]).filter((r:any)=>r.member_id&&currentMembers.has(r.member_id));
+        }
+      }else if(records.length===0&&data.event_date>='2026-10-01'){
+        const {data:restored,error:restoreError}=await s.rpc('simpul_restore_empty_caberawit_roster',{p_event_id:id});
+        if(restoreError)return NextResponse.json({error:restoreError.message},{status:400});
+        if(Number(restored)>0){
+          const {data:restoredRecords,error:recordsError}=await s.from('attendance_records')
+            .select('*,attendance_changes(*)').eq('event_id',id);
+          if(recordsError)return NextResponse.json({error:recordsError.message},{status:400});
+          records=restoredRecords||[];
+        }
       }
     }
   }
