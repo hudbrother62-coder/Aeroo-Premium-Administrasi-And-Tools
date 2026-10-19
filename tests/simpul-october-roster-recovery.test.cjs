@@ -55,6 +55,8 @@ test('history and official recap require at least one recorded H I A',()=>{
 test('journal writing remains independent of a newly created attendance record',()=>{
   assert.match(journal,/event_id:e\?\.id\|\|null/);
   assert.match(journal,/journal_date:date/);
+  assert.match(journal,/session_key\?\.startsWith\('routine:'\)/);
+  assert.match(journal,/session_key\?\.startsWith\('archive:'\)/);
   assert.match(journal,/progress:\[\],revision:0,state:'COMPLETED'/);
   assert.match(journal,/fetch\('\/api\/journals',\{method:'POST'/);
   assert.match(journal,/if\(!isMeeting\)await analyze\(result\.id\)/);
