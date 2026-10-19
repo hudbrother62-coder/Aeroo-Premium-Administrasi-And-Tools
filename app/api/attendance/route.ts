@@ -48,6 +48,51 @@ export async function GET(req:NextRequest){
   return NextResponse.json(rows);
 }
 
+// A historical Caberawit session can already be filled under a legacy session key.
+// Reopen that source-of-truth record rather than creating a second marked session.
+async function existingRecordedCaberawit(s:Awaited<ReturnType<typeof db>>,event:Record<string,unknown>){
+  if(event.agenda_id||event.audience!=='CABERAWIT'
+    ||typeof event.class_id!=='string'||typeof event.activity_type_id!=='string'
+    ||typeof event.event_date!=='string'||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(event.event_date)
+    ||!/^[0-9a-f-]{36}$/i.test(event.class_id)
+    ||!/^[0-9a-f-]{36}$/i.test(event.activity_type_id))return null;
+
+  const [{data:scope,error:scopeError},{data:permission,error:permissionError}]=await Promise.all([
+    s.rpc('can_write_scoped_audience',{p_audience:'CABERAWIT',p_class_id:event.class_id}),
+    s.rpc('has_app_permission',{p_permission:'attendance.write'})
+  ]);
+  if(scopeError||permissionError||!scope||!permission)return null;
+  const {data:rows,error}=await s.from('attendance_events')
+    .select('id,attendance_records(status)')
+    .eq('audience','CABERAWIT')
+    .eq('class_id',event.class_id)
+    .eq('activity_type_id',event.activity_type_id)
+    .eq('event_date',event.event_date)
+    .is('agenda_id',null)
+    .neq('state','CANCELLED')
+    .limit(40);
+  if(error)throw new Error('Gagal memeriksa riwayat presensi. Coba lagi.');
+  const prior=(rows||[]).find((row:any)=>
+    (row.attendance_records||[]).some((r:any)=>['H','I','A'].includes(r.status))
+  );
+  if(!prior)return null;
+  const {data:canEdit,error:editError}=await s.rpc('can_write_event',{p_event_id:prior.id});
+  if(editError||!canEdit)return null;
+  return prior.id as string;
+}
+
 export async function POST(req:NextRequest){
- try{const s=await db();const event=await req.json();if(event.records)return NextResponse.json({error:'Gunakan penyimpanan per peserta.'},{status:400});if(!event.agenda_id&&(!event.activity_type_id||!['KELOMPOK','CABERAWIT','IBU_IBU','MUDA_MUDI','PENGURUS'].includes(event.audience)))return NextResponse.json({error:'Kegiatan rutin wajib memilih jenis kegiatan; untuk acara lainnya pilih agenda.'},{status:400});const {data,error}=await s.rpc('ensure_attendance',{p_event:event});return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data,{status:201});}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Gagal membuka presensi.'},{status:400})}
+  try{
+    const s=await db();
+    const event=await req.json();
+    if(event.records)return NextResponse.json({error:'Gunakan penyimpanan per peserta.'},{status:400});
+    if(!event.agenda_id&&(!event.activity_type_id||!['KELOMPOK','CABERAWIT','IBU_IBU','MUDA_MUDI','PENGURUS'].includes(event.audience)))
+      return NextResponse.json({error:'Kegiatan rutin wajib memilih jenis kegiatan; untuk acara lainnya pilih agenda.'},{status:400});
+    const existingId=await existingRecordedCaberawit(s,event);
+    if(existingId)return NextResponse.json({id:existingId,existing:true},{status:200});
+    const {data,error}=await s.rpc('ensure_attendance',{p_event:event});
+    return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json(data,{status:201});
+  }catch(e){
+    return NextResponse.json({error:e instanceof Error?e.message:'Gagal membuka presensi.'},{status:400});
+  }
 }
