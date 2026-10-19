@@ -38,7 +38,7 @@ export default function AttendanceHistory({month,audience,classId,onChanged}:{mo
       if(!r.ok||!u.ok)throw Error('Riwayat presensi belum dapat dimuat.');
       const [rows,me]=await Promise.all([r.json(),u.json()]);
       if(!Array.isArray(rows))throw Error('Format riwayat tidak sesuai.');
-      if(active){setEvents(rows.filter((e:Meeting)=>e.state!=='CANCELLED'));setUser(me);}
+      if(active){setEvents(rows.filter((e:Meeting)=>e.state!=='CANCELLED'&&(e.attendance_records||[]).some(r=>['H','I','A'].includes(r.status||''))));setUser(me);}
     }).catch(e=>{if(active)setError(e instanceof Error?e.message:'Gagal memuat riwayat.');}).finally(()=>{if(active)setLoading(false);});
     return()=>{active=false;};
   },[month,audience,classId,version]);
