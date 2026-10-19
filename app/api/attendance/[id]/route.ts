@@ -23,6 +23,22 @@ export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}
     const {data:writePermission,error:writeError}=await s.rpc('has_app_permission',{p_permission:'attendance.write'});
     if(scopeError||writeError)return NextResponse.json({error:'Gagal memeriksa izin presensi.'},{status:403});
     if(canWrite&&writePermission){
+      // An imported, already-marked session is authoritative for the same
+      // date/class/activity. Redirect legacy empty sessions rather than duplicating H/I/A.
+      if(records.length===0&&data.activity_type_id&&data.event_date<today){
+        const {data:alternatives,error:lookupError}=await s.from('attendance_events')
+          .select('id,attendance_records(status)')
+          .eq('audience','CABERAWIT').eq('class_id',data.class_id)
+          .eq('event_date',data.event_date).eq('activity_type_id',data.activity_type_id)
+          .neq('id',id).is('agenda_id',null).neq('state','CANCELLED').limit(40);
+        if(lookupError)return NextResponse.json({error:'Riwayat presensi belum bisa diperiksa.'},{status:503});
+        const existing=(alternatives||[]).find((candidate:any)=>
+          (candidate.attendance_records||[]).some((r:any)=>['H','I','A'].includes(r.status)));
+        if(existing){
+          const {data:canEdit}=await s.rpc('can_write_event',{p_event_id:existing.id});
+          if(canEdit)return NextResponse.json({...data,attendance_records:records,redirect_event_id:existing.id});
+        }
+      }
       if(data.event_date>=today){
         const {data:memberIds,error:syncError}=await s.rpc('sync_caberawit_attendance_roster',{p_event_id:id});
         if(syncError)return NextResponse.json({error:syncError.message},{status:400});
