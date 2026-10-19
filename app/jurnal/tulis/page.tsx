@@ -9,7 +9,7 @@ import './tulis.css';
 
 type ClassRow={id:string;name:string;level_id?:string|null;audience:string};
 type Activity={id:string;name:string;audience:string};
-type EventRow={id:string;event_date:string;title:string;audience:string;class_id?:string|null;activity_type_id?:string|null;agenda_id?:string|null;state?:string};
+type EventRow={id:string;event_date:string;title:string;audience:string;class_id?:string|null;activity_type_id?:string|null;agenda_id?:string|null;state?:string;session_key?:string|null;attendance_records?:Array<{status?:string|null}>};
 type AgendaRow={id:string;title:string;audience:string;class_id?:string|null;activity_type_id?:string|null;status?:string;starts_at:string};
 type TargetMatch={target_id:string;title:string;reason:string;quote:string;relation:string};
 type Analysis={summary:string;suggestion:string;matches:TargetMatch[];created_at:string;status:string};
@@ -99,7 +99,17 @@ export default function TulisJurnal(){
       .then(v=>{if(alive)setEvents(Array.isArray(v)?v:[])}).catch(()=>{if(alive)setEvents([])});
     return()=>{alive=false};
   },[date,scope]);
-  const matching=useMemo(()=>events.filter(e=>e.state!=='CANCELLED'&&(!classId||e.class_id===classId)&&(fromAgenda?!!agendaId&&e.agenda_id===agendaId:e.agenda_id==null&&!!activityId&&e.activity_type_id===activityId)),[events,classId,activityId,fromAgenda,agendaId]);
+  // Prefer previously filled historical sessions to empty shadow sessions of the
+  // same day, class, and activity. Do not require creating attendance to write a journal.
+  const matching=useMemo(()=>{
+    const candidates=events.filter(e=>e.state!=='CANCELLED'&&(!classId||e.class_id===classId)&&(fromAgenda?!!agendaId&&e.agenda_id===agendaId:e.agenda_id==null&&!!activityId&&e.activity_type_id===activityId));
+    return candidates.filter(e=>{
+      if(!e.session_key?.startsWith('routine:')||(e.attendance_records||[]).length>0)return true;
+      return !candidates.some(other=>other.id!==e.id&&other.session_key?.startsWith('archive:')
+        &&other.class_id===e.class_id&&other.activity_type_id===e.activity_type_id
+        &&(other.attendance_records||[]).some(r=>['H','I','A'].includes(r.status||'')));
+    });
+  },[events,classId,activityId,fromAgenda,agendaId]);
   const event=matching.find(x=>x.id===selectedEvent)||matching.length===1?matching.find(x=>x.id===selectedEvent)||matching[0]:null;
   const classRequired=scope==='CABERAWIT'||scope==='MUDA_MUDI';
   async function analyze(id:string){
