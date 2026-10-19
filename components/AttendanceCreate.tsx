@@ -67,8 +67,9 @@ export default function Page({embedded=false}:{embedded?:boolean}){
     return()=>{active=false};
   },[ready,form.event_date,eventId]);
 
-  async function openEvent(id:string){
-    const response=await fetch('/api/attendance/'+id);const event=await response.json();if(!response.ok)throw new Error(event.error||'Daftar belum dapat dimuat.');
+  async function openEvent(id:string):Promise<void>{
+    const response=await fetch('/api/attendance/'+id,{cache:'no-store'});const event=await response.json();if(!response.ok)throw new Error(event.error||'Daftar belum dapat dimuat.');
+    if(event.redirect_event_id&&event.redirect_event_id!==id){await openEvent(event.redirect_event_id);window.history.replaceState(null,'','/presensi/buat?event_id='+event.redirect_event_id);return;}
     setEventId(id);setUseAgenda(!!event.agenda_id);const inferred:Preset=event.audience==='KELOMPOK'&&event.title==='Pengajian Kelompok'?'KELOMPOK':event.audience==='CABERAWIT'&&String(event.title||'').startsWith('Pengajian Caberawit')?'CABERAWIT':'CUSTOM';setPreset(inferred);setForm({title:event.title,event_date:event.event_date,event_time:event.event_time||'',audience:event.audience,activity_type_id:event.activity_type_id||'',level_id:event.level_id||'',class_id:event.class_id||'',agenda_id:event.agenda_id||'',teacher_name:event.teacher_name||'',notes:event.notes||''});
     const rows=event.attendance_records||[];
      setError(rows.length?'':'Daftar peserta kelas ini belum tersedia untuk tanggal tersebut. Periksa data kelas atau coba muat ulang; presensi lama tidak dihapus.');
