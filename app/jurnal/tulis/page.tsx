@@ -5,6 +5,7 @@ import {useEffect,useMemo,useState} from 'react';
 import {ArrowLeft,BookOpen,CheckCircle2,FileText,LoaderCircle,RefreshCw,Sparkles} from 'lucide-react';
 import {jakartaDate} from '@/lib/domain';
 import {writeScopesForRole,type Audience} from '@/lib/access';
+import {meetingTypes,normalizeMeetingType,type MeetingType} from '@/lib/journal-kind';
 import './tulis.css';
 
 type ClassRow={id:string;name:string;level_id?:string|null;audience:string};
@@ -28,6 +29,7 @@ export default function TulisJurnal(){
   const [events,setEvents]=useState<EventRow[]>([]);
   const [ready,setReady]=useState(false);
   const [minutesMode,setMinutesMode]=useState(false);
+  const [meetingType,setMeetingType]=useState<MeetingType>('Kelompok');
   const [date,setDate]=useState(jakartaDate());
   const [kind,setKind]=useState('KELOMPOK');
   const [classId,setClassId]=useState('');
@@ -83,6 +85,7 @@ export default function TulisJurnal(){
       setScopes(allowed);setClasses(Array.isArray(c)?c:[]);setActivities(Array.isArray(a)?a:[]);
       const params=new URLSearchParams(window.location.search);
       const minutes=params.get('mode')==='notulensi';setMinutesMode(minutes);
+      setMeetingType(normalizeMeetingType(params.get('type')));
       const requested=params.get('kind');
       const first=minutes?journalKinds.find(x=>x.value==='PENGURUS'):journalKinds.find(x=>x.value===requested&&x.value!=='PENGURUS'&&allowed.includes(x.audience as Audience))||
         journalKinds.find(x=>x.value!=='PENGURUS'&&allowed.includes(x.audience as Audience));
@@ -127,7 +130,7 @@ export default function TulisJurnal(){
     if(!isMeeting&&!summary.trim()&&!material.trim()){setError('Tuliskan isi jurnal atau materi kegiatan terlebih dahulu.');return;}
     if(startedAt&&endedAt&&startedAt===endedAt){setError('Jam mulai dan selesai tidak boleh sama.');return;}
     if(fromAgenda&&!selectedAgenda){setError('Pilih agenda khusus terlebih dahulu.');return;}
-    if(!fromAgenda&&!activityId){setError('Pilih jenis kegiatan terlebih dahulu.');return;}
+    if(!minutesMode&&!fromAgenda&&!activityId){setError('Pilih jenis kegiatan terlebih dahulu.');return;}
     if(classRequired&&!classId&&!selectedAgenda?.class_id){setError('Pilih kelas supaya jurnal sesuai dengan peserta dan target.');return;}
     if(matching.length>1&&!selectedEvent){setError('Ada beberapa presensi di hari itu. Pilih pertemuan yang tepat.');return;}
     setSaving(true);setError('');
@@ -136,8 +139,8 @@ export default function TulisJurnal(){
       const linkedClass=classId||selectedAgenda?.class_id||'';
       const classroom=availableClasses.find(c=>c.id===linkedClass);
       const body={
-        journal_kind:kind,journal_date:date,title:title.trim()||'Jurnal '+(selectedAgenda?.title||availableActivities.find(a=>a.id===activityId)?.name||journalKinds.find(x=>x.value===kind)?.label||'kegiatan')+' - '+date,
-        event_id:e?.id||null,agenda_id:e?.agenda_id||selectedAgenda?.id||null,class_id:linkedClass||null,activity_type_id:e?.activity_type_id||selectedAgenda?.activity_type_id||activityId||null,
+        journal_kind:kind,journal_date:date,title:title.trim()||(minutesMode?'Musyawarah '+meetingType+' - '+date:'Jurnal '+(selectedAgenda?.title||availableActivities.find(a=>a.id===activityId)?.name||journalKinds.find(x=>x.value===kind)?.label||'kegiatan')+' - '+date),
+        event_id:minutesMode?null:e?.id||null,agenda_id:minutesMode?null:e?.agenda_id||selectedAgenda?.id||null,class_id:minutesMode?null:linkedClass||null,activity_type_id:minutesMode?null:e?.activity_type_id||selectedAgenda?.activity_type_id||activityId||null,
         started_at:startedAt||null,ended_at:endedAt||null,
         material:isMeeting?null:material.trim()||null,
         summary:isMeeting?proposal.trim()||null:summary.trim()||null,
@@ -145,7 +148,7 @@ export default function TulisJurnal(){
         notes:isMeeting?meetingNotes.trim()||null:null,
         obstacles:isMeeting?null:obstacles.trim()||null,
         follow_up:isMeeting?null:followUp.trim()||null,
-        assessment:{free_form:true,source:'TEACHER_TEXT',meeting_minutes:isMeeting,proposal:isMeeting?proposal.trim():null,class_assessment:{level_id:classroom?.level_id||null}},
+        assessment:{free_form:true,source:'TEACHER_TEXT',meeting_minutes:isMeeting,meeting_type:minutesMode?meetingType:null,proposal:isMeeting?proposal.trim():null,class_assessment:{level_id:classroom?.level_id||null}},
         progress:[],revision:0,state:'COMPLETED'
       };
       const response=await fetch('/api/journals',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
@@ -163,15 +166,16 @@ export default function TulisJurnal(){
     <header className="fj-header"><span><BookOpen size={18}/> {minutesMode?'CATATAN MUSYAWARAH':'CATATAN GURU'}</span><h1>{minutesMode?'Tulis Notulensi':'Tulis Jurnal'}</h1></header>
     {!savedId?<section className="fj-panel">
       <div className="fj-row">
+        {minutesMode&&<label>Jenis musyawarah<select value={meetingType} onChange={e=>setMeetingType(e.target.value as MeetingType)}>{meetingTypes.map(t=><option value={t} key={t}>{t}</option>)}</select></label>}
         {!minutesMode&&<label>Jenis kegiatan<select value={kind} onChange={e=>{setKind(e.target.value);setClassId('');setActivityId('');setSelectedEvent('');setFromAgenda(false);setAgendaId('')}}>{options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>}
         <label>Tanggal<input type="date" value={date} onChange={e=>setDate(e.target.value)}/></label>
         {classRequired&&<label>Kelas<select value={classId} onChange={e=>{setClassId(e.target.value);setSelectedEvent('')}}><option value="">Pilih kelas</option>{availableClasses.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>}
-        <label>Kegiatan<select value={fromAgenda?'AGENDA':activityId} onChange={e=>{const value=e.target.value;setFromAgenda(value==='AGENDA');setAgendaId('');setSelectedEvent('');setActivityId(value==='AGENDA'?'':value);}}>
+        {!minutesMode&&<label>Kegiatan<select value={fromAgenda?'AGENDA':activityId} onChange={e=>{const value=e.target.value;setFromAgenda(value==='AGENDA');setAgendaId('');setSelectedEvent('');setActivityId(value==='AGENDA'?'':value);}}>
           <option value="" disabled>Pilih kegiatan</option>{availableActivities.map(a=><option value={a.id} key={a.id}>{a.name}</option>)}<option value="AGENDA">Lainnya — dari agenda khusus</option>
-        </select></label>
-        {fromAgenda&&<label>Agenda khusus<select value={agendaId} onChange={e=>{const value=e.target.value;setAgendaId(value);setSelectedEvent('');const a=agendaOptions.find(x=>x.id===value);if(a?.class_id)setClassId(a.class_id);}}><option value="">Pilih agenda yang sudah dibuat</option>{agendaOptions.map(a=><option key={a.id} value={a.id}>{a.title}</option>)}</select></label>}
+        </select></label>}
+        {!minutesMode&&fromAgenda&&<label>Agenda khusus<select value={agendaId} onChange={e=>{const value=e.target.value;setAgendaId(value);setSelectedEvent('');const a=agendaOptions.find(x=>x.id===value);if(a?.class_id)setClassId(a.class_id);}}><option value="">Pilih agenda yang sudah dibuat</option>{agendaOptions.map(a=><option key={a.id} value={a.id}>{a.title}</option>)}</select></label>}
       </div>
-      {matching.length>0&&<div className="fj-attendance">
+      {!minutesMode&&matching.length>0&&<div className="fj-attendance">
         <CheckCircle2 size={18}/><div><strong>Presensi tanggal ini ditemukan</strong></div>
         {matching.length>1&&<select aria-label="Pilih presensi terkait" value={selectedEvent} onChange={e=>setSelectedEvent(e.target.value)}><option value="">Pilih pertemuan</option>{matching.map(e=><option value={e.id} key={e.id}>{e.title}</option>)}</select>}
       </div>}
@@ -193,7 +197,7 @@ export default function TulisJurnal(){
         </details>
       </>}
       {error&&<div className="fj-error" role="alert">{error}</div>}
-      <div className="fj-actions"><Link href="/jurnal" className="fj-secondary">Batal</Link><button type="button" className="fj-primary" disabled={saving} onClick={()=>void save()}>{saving?<LoaderCircle size={19}/>:<FileText size={19}/>} {saving?'Menyimpan…':minutesMode?'Simpan notulensi':'Simpan jurnal'}</button></div>
+      <div className="fj-actions"><Link href={minutesMode?'/notulensi':'/jurnal'} className="fj-secondary">Batal</Link><button type="button" className="fj-primary" disabled={saving} onClick={()=>void save()}>{saving?<LoaderCircle size={19}/>:<FileText size={19}/>} {saving?'Menyimpan…':minutesMode?'Simpan notulensi':'Simpan jurnal'}</button></div>
     </section>:<section className="fj-panel">
       <div className="fj-success"><CheckCircle2 size={38}/><h2>{minutesMode?'Notulensi berhasil disimpan':'Jurnal berhasil disimpan'}</h2></div>
       {analyzing&&<div className="fj-status"><Sparkles size={19}/> Groq sedang membaca jurnal dan mencari target yang relevan…</div>}
@@ -205,7 +209,7 @@ export default function TulisJurnal(){
         {analysis.suggestion&&<p className="fj-suggestion"><strong>Saran tindak lanjut:</strong> {analysis.suggestion}</p>}
         
       </div>}
-      <div className="fj-actions"><Link className="fj-secondary" href={"/jurnal/hasil/"+savedId}>Lihat hasil dan AI</Link><Link className="fj-secondary" href={minutesMode?'/notulensi':'/jurnal/riwayat'}>Riwayat</Link><Link className="fj-primary" href={minutesMode?'/jurnal/tulis?mode=notulensi':'/jurnal/tulis'}>{minutesMode?'Buat notulensi lagi':'Tulis jurnal baru'}</Link></div>
+      <div className="fj-actions"><Link className="fj-secondary" href={minutesMode?"/notulensi?month="+date.slice(0,7)+"&type="+encodeURIComponent(meetingType):"/jurnal/hasil/"+savedId}>{minutesMode?"Lihat notulensi":"Lihat hasil dan AI"}</Link><Link className="fj-secondary" href={minutesMode?'/notulensi':'/jurnal/riwayat'}>Riwayat</Link><Link className="fj-primary" href={minutesMode?'/jurnal/tulis?mode=notulensi':'/jurnal/tulis'}>{minutesMode?'Buat notulensi lagi':'Tulis jurnal baru'}</Link></div>
     </section>}
   </main>;
 }

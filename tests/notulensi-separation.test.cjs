@@ -35,3 +35,20 @@ test('new Notulensi page is parseable TSX',()=>{
   const result=ts.transpileModule(source,{fileName:'notulensi.tsx',reportDiagnostics:true,compilerOptions:{jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}});
   assert.deepEqual((result.diagnostics||[]).filter(d=>d.category===ts.DiagnosticCategory.Error).map(d=>ts.flattenDiagnosticMessageText(d.messageText,' ')),[]);
 });
+
+test('minutes use three stable musyawarah categories and preserve legacy group classification',()=>{
+  const src=fs.readFileSync('lib/journal-kind.ts','utf8');
+  const vmModule={exports:{}};
+  vm.runInNewContext(ts.transpileModule(src,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{module:vmModule,exports:vmModule.exports});
+  const {normalizeMeetingType}=vmModule.exports;
+  assert.equal(normalizeMeetingType(null,'PENGURUS'),'Kelompok');
+  assert.equal(normalizeMeetingType('Lima Unsur'),'5 Unsur');
+  assert.equal(normalizeMeetingType('5 Unsur'),'5 Unsur');
+  assert.equal(normalizeMeetingType('Pengajar'),'Dewan Guru');
+  assert.equal(normalizeMeetingType('Dewan Guru'),'Dewan Guru');
+  const page=fs.readFileSync('app/notulensi/page.tsx','utf8');
+  assert.doesNotMatch(page,/minutesArchiveStrip|journalSubnav/);
+  assert.match(page,/count===1/);
+  const input=fs.readFileSync('app/jurnal/tulis/page.tsx','utf8');
+  assert.match(input,/meeting_type:minutesMode\?meetingType:null/);
+});
