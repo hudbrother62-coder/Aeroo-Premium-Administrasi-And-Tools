@@ -34,3 +34,194 @@
 .attendancePersonDetailLink{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:7px 12px;font-size:12px}
 .attendancePersonDetailLink svg{transform:rotate(-90deg)}
 @media(max-width:640px){.attendanceIndividualsTable{font-size:12px}.attendancePersonDetailLink{padding:7px 8px}}
+
+
+/* Individual attendance report: responsive layout for desktop and phones. */
+.attendanceIndividualReport{
+  width:100%;max-width:1160px;min-width:0;margin-inline:auto;
+}
+.attendanceIndividualReport *, .attendanceIndividualReport *::before,.attendanceIndividualReport *::after{
+  box-sizing:border-box;
+}
+.attendanceIndividualHeader{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;
+  gap:10px;margin-bottom:22px;
+}
+.attendanceIndividualHeader .btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  min-height:43px;max-width:100%;padding:9px 14px;font-size:12px;
+  line-height:1.35;text-decoration:none;white-space:normal;text-align:center;
+}
+.attendanceIndividualHeader .btn svg{flex:none}
+.attendanceIndividualContent{
+  display:flex;flex-direction:column;gap:19px;min-width:0;
+}
+.attendanceIndividualHero{min-width:0}
+.attendanceIndividualHero .attendanceEyebrow{
+  display:block;margin-bottom:8px;font-size:10px;font-weight:750;letter-spacing:.085em;
+}
+.attendanceIndividualHero h1{
+  margin:0;max-width:100%;font-size:clamp(25px,3.6vw,37px);
+  font-weight:780;line-height:1.13;letter-spacing:-.035em;overflow-wrap:anywhere;
+}
+.attendanceIndividualHero p{
+  margin:9px 0 0;font-size:13px;line-height:1.5;color:var(--muted);
+  overflow-wrap:anywhere;
+}
+.attendanceIndividualControls{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;
+  border:1px solid var(--border);border-radius:16px;
+  padding:15px;background:var(--surface);
+}
+.attendanceIndividualControls>label{
+  display:grid;gap:7px;min-width:0;color:var(--muted);
+  font-size:12px;font-weight:650;line-height:1.4;
+}
+.attendanceIndividualControls .input,.attendanceIndividualControls .select{
+  width:100%;max-width:100%;min-width:0;min-height:46px;
+  font-size:14px;font-weight:500;color:var(--text);background:var(--surface-2);
+}
+.attendanceIndividualKpis{
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:11px;
+  min-width:0;
+}
+.attendanceIndividualKpis>div{
+  display:flex;flex-direction:column;align-items:flex-start;min-width:0;
+  min-height:115px;padding:16px;border-radius:15px;
+  border:1px solid var(--border);background:var(--surface);
+}
+.attendanceIndividualKpis>div span{
+  display:block;max-width:100%;font-size:12px;font-weight:630;
+  line-height:1.4;color:var(--muted);overflow-wrap:anywhere;
+}
+.attendanceIndividualKpis>div strong{
+  display:block;margin-top:12px;color:var(--text);
+  font-size:30px;font-weight:780;line-height:1;letter-spacing:-.035em;
+  font-variant-numeric:tabular-nums;
+}
+.attendanceIndividualKpis>div small{
+  display:block;margin-top:8px;font-size:11px;line-height:1.3;
+  color:var(--muted);font-weight:650;
+}
+.attendanceIndividualKpis>div:nth-child(2){border-top:3px solid #16a58d}
+.attendanceIndividualKpis>div:nth-child(3){border-top:3px solid #c79537}
+.attendanceIndividualKpis>div:nth-child(4){border-top:3px solid #df6b6b}
+.attendanceIndividualKpis>div:nth-child(5){border-top:3px solid #788ba2}
+.attendanceIndividualContent>.attendanceTrendPanel{margin:0}
+.attendanceIndividualMeetings{min-width:0}
+.attendanceIndividualMeetings .attendancePanelHead{
+  margin-bottom:17px;min-width:0;
+}
+.attendanceIndividualMeetings .attendancePanelHead>div{min-width:0}
+.attendanceIndividualMeetings .attendancePanelHead h2{
+  font-size:17px;line-height:1.3;overflow-wrap:anywhere;
+}
+.attendanceIndividualMeetings .attendancePanelHead p{
+  max-width:750px;font-size:12px;line-height:1.65;
+}
+.attendanceIndividualSearch{
+  display:grid;grid-template-columns:minmax(0,1fr) 200px;
+  gap:10px;margin-bottom:16px;min-width:0;
+}
+.attendanceIndividualSearch>label{
+  position:relative;display:flex;align-items:center;min-width:0;
+}
+.attendanceIndividualSearch>label>svg{
+  position:absolute;left:13px;top:50%;transform:translateY(-50%);
+  color:var(--muted);pointer-events:none;z-index:1;
+}
+.attendanceIndividualSearch .input{
+  min-height:45px;padding-left:39px;font-size:13px;
+}
+.attendanceIndividualSearch .select{
+  min-height:45px;font-size:13px;
+}
+.attendanceIndividualHistory{
+  display:grid;gap:11px;min-width:0;
+}
+.attendanceIndividualMeeting{
+  min-width:0;border:1px solid var(--border);border-radius:14px;
+  padding:15px 17px;background:var(--surface-2);
+}
+.attendanceIndividualMeetingTop{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:12px;min-width:0;
+}
+.attendanceIndividualMeetingTop>div{min-width:0;flex:1}
+.attendanceIndividualMeetingTop>div>span{
+  display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;
+  font-size:11px;font-weight:650;line-height:1.45;color:var(--muted);
+}
+.attendanceIndividualMeetingTop>div>span svg{flex:none}
+.attendanceIndividualMeetingTop h3{
+  margin:6px 0 0;font-size:15px;font-weight:730;
+  line-height:1.42;overflow-wrap:anywhere;
+}
+.attendanceIndividualMeetingTop>.attendanceStatusChip{
+  flex:none;align-self:flex-start;padding:6px 10px;
+  border-radius:999px;font-size:11px;
+}
+.attendanceIndividualMeetingMeta{
+  display:flex;flex-wrap:wrap;gap:7px 15px;margin-top:13px;
+  color:var(--muted);font-size:11px;line-height:1.5;
+}
+.attendanceIndividualMeetingMeta strong{color:var(--text);font-weight:690}
+.attendanceIndividualNotes{
+  margin:11px 0 0;padding:10px 12px;border-radius:10px;
+  background:var(--surface);border:1px solid var(--border);
+  font-size:12px;line-height:1.6;overflow-wrap:anywhere;
+}
+.attendanceIndividualNotes b{color:var(--text)}
+.attendanceIndividualEdit{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  min-height:39px;margin-top:13px;padding:9px 12px;
+  border:1px solid var(--border);border-radius:10px;
+  background:var(--surface);color:var(--text);text-decoration:none;
+  font-size:12px;font-weight:690;line-height:1.35;text-align:center;
+}
+.attendanceIndividualEdit svg{flex:none}
+.attendanceIndividualEdit:hover{border-color:var(--primary);color:var(--primary)}
+.attendanceIndividualEdit:focus-visible,
+.attendanceIndividualReport .btn:focus-visible{
+  outline:2px solid var(--primary);outline-offset:2px;
+}
+.attendancePersonLoader,.attendanceIndividualNoRows{
+  margin:0;padding:20px;font-size:13px;line-height:1.6;
+  color:var(--muted);
+}
+.attendanceIndividualNoRows{text-align:center;background:var(--surface-2);border-radius:10px}
+
+@media(max-width:960px){
+  .attendanceIndividualKpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:700px){
+  .attendanceIndividualHeader{gap:8px;margin-bottom:18px}
+  .attendanceIndividualHeader .btn{
+    flex:1;min-width:0;padding:10px 8px;font-size:11px;min-height:44px;
+  }
+  .attendanceIndividualContent{gap:15px}
+  .attendanceIndividualHero h1{font-size:clamp(24px,7vw,30px)}
+  .attendanceIndividualHero p{font-size:12px}
+  .attendanceIndividualControls{padding:12px;gap:10px;border-radius:13px}
+  .attendanceIndividualKpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .attendanceIndividualKpis>div{min-height:98px;padding:13px;border-radius:12px}
+  .attendanceIndividualKpis>div:first-child{grid-column:1/-1;min-height:90px}
+  .attendanceIndividualKpis>div strong{font-size:27px;margin-top:9px}
+  .attendanceIndividualKpis>div span{font-size:11px}
+  .attendanceIndividualMeetings{padding:13px!important}
+  .attendanceIndividualMeetings .attendancePanelHead{margin-bottom:12px}
+  .attendanceIndividualSearch{grid-template-columns:minmax(0,1fr);gap:9px}
+  .attendanceIndividualSearch .input,.attendanceIndividualSearch .select{font-size:16px}
+  .attendanceIndividualMeeting{padding:13px}
+  .attendanceIndividualMeetingTop h3{font-size:14px}
+  .attendanceIndividualMeetingMeta{margin-top:10px;gap:5px 12px}
+  .attendanceIndividualEdit{display:flex;width:100%}
+}
+@media(max-width:420px){
+  .attendanceIndividualControls{grid-template-columns:minmax(0,1fr)}
+  .attendanceIndividualHero h1{font-size:25px}
+  .attendanceIndividualHeader .btn{font-size:10px;gap:5px}
+  .attendanceIndividualHeader .btn svg{width:15px;height:15px}
+  .attendanceIndividualMeetingTop{gap:7px}
+  .attendanceIndividualMeetingTop>.attendanceStatusChip{padding:5px 7px;font-size:10px}
+}
