@@ -8,7 +8,7 @@ export type RecapPerson={
 };
 export type RecapMeeting={id:string;title:string;date:string;audience:string;class_name:string;total:number;summary:{H:number;I:number;A:number;pending:number}};
 export type MonthlyRecap={month:string;summary:{H:number;I:number;A:number;pending:number;meetings:number};individuals:Array<Omit<RecapPerson,'monthly'>>;meetings:RecapMeeting[]};
-export type CombinedRecap=MonthlyRecap&{trend:AttendanceBucket[]};
+export type CombinedRecap=Omit<MonthlyRecap,'individuals'>&{individuals:RecapPerson[];trend:AttendanceBucket[]};
 export function monthsEnding(month:string,span:1|3|6):string[]{
  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))throw new Error('Bulan tidak valid.');
  const year=Number(month.slice(0,4)),m=Number(month.slice(5,7))-1;

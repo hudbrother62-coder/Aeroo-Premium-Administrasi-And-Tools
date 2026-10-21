@@ -79,7 +79,8 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
    if(detail!=='meetings'||!meetingId||!data?.meetings.some(m=>m.id===meetingId)){setParticipants([]);setParticipantsError('');setParticipantsLoading(false);return;}
    let live=true;const controller=new AbortController();
    setParticipants([]);setParticipantsError('');setParticipantsLoading(true);
-   const params=new URLSearchParams({month,event_id:meetingId});
+   const eventMonth=data?.meetings.find(m=>m.id===meetingId)?.date.slice(0,7)||month;
+   const params=new URLSearchParams({month:eventMonth,event_id:meetingId});
    if(audience)params.set('audience',audience);if(audience==='CABERAWIT'&&classId)params.set('class_id',classId);if(audience==='MUDA_MUDI'&&levelId)params.set('level_id',levelId);
    fetch('/api/attendance/recap?'+params.toString(),{signal:controller.signal})
      .then(async r=>{const j=await r.json();if(!r.ok)throw Error(j.error||'Rincian peserta gagal dimuat.');return j;})
@@ -152,8 +153,8 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
    </nav>}
    {detail==='overall'&&!individualOnly&&<div className="attendanceOverviewGrid">
      <section className="attendancePanel"><div className="attendancePanelHead"><div><h2>Komposisi Presensi</h2><p>Perbandingan status pada seluruh pertemuan terpilih.</p></div></div>
-       <div className="attendanceStackedTrack" aria-label="Komposisi status absensi">{statuses.map(s=><div key={s.id} className={'attendanceStack '+s.id} style={{width:(s.value/Math.max(totalMarked+(data?.summary.pending||0),1)*100)+'%'}} title={s.label+': '+s.value}/>)}</div>
-       <div className="attendanceStatusBars">{statuses.map(s=><div className="attendanceStatusBar" key={s.id}><span><i className={'attendanceStatusDot '+s.id}/>{s.label}</span><div className="attendanceBarTrack"><div className={'attendanceBarFill '+s.id} style={{width:(s.value/Math.max(totalMarked+(data?.summary.pending||0),1)*100)+'%'}}/></div><strong>{s.value} {s.percentage!=null?<small className="attendanceStatusPercent">({s.percentage.toFixed(1)}%)</small>:null}</strong></div>)}</div>
+       <div className="attendanceStackedTrack" aria-label="Komposisi status absensi">{statuses.map(s=><div key={s.id} className={'attendanceStack '+s.id} style={{width:s.id==='pending'?'0%':String(s.percentage??0)+'%'}} title={s.label+': '+s.value}/>)}</div>
+       <div className="attendanceStatusBars">{statuses.map(s=><div className="attendanceStatusBar" key={s.id}><span><i className={'attendanceStatusDot '+s.id}/>{s.label}</span><div className="attendanceBarTrack"><div className={'attendanceBarFill '+s.id} style={{width:s.id==='pending'?String(s.value/Math.max(totalMarked+s.value,1)*100)+'%':String(s.percentage??0)+'%'}}/></div><strong>{s.value} {s.percentage!=null?<small className="attendanceStatusPercent">({s.percentage.toFixed(1)}%)</small>:null}</strong></div>)}</div>
      </section>
      <section className="attendancePanel"><div className="attendancePanelHead"><div><h2>Ringkasan periode</h2><p>Indikator untuk membaca kelengkapan pencatatan.</p></div></div><div className="attendanceOverviewNumbers"><div><span>Peserta tercatat</span><strong>{data?.individuals.length||0}</strong></div><div><span>Catatan terisi</span><strong>{totalMarked}</strong></div><div><span>Total catatan</span><strong>{totalMarked+(data?.summary.pending||0)}</strong></div></div><button className="btn secondary attendanceFullButton" type="button" onClick={()=>setDetail('meetings')}>Lihat pertemuan <ChevronDown size={15}/></button></section>
    </div>}
