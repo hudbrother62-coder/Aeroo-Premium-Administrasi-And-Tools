@@ -111,10 +111,10 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
     <label>Lingkup<select className="select" value={audience} onChange={e=>{setAudience(e.target.value);setClassId('');setLevelId('');setMeetingId('');}}>
       <option value="">Keseluruhan</option>{readable.map(a=><option key={a} value={a}>{audienceLabels[a]}</option>)}
     </select></label>
-    {audience==='CABERAWIT'&&<label>Kelas<select className="select" value={classId} onChange={e=>{setClassId(e.target.value);setMeetingId('');setExpandedPerson('')}}>
+    {audience==='CABERAWIT'&&<label>Kelas<select className="select" value={classId} onChange={e=>{setClassId(e.target.value);setMeetingId('');}}>
       <option value="">Semua kelas</option>{availableClasses.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
     </select></label>}
-    {audience==='MUDA_MUDI'&&<label>Jenjang<select className="select" value={levelId} onChange={e=>{setLevelId(e.target.value);setMeetingId('');setExpandedPerson('')}}>
+    {audience==='MUDA_MUDI'&&<label>Jenjang<select className="select" value={levelId} onChange={e=>{setLevelId(e.target.value);setMeetingId('');}}>
       <option value="">Semua jenjang</option>{availableLevels.map(l=><option key={l.id} value={l.id}>{/generasi produktif/i.test(l.name)?'Genpro':l.name}</option>)}
     </select></label>}
    </section>
