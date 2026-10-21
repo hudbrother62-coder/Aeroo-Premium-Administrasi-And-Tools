@@ -26,3 +26,11 @@
 .attendanceReasons p{font-size:12px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
 @media(max-width:900px){.attendancePeriodFilters{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.attendancePeriodFilters{grid-template-columns:1fr}.attendanceStatusBar{grid-template-columns:65px minmax(0,1fr) minmax(88px,auto)}.attendanceStatusPercent{font-size:10px}.attendanceTrendHeading{flex-direction:column}.attendanceTrendPanel{padding:14px}.attendancePersonFullDetail{max-width:100%;min-width:0}}
+
+/* Separate full report from the list instead of nesting an entire chart inside table cells. */
+.attendanceIndividualsTable th,.attendanceIndividualsTable td{vertical-align:middle;white-space:nowrap}
+.attendanceIndividualsTable td:first-child{white-space:normal;min-width:175px}
+.attendanceIndividualsTable td:last-child{text-align:right}
+.attendancePersonDetailLink{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:7px 12px;font-size:12px}
+.attendancePersonDetailLink svg{transform:rotate(-90deg)}
+@media(max-width:640px){.attendanceIndividualsTable{font-size:12px}.attendancePersonDetailLink{padding:7px 8px}}

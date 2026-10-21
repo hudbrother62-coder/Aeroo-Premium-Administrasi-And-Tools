@@ -1,18 +1,17 @@
 'use client';
 
 import {useEffect,useMemo,useState} from 'react';
+import Link from 'next/link';
 import {BarChart3,CalendarDays,ChevronDown,Download,Search,Users} from 'lucide-react';
 import AttendanceTrendChart from '@/components/AttendanceTrendChart';
-import {monthsEnding,mergeRecapMonths,attendanceShares,type CombinedRecap,type RecapPerson} from '@/lib/attendance-trends';
+import {monthsEnding,mergeRecapMonths,attendanceShares,type CombinedRecap} from '@/lib/attendance-trends';
 import '@/app/presensi/recap-analytics.css';
 import {jakartaDate} from '@/lib/domain';
 import {audienceLabels,readScopesForRole,type Audience,type Role} from '@/lib/access';
 
 type ClassRow={id:string;name:string;audience:string;level_id?:string|null};
 type LevelRow={id:string;name:string;active?:boolean};
-type ReasonRow={id:string;date:string;title:string;reason:string};
 type Status='H'|'I'|'A'|null;
-type Person=RecapPerson;
 type Participant={id:string;name:string;class_name:string;level_name:string;status:Status;notes:string};
 type Meeting={id:string;title:string;date:string;audience:string;class_name:string;total:number;summary:{H:number;I:number;A:number;pending:number}};
 type Recap=CombinedRecap;
@@ -35,15 +34,11 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
  const [loading,setLoading]=useState(true);
  const [detail,setDetail]=useState<Detail>(individualOnly?'individual':'overall');
  const [meetingId,setMeetingId]=useState(focusEventId);
- const [expandedPerson,setExpandedPerson]=useState('');
  const [search,setSearch]=useState('');
  const [statusFilter,setStatusFilter]=useState('all');
  const [participants,setParticipants]=useState<Participant[]>([]);
  const [participantsLoading,setParticipantsLoading]=useState(false);
  const [participantsError,setParticipantsError]=useState('');
- const [reasons,setReasons]=useState<ReasonRow[]>([]);
- const [reasonsLoading,setReasonsLoading]=useState(false);
- const [reasonsError,setReasonsError]=useState('');
 
  useEffect(()=>{if(focusEventId){setMeetingId(focusEventId);setDetail('meetings');const selectedMonth=new URLSearchParams(window.location.search).get('month');if(selectedMonth&&/^\d{4}-(0[1-9]|1[0-2])$/.test(selectedMonth))setMonth(selectedMonth);}},[focusEventId]);
  useEffect(()=>{let live=true;
@@ -89,21 +84,6 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
      .finally(()=>{if(live)setParticipantsLoading(false);});
    return()=>{live=false;controller.abort()};
  },[detail,meetingId,month,audience,classId,levelId,data]);
- useEffect(()=>{
-   setReasons([]);setReasonsError('');
-   if(!expandedPerson||!data?.individuals.some(p=>p.id===expandedPerson)){setReasonsLoading(false);return;}
-   let live=true;const controller=new AbortController();setReasonsLoading(true);
-   const params=new URLSearchParams({person_id:expandedPerson,month,span:String(span)});
-   if(audience)params.set('audience',audience);
-   if(audience==='CABERAWIT'&&classId)params.set('class_id',classId);
-   if(audience==='MUDA_MUDI'&&levelId)params.set('level_id',levelId);
-   fetch('/api/attendance/individual?'+params.toString(),{cache:'no-store',signal:controller.signal})
-     .then(async r=>{const v=await r.json();if(!r.ok)throw Error(v.error||'Keterangan izin tidak tersedia.');return v;})
-     .then(v=>{if(live)setReasons(Array.isArray(v.reasons)?v.reasons:[])})
-     .catch(e=>{if(live)setReasonsError(e instanceof Error?e.message:'Gagal memuat keterangan izin.')})
-     .finally(()=>{if(live)setReasonsLoading(false)});
-   return()=>{live=false;controller.abort()};
- },[expandedPerson,month,span,audience,classId,levelId,data]);
  const availableClasses=classes.filter(c=>c.audience==='CABERAWIT');
  const availableLevels=levels.filter(l=>l.active!==false&&(/remaj/i.test(l.name)||/generasi produktif|genpro/i.test(l.name)));
  const meetings=data?.meetings||[];
@@ -124,11 +104,11 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
    {!embedded&&<div className="pageHeader"><h1>Rekap Presensi</h1></div>}
    <div className="attendancePanelHead attendanceRecapHead"><div><h2>Analisis Presensi</h2></div><button type="button" className="btn ghost" onClick={()=>void exportExcel()} disabled={!data||loading||(detail==='meetings'&&!!meeting&& (participantsLoading||!!participantsError))}><Download size={16}/> Ekspor Excel</button></div>
    <section className="attendanceFilters attendanceRecapFilters attendancePeriodFilters">
-    <label>Periode<input className="input" aria-label="Bulan rekap" type="month" value={month} onChange={e=>{setMonth(e.target.value);setMeetingId('');setExpandedPerson('');}}/></label>
-    <label>Rentang<select className="select" aria-label="Rentang rekap" value={span} onChange={e=>{setSpan(Number(e.target.value) as 1|3|6);setMeetingId('');setExpandedPerson('');}}>
+    <label>Periode<input className="input" aria-label="Bulan rekap" type="month" value={month} onChange={e=>{setMonth(e.target.value);setMeetingId('');}}/></label>
+    <label>Rentang<select className="select" aria-label="Rentang rekap" value={span} onChange={e=>{setSpan(Number(e.target.value) as 1|3|6);setMeetingId('');}}>
       <option value={1}>1 bulan</option><option value={3}>3 bulan</option><option value={6}>6 bulan</option>
     </select></label>
-    <label>Lingkup<select className="select" value={audience} onChange={e=>{setAudience(e.target.value);setClassId('');setLevelId('');setMeetingId('');setExpandedPerson('');}}>
+    <label>Lingkup<select className="select" value={audience} onChange={e=>{setAudience(e.target.value);setClassId('');setLevelId('');setMeetingId('');}}>
       <option value="">Keseluruhan</option>{readable.map(a=><option key={a} value={a}>{audienceLabels[a]}</option>)}
     </select></label>
     {audience==='CABERAWIT'&&<label>Kelas<select className="select" value={classId} onChange={e=>{setClassId(e.target.value);setMeetingId('');setExpandedPerson('')}}>
@@ -174,16 +154,31 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
        </>:<div className="attendanceEmpty"><Users size={27}/><strong>Pilih sebuah pertemuan</strong><span>Rincian hadir, izin, alfa, dan nama peserta akan tampil di sini.</span></div>}
      </section>
    </div>}
-   {(detail==='individual'||individualOnly)&&<section className="attendancePanel"><div className="attendancePanelHead"><div><h2>Rekap per Peserta</h2><p>Pilih nama untuk melihat performa bulanan, rincian hadir/izin/alfa, serta keterangan izin yang tersedia.</p></div></div><label className="attendanceSearch attendancePeopleSearch"><Search size={16}/><input type="search" className="input" placeholder="Cari nama atau kelas" value={search} onChange={e=>setSearch(e.target.value)}/></label>
-      <div className="tableWrap"><table className="table"><thead><tr><th>Nama / detail tanggal</th><th>Kelas</th><th>H</th><th>I</th><th>A</th><th>Belum</th><th>Kehadiran</th></tr></thead><tbody>{people.map(p=><tr key={p.id}><td><button className="nameButton" type="button" onClick={()=>setExpandedPerson(expandedPerson===p.id?'':p.id)} aria-expanded={expandedPerson===p.id}>{p.name} <ChevronDown size={14}/></button>{expandedPerson===p.id&&<div className="attendancePersonDates attendancePersonFullDetail">
-  {span>1&&<AttendanceTrendChart points={p.monthly} title={'Performa kehadiran '+p.name}/>}
-  {(['H','I','A'] as const).map(s=><p key={s}><b>{statusLabel(s)}:</b> {p.dates[s].length?p.dates[s].map(dayLabel).join(', '):'Belum ada'}</p>)}
-  {reasonsLoading&&<p>Keterangan izin sedang dimuat…</p>}
-  {reasonsError&&<p role="alert">{reasonsError}</p>}
-  {!reasonsLoading&&!reasonsError&&reasons.length>0&&<div className="attendanceReasons"><strong>Riwayat alasan izin</strong>
-    {reasons.map(r=><p key={r.id}><b>{dayLabel(r.date)} · {r.title}:</b> {r.reason}</p>)}
-  </div>}
-</div>}</td><td>{p.class_name||'—'}</td><td>{p.H}</td><td>{p.I}</td><td>{p.A}</td><td>{p.pending}</td><td>{p.percentage===null?'Belum diisi':p.percentage+'%'}</td></tr>)}{!people.length&&<tr><td colSpan={7}>Belum ada peserta dalam filter ini.</td></tr>}</tbody></table></div>
+   {(detail==='individual'||individualOnly)&&<section className="attendancePanel">
+    <div className="attendancePanelHead"><div><h2>Daftar Rekap Individu</h2>
+      <p>Setiap orang tampil satu kali. Pilih Lihat Detail untuk seluruh kewajiban pertemuan, status, catatan, dan grafik bulanan.</p>
+    </div></div>
+    <label className="attendanceSearch attendancePeopleSearch"><Search size={16}/>
+      <input type="search" className="input" placeholder="Cari nama atau kelas" value={search} onChange={e=>setSearch(e.target.value)}/>
+    </label>
+    <div className="tableWrap"><table className="table attendanceIndividualsTable">
+      <thead><tr><th>Nama peserta</th><th>Kelas</th><th>Hadir</th><th>Izin</th><th>Alfa</th><th>Belum</th><th>Kehadiran</th><th>Detail</th></tr></thead>
+      <tbody>{people.map(p=>{
+        const params=new URLSearchParams({month,span:String(span)});
+        if(audience)params.set('audience',audience);
+        if(audience==='CABERAWIT'&&classId)params.set('class_id',classId);
+        if(audience==='MUDA_MUDI'&&levelId)params.set('level_id',levelId);
+        return <tr key={p.id}><td><strong>{p.name}</strong></td><td>{p.class_name||'—'}</td>
+          <td>{p.H}</td><td>{p.I}</td><td>{p.A}</td><td>{p.pending}</td>
+          <td>{p.percentage===null?'Belum diisi':p.percentage+'%'}</td>
+          <td><Link className="btn ghost attendancePersonDetailLink"
+            href={'/presensi/individu/'+encodeURIComponent(p.id)+'?'+params.toString()}>
+            Lihat Detail <ChevronDown size={15}/></Link></td>
+        </tr>;
+      })}
+      {!people.length&&<tr><td colSpan={8}>Belum ada peserta dalam filter ini.</td></tr>}
+      </tbody>
+    </table></div>
    </section>}
    </>}
  </div>;
