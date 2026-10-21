@@ -17,6 +17,7 @@ type AppUser={id:string;username:string;display_name:string|null;role:Role;activ
 const nav=[
   {href:'/',label:'Beranda',icon:LayoutDashboard,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
   {href:'/database',label:'Database',icon:Database,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
+  {href:'/rekap',label:'Rekap',icon:ChartNoAxesCombined,roles:['VIEWER'] as Role[],publicRead:true},
   {href:'/presensi',label:'Presensi',icon:ClipboardCheck,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
   {href:'/jurnal',label:'Jurnal Kegiatan',icon:BookOpen,roles:['ADMIN','DEWAN_GURU','KELOMPOK','VIEWER'] as Role[],publicRead:true},
   {href:'/notulensi',label:'Notulensi',icon:NotebookPen,roles:['ADMIN','DEWAN_GURU','KELOMPOK'] as Role[]},
@@ -34,8 +35,9 @@ const nav=[
   {href:'/pengaturan',label:'Pengaturan',icon:Settings,roles:['ADMIN'] as Role[]},
 ];
 
-const sections=[['BERANDA',['/']],['OPERASIONAL',['/agenda','/presensi','/jurnal','/notulensi']],['PEMBINAAN',['/target']],['DATA',['/database','/struktur','/sarpras']],['PRIBADI',['/catatan']],['ANALISIS',['/kelengkapan','/laporan']],['SISTEM',['/arsip','/impor','/tim-akses','/audit','/pengaturan']]] as const;
+const sections=[['BERANDA',['/']],['OPERASIONAL',['/agenda','/presensi','/jurnal','/notulensi']],['PEMBINAAN',['/target']],['DATA',['/database','/struktur','/sarpras']],['PRIBADI',['/catatan']],['ANALISIS',['/rekap','/kelengkapan','/laporan']],['SISTEM',['/arsip','/impor','/tim-akses','/audit','/pengaturan']]] as const;
 const navPermission:Record<string,string>={'/database':'person.read','/agenda':'agenda.read','/presensi':'attendance.read','/jurnal':'journal.read','/notulensi':'journal.read','/target':'target.read','/struktur':'position.read','/rekap':'report.read','/laporan':'report.read','/arsip':'archive.manage','/impor':'import.manage','/tim-akses':'user.manage','/pengaturan':'settings.manage'};
+const viewerRoutes=new Set(['/','/agenda','/database','/jurnal','/target','/rekap']);
 const roleLabel:Record<Role,string>={ADMIN:'Admin',DEWAN_GURU:'Dewan Guru',KELOMPOK:'Operator',VIEWER:'Viewer'};
 
 function Brand({compact=false}:{compact?:boolean}){
@@ -89,14 +91,14 @@ export default function AppShell({children}:{children:React.ReactNode}){
 
   useEffect(()=>{setDrawer(false);setMoreOpen(false);setQuickOpen(false)},[path]);
   useEffect(()=>{const close=()=>{setDrawer(false);setMoreOpen(false);setQuickOpen(false)};window.addEventListener('simpul:close-overlays',close);return()=>window.removeEventListener('simpul:close-overlays',close)},[]);
-  const visible=useMemo(()=>user?nav.filter(x=>{
+  const visible=useMemo(()=>(!user||user.role==='VIEWER')?nav.filter(x=>viewerRoutes.has(x.href)):nav.filter(x=>{
     // The curriculum catalogue is read-only for everyone, independent of editing privileges.
     if(x.href==='/target')return true;
     if(['/arsip','/tim-akses','/audit','/pengaturan'].includes(x.href))return user.role==='ADMIN';
     const permission=navPermission[x.href];
     if(permission&&user.permissions&&permission in user.permissions)return user.permissions[permission]===true;
     return x.roles.includes(user.role);
-  }):nav.filter(x=>x.publicRead),[user]);
+  }),[user]);
   const primaryMobile=['/','/agenda','/presensi','/jurnal'];
   const mobilePrimary=primaryMobile.flatMap(href=>visible.filter(x=>x.href===href));
   const mobileMore=visible.filter(x=>!primaryMobile.includes(x.href));
@@ -116,7 +118,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
       if((user?.role==='ADMIN'||user?.role==='DEWAN_GURU')&&user?.permissions?.['target.write']!==false)items.push({href:'/target?create=1',label:'Target',icon:Target});
       if((user?.role==='ADMIN'||user?.role==='KELOMPOK')&&user?.permissions?.['position.write']!==false)items.push({href:'/struktur?create=1',label:'Dapukan',icon:Network});
     }
-    if(user)items.push({href:'/catatan?create=1',label:'Catatan',icon:NotebookPen});
+    if(user&&user.role!=='VIEWER')items.push({href:'/catatan?create=1',label:'Catatan',icon:NotebookPen});
     return items;
   },[canWriteFormal,user]);
 
@@ -129,7 +131,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
   if(isLogin)return <>{children}</>;
 
   const renderNav=(items=visible,klass='navList')=>{
-    const link=(item:typeof nav[number])=>{const active=item.href==='/'?path==='/':path.startsWith(item.href);const Icon=item.icon;const primary=<Link key={item.href} href={item.href} aria-current={active?'page':undefined} title={item.label} className={active?'navItem active':'navItem'}><span className="navIcon"><Icon size={18}/></span><span>{item.label}</span></Link>;return item.href==='/agenda'&&klass==='navList'?<div className="agendaSidebarGroup" key={item.href}>{primary}<div className="agendaSidebarLinks"><Link href="/agenda/kalender" className={path==='/agenda/kalender'?'active':''}>Kalender</Link><Link href="/agenda" className={path==='/agenda'?'active':''}>Daftar &amp; Kelola</Link></div></div>:item.href==='/presensi'&&klass.includes('navList')?<div className="agendaSidebarGroup" key={item.href}>{primary}<div className="agendaSidebarLinks"><Link href="/presensi" className={path==='/presensi'||path==='/presensi/buat'?'active':''}>Isi Presensi</Link><Link href="/presensi/riwayat" className={path==='/presensi/riwayat'?'active':''}>Riwayat</Link><Link href="/presensi/rekap" className={path==='/presensi/rekap'?'active':''}>Rekap</Link></div></div>:item.href==='/catatan'&&klass==='navList'?<div className="agendaSidebarGroup" key={item.href}>{primary}<div className="agendaSidebarLinks"><Link href="/catatan?scope=PERSONAL">Pribadi</Link><Link href="/catatan?scope=ROLE">Per Role</Link><Link href="/catatan?scope=MAIN">Utama</Link></div></div>:primary};
+    const link=(item:typeof nav[number])=>{const active=item.href==='/'?path==='/':path.startsWith(item.href);const Icon=item.icon;const primary=<Link key={item.href} href={item.href} aria-current={active?'page':undefined} title={item.label} className={active?'navItem active':'navItem'}><span className="navIcon"><Icon size={18}/></span><span>{item.label}</span></Link>;return item.href==='/agenda'&&klass==='navList'?<div className="agendaSidebarGroup" key={item.href}>{primary}<div className="agendaSidebarLinks"><Link href="/agenda/kalender" className={path==='/agenda/kalender'?'active':''}>Kalender</Link><Link href="/agenda" className={path==='/agenda'?'active':''}>{!user||user.role==='VIEWER'?'Daftar Kegiatan':'Daftar & Kelola'}</Link></div></div>:item.href==='/presensi'&&klass.includes('navList')?<div className="agendaSidebarGroup" key={item.href}>{primary}<div className="agendaSidebarLinks"><Link href="/presensi" className={path==='/presensi'||path==='/presensi/buat'?'active':''}>Isi Presensi</Link><Link href="/presensi/riwayat" className={path==='/presensi/riwayat'?'active':''}>Riwayat</Link><Link href="/presensi/rekap" className={path==='/presensi/rekap'?'active':''}>Rekap</Link></div></div>:item.href==='/catatan'&&klass==='navList'?<div className="agendaSidebarGroup" key={item.href}>{primary}<div className="agendaSidebarLinks"><Link href="/catatan?scope=PERSONAL">Pribadi</Link><Link href="/catatan?scope=ROLE">Per Role</Link><Link href="/catatan?scope=MAIN">Utama</Link></div></div>:primary};
     return <nav className={klass}>{klass.includes('navList')?sections.map(([label,paths])=>{const group=paths.flatMap(href=>items.filter(i=>i.href===href));return group.length?<div className="navGroup" key={label}><small className="navGroupLabel">{label}</small>{group.map(link)}</div>:null}):items.map(link)}</nav>
   };
 
@@ -152,7 +154,7 @@ export default function AppShell({children}:{children:React.ReactNode}){
     </aside>
 
     <main className="contentArea">
-      <div className="globalToolsDock"><GlobalTools enabled={!!user} dark={dark===true} drawerOpen={drawer} onToggleTheme={()=>setDark(v=>!(v??false))}/></div>
+      <div className="globalToolsDock"><GlobalTools enabled={!!user&&user.role!=='VIEWER'} dark={dark===true} drawerOpen={drawer} onToggleTheme={()=>setDark(v=>!(v??false))}/></div>
       <header className="mobileHeader">
         <div className="mobileHeaderStart">
           <button type="button" className="iconOnly mobileMenuButton" onClick={()=>{setDrawer(true);setMoreOpen(false);setQuickOpen(false)}} aria-label="Buka semua menu" aria-controls="simpul-mobile-menu" aria-expanded={drawer}><Menu size={20}/></button>

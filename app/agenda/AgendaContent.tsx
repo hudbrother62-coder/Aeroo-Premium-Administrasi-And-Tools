@@ -109,7 +109,7 @@ export default function AgendaContent({mode}:{mode:'list'|'calendar'}){
     </div>
     <nav className="agendaTwoNav" aria-label="Subnavigasi agenda">
       <Link href="/agenda/kalender" aria-current={mode==='calendar'?'page':undefined} className={mode==='calendar'?'active':''}><CalendarPlus size={17}/><span>Kalender</span></Link>
-      <Link href="/agenda" aria-current={mode==='list'?'page':undefined} className={mode==='list'?'active':''}><ClipboardCheck size={17}/><span>Daftar & Kelola</span></Link>
+      <Link href="/agenda" aria-current={mode==='list'?'page':undefined} className={mode==='list'?'active':''}><ClipboardCheck size={17}/><span>{role==='VIEWER'?'Daftar Kegiatan':'Daftar & Kelola'}</span></Link>
     </nav>
     {message&&<div className="notice success" role="status">{message}</div>}
     {error&&<div className="notice error" role="alert">{error}</div>}

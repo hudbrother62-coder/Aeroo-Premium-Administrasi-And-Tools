@@ -163,7 +163,7 @@ export default function Home(){
         <label><span><CalendarDays size={15}/> Bulan</span><input type="month" className="simSelect" aria-label="Pilih bulan dashboard" value={month} onChange={e=>setMonth(e.target.value)}/></label>
         <label><span><Clock3 size={15}/> Periode</span><select className="simSelect" aria-label="Pilih periode grafik" value={span} onChange={e=>setSpan(Number(e.target.value) as 1|3|6)}><option value="1">Bulan terpilih</option><option value="3">3 bulan</option><option value="6">6 bulan</option></select></label>
       </div>
-      <div className="simControlActions"><button className="simIconButton" aria-label="Segarkan grafik" title="Segarkan dari database" onClick={()=>setReload(x=>x+1)} disabled={loading}><RefreshCw size={18} className={loading?'simSpin':''}/></button><Link className="simReportLink" href="/laporan"><Download size={16}/> Laporan</Link></div>
+      <div className="simControlActions"><button className="simIconButton" aria-label="Segarkan grafik" title="Segarkan dari database" onClick={()=>setReload(x=>x+1)} disabled={loading}><RefreshCw size={18} className={loading?'simSpin':''}/></button><Link className="simReportLink" href={loggedIn?"/laporan":"/rekap"}><Download size={16}/>{loggedIn?"Laporan":"Rekap"}</Link></div>
     </div>
     <div className="simScope"><span className="simDot"/> Menampilkan <strong>{levelName}</strong> · {period}{loading&&<span className="simLoadingNote"> · Memuat data…</span>}</div>
     {error&&<div className="notice error simError"><AlertCircle size={17}/>{error}<button onClick={()=>setReload(x=>x+1)}>Coba lagi</button></div>}
@@ -171,13 +171,13 @@ export default function Home(){
     {canOperate&&<div className="simQuickActions"><Link href="/agenda?create=1"><CalendarDays size={16}/> Buat Agenda</Link><Link href="/presensi/buat"><ClipboardCheck size={16}/> Presensi</Link><Link href="/jurnal/tulis"><BookOpen size={16}/> Tulis Jurnal</Link><Link href="/notulensi"><FileText size={16}/> Notulensi</Link></div>}
     {loading&&!data?<div className="simLoadingGrid" role="status" aria-label="Memuat ringkasan"><div className="simSkeleton"/><div className="simSkeleton"/><div className="simSkeleton"/><div className="simSkeleton"/></div>:data?<>
       <div className="simStats">
-        <StatCard href="/rekap-presensi" icon={<CheckCircle2 size={22}/>} tone="blue" label="Rata-rata Kehadiran" value={pct(attendance?.percentage)} detail={attendance?.total?number.format(attendance.total)+' status telah diisi':'Belum ada presensi terisi'}/>
+        <StatCard href={loggedIn?"/presensi/rekap":"/rekap?tab=presensi"} icon={<CheckCircle2 size={22}/>} tone="blue" label="Rata-rata Kehadiran" value={pct(attendance?.percentage)} detail={attendance?.total?number.format(attendance.total)+' status telah diisi':'Belum ada presensi terisi'}/>
         <StatCard href="/database" icon={<Users size={22}/>} tone="purple" label="Anggota Aktif" value={number.format(data.members)} detail="Jumlah orang aktif, bukan jumlah presensi"/>
         <StatCard href="/agenda" icon={<CalendarDays size={22}/>} tone="cyan" label="Sesi Pertemuan" value={number.format(attendance?.meetings||0)} detail="Jumlah sesi pada periode terpilih"/>
         <StatCard href="/jurnal" icon={<BookOpen size={22}/>} tone="green" label="Catatan Selesai" value={number.format(data.journals)} detail="Jurnal dan notulensi selesai"/>
       </div>
       <section className="simRates" aria-label="Komposisi hasil presensi">
-        <div className="simRatesHead"><div><h2>Komposisi Kehadiran</h2><p>Persentase status yang sudah diisi selama {period}.</p></div><Link href="/rekap-presensi" className="simTextLink">Buka rekap <ArrowRight size={15}/></Link></div>
+        <div className="simRatesHead"><div><h2>Komposisi Kehadiran</h2><p>Persentase status yang sudah diisi selama {period}.</p></div><Link href={loggedIn?"/presensi/rekap":"/rekap?tab=presensi"} className="simTextLink">Buka rekap <ArrowRight size={15}/></Link></div>
         <div className="simRateGrid">
           {([{name:'Hadir',value:rates?.present,count:attendance?.present??0,tone:'green'},
              {name:'Izin',value:rates?.excused,count:attendance?.excused??0,tone:'amber'},
@@ -191,7 +191,7 @@ export default function Home(){
         <p className="simRateNote">Rumus: Hadir ÷ (Hadir + Izin + Alfa) × 100%. Sebanyak <strong>{number.format(attendance?.pending??0)}</strong> status belum diisi tidak dihitung sebagai alfa. Kehadiran dihitung per pertemuan, bukan orang unik.</p>
       </section>
       <div className="simMajor">
-        <ChartCard title="Tren Kehadiran" subtitle={'Persentase hadir dari status terisi · '+period} action={<Link href="/rekap-presensi" className="simTextLink">Detail <ArrowRight size={15}/></Link>}>
+        <ChartCard title="Tren Kehadiran" subtitle={'Persentase hadir dari status terisi · '+period} action={<Link href={loggedIn?"/presensi/rekap":"/rekap?tab=presensi"} className="simTextLink">Detail <ArrowRight size={15}/></Link>}>
           {chartLine(trend)}
           <div className="simLegend"><span><i className="simBlueLegend"/> Kehadiran aktual</span><span>Pending tidak dihitung dalam persentase</span></div>{data.levelMapping?.inferred>0&&<div className="simLegacyNotice">{number.format(data.levelMapping.inferred)} catatan lama dipetakan menurut kelas / keanggotaan yang tersedia. <span>Data asli tidak diubah.</span></div>}
         </ChartCard>

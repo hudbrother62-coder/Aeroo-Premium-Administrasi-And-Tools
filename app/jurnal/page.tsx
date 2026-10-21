@@ -83,12 +83,12 @@ export default function JournalDashboard(){
   return <div className="journalWorkspace">
     <header className="pageHeader journalMainHeader">
       <div><span className="journalEyebrow"><BookOpenText size={15}/> Pencatatan kegiatan & pembinaan</span><h1>Jurnal Kegiatan</h1></div>
-      <div className="journalHeaderActions"><Link className="btn ghost" href="/jurnal/riwayat"><History size={16}/> Riwayat Jurnal</Link>{canCreate&&<Link className="btn" href="/jurnal/tulis"><Plus size={16}/> Tulis Jurnal</Link>}</div>
+      <div className="journalHeaderActions">{role!=='VIEWER'&&<Link className="btn ghost" href="/jurnal/riwayat"><History size={16}/> Riwayat Jurnal</Link>}{canCreate&&<Link className="btn" href="/jurnal/tulis"><Plus size={16}/> Tulis Jurnal</Link>}</div>
     </header>
 
-    <nav className="journalSubnav" aria-label="Navigasi jurnal">
+    {role!=='VIEWER'&&<nav className="journalSubnav" aria-label="Navigasi jurnal">
       <Link className="journalNavActive" href="/jurnal">Dashboard</Link><Link href="/jurnal/tulis">Tulis Jurnal</Link><Link href="/jurnal/buat">Formulir Lengkap</Link><Link href="/jurnal/riwayat">Riwayat Jurnal</Link><Link href="/notulensi">Notulensi</Link>
-    </nav>
+    </nav>}
 
     {writable.length>0&&<section className="journalEasyEntry" aria-label="Mulai jurnal tanpa target manual">
       <div className="journalEasyEntryIntro"><strong>Tulis jurnal per pertemuan</strong></div>
@@ -122,7 +122,7 @@ export default function JournalDashboard(){
         </div>
         
       </section>
-      <section className="card journalStartCard">
+      {role!=='VIEWER'&&<section className="card journalStartCard">
         <div className="journalStartIcon"><BookOpenText size={23}/></div>
         <h2>Isi jurnal baru</h2>
         
@@ -130,12 +130,12 @@ export default function JournalDashboard(){
         
         
         {canCreate?<Link className="btn journalStartButton" href="/jurnal/tulis">Mulai isi jurnal <ArrowRight size={16}/></Link>:<div className="notice">Akun ini belum memiliki akses menulis jurnal.</div>}
-      </section>
+      </section>}
     </div>
 
     <section className="card section journalRecent">
-      <div className="cardHead"><div><h2>Jurnal terbaru</h2></div><Link className="btn ghost" href="/jurnal/riwayat">Lihat riwayat <ArrowRight size={16}/></Link></div>
-      {loading?<div className="emptyState">Memuat jurnal…</div>:recent.length?<div className="journalRecentList">{recent.map(j=><div className="journalRecentItem" key={j.id}><div className="journalRecentIcon"><BookOpenText size={18}/></div><div className="journalRecentText"><strong>{j.title}</strong><span>{kindLabels[j.journal_kind]||j.journal_kind} · {j.classes?.name||classes.find(c=>c.id===j.class_id)?.name||'Lintas kelas'} · {j.journal_date}</span></div><span className="badge">{j.state==='COMPLETED'?'Selesai':j.state==='ARCHIVED'?'Arsip':'Draf'}</span><Link className="btn ghost" href={writable.includes(audienceFor(j.journal_kind))?'/jurnal/buat?journal_id='+j.id:'/jurnal/riwayat'}>Lihat <ArrowRight size={14}/></Link></div>)}</div>:<div className="journalEmpty"><BookOpenText size={27}/><strong>Belum ada jurnal untuk filter ini</strong>{canCreate&&<Link href="/jurnal/buat" className="btn">Tambah jurnal pertama</Link>}</div>}
+      <div className="cardHead"><div><h2>Jurnal terbaru</h2></div>{role!=='VIEWER'&&<Link className="btn ghost" href="/jurnal/riwayat">Lihat riwayat <ArrowRight size={16}/></Link>}</div>
+      {loading?<div className="emptyState">Memuat jurnal…</div>:recent.length?<div className="journalRecentList">{recent.map(j=><div className="journalRecentItem" key={j.id}><div className="journalRecentIcon"><BookOpenText size={18}/></div><div className="journalRecentText"><strong>{j.title}</strong><span>{kindLabels[j.journal_kind]||j.journal_kind} · {j.classes?.name||classes.find(c=>c.id===j.class_id)?.name||'Lintas kelas'} · {j.journal_date}</span></div><span className="badge">{j.state==='COMPLETED'?'Selesai':j.state==='ARCHIVED'?'Arsip':'Draf'}</span>{role!=='VIEWER'&&<Link className="btn ghost" href={writable.includes(audienceFor(j.journal_kind))?'/jurnal/buat?journal_id='+j.id:'/jurnal/riwayat'}>Lihat <ArrowRight size={14}/></Link>}</div>)}</div>:<div className="journalEmpty"><BookOpenText size={27}/><strong>Belum ada jurnal untuk filter ini</strong>{canCreate&&<Link href="/jurnal/buat" className="btn">Tambah jurnal pertama</Link>}</div>}
     </section>
     <div className="journalIntegration"><Target size={18}/><Link href="/target">Target & Progres <ArrowRight size={13}/></Link></div>
   </div>;
