@@ -16,6 +16,7 @@ const dateLabel=(day:string)=>new Date(day+'T12:00:00').toLocaleDateString('id-I
 export default function NotulensiPage(){
   const [month,setMonth]=useState(jakartaDate().slice(0,7));
   const [query,setQuery]=useState('');
+  const [archiveMonths,setArchiveMonths]=useState<string[]>([]);
   const [rows,setRows]=useState<Journal[]>([]);
   const [role,setRole]=useState('VIEWER');
   const [read,setRead]=useState<Audience[]|null>(null);
@@ -33,6 +34,19 @@ export default function NotulensiPage(){
     return()=>{mounted=false};
   },[]);
   useEffect(()=>{
+    const ctrl=new AbortController();
+    // Only fetch historical month choices once; the actual list remains month-scoped.
+    fetch('/api/journals?kind=PENGURUS',{cache:'no-store',signal:ctrl.signal})
+      .then(async r=>{const j=await r.json();if(!r.ok)throw Error(j.error||'Gagal membaca arsip');return j})
+      .then(j=>{
+        if(ctrl.signal.aborted||!Array.isArray(j))return;
+        const months=[...new Set((j as Journal[]).filter(isNotulensi).map(x=>x.journal_date.slice(0,7)).filter(x=>/^\d{4}-(0[1-9]|1[0-2])$/.test(x)))].sort().reverse();
+        setArchiveMonths(months);
+        setMonth(current=>months.includes(current)?current:(months[0]||current));
+      }).catch(()=>{});
+    return()=>ctrl.abort();
+  },[]);
+  useEffect(()=>{
     const ctrl=new AbortController();setLoading(true);setError('');
     fetch('/api/journals?'+new URLSearchParams({month}),{cache:'no-store',signal:ctrl.signal})
       .then(async r=>{const j=await r.json();if(!r.ok)throw Error(j.error||'Gagal memuat notulensi');return j})
@@ -44,7 +58,7 @@ export default function NotulensiPage(){
   const allowedRead=read??readScopesForRole(role);
   const allowedWrite=write??writeScopesForRole(role);
   const canWrite=allowedWrite.includes('PENGURUS');
-  const items=useMemo(()=>rows.filter(j=>isNotulensi(j)&&allowedRead.includes(audience(j.journal_kind))&&j.title.toLowerCase().includes(query.trim().toLowerCase())).sort((a,b)=>b.journal_date.localeCompare(a.journal_date)),[rows,allowedRead,query]);
+  const items=useMemo(()=>rows.filter(j=>isNotulensi(j)&&allowedRead.includes(audience(j.journal_kind))&&[j.title,j.assessment?.proposal,j.summary,j.decisions,j.notes].some(t=>(t||'').toLowerCase().includes(query.trim().toLowerCase()))).sort((a,b)=>b.journal_date.localeCompare(a.journal_date)),[rows,allowedRead,query]);
   const done=items.filter(j=>j.state==='COMPLETED').length;
   return <main className="journalWorkspace minutesWorkspace">
     <header className="pageHeader minutesHeader">
@@ -52,9 +66,17 @@ export default function NotulensiPage(){
       {ready&&canWrite&&<Link href="/jurnal/tulis?mode=notulensi" className="btn minutesAdd"><Plus size={17}/> Buat Notulensi</Link>}
     </header>
     <nav className="journalSubnav" aria-label="Navigasi jurnal"><Link href="/jurnal">Jurnal Kegiatan</Link><Link href="/jurnal/riwayat">Riwayat Jurnal</Link><Link className="journalNavActive" href="/notulensi">Notulensi</Link></nav>
+    {archiveMonths.length>0&&<section className="minutesArchiveStrip" aria-label="Arsip per bulan">
+      <strong>Arsip per bulan</strong>
+      <div className="minutesArchiveMonths">
+        {archiveMonths.map(m=><button key={m} type="button" className={month===m?'minutesMonthActive':''} aria-pressed={month===m} onClick={()=>setMonth(m)}>
+          {new Date(m+'-01T12:00:00').toLocaleDateString('id-ID',{month:'short',year:'numeric'})}
+        </button>)}
+      </div>
+    </section>}
     <div className="card minutesFilter">
       <label><span><CalendarDays size={16}/> Bulan</span><input className="input" type="month" value={month} onChange={e=>setMonth(e.target.value)} aria-label="Bulan notulensi"/></label>
-      <label><span><Search size={16}/> Cari judul</span><input className="input" placeholder="Cari musyawarah…" value={query} onChange={e=>setQuery(e.target.value)}/></label>
+      <label><span><Search size={16}/> Cari isi notulensi</span><input className="input" placeholder="Cari musyawarah…" value={query} onChange={e=>setQuery(e.target.value)}/></label>
     </div>
     <div className="minutesStats">
       <div className="card"><span>Notulensi</span><strong>{loading?'…':items.length}</strong></div>
@@ -66,15 +88,19 @@ export default function NotulensiPage(){
       {loading?<div className="card minutesEmpty">Memuat notulensi…</div>:items.length?items.map(j=><article className="card minutesItem" key={j.id}>
         <div className="minutesMain">
           <small className="minutesDate"><CalendarDays size={15}/>{dateLabel(j.journal_date)}{j.started_at||j.ended_at?' · '+[j.started_at?.slice(0,5),j.ended_at?.slice(0,5)].filter(Boolean).join(' – '):''}</small>
-          <h2>{j.title}</h2><span className="minutesBadge">{j.state==='COMPLETED'?'Selesai':'Draf'}</span>
+          <h2>{j.title}</h2><span className="minutesBadge">{j.state==='COMPLETED'?'Selesai':'Draf / perlu dilengkapi'}</span>
           <div className="minutesPreview">
-            <div><strong>Usulan</strong><p>{j.assessment?.proposal||j.summary||'—'}</p></div>
-            <div><strong>Keputusan</strong><p>{j.decisions||'—'}</p></div>
-            <div><strong>Catatan</strong><p>{j.notes||'—'}</p></div>
+            <strong>Isi notulensi</strong>
+            <p>{j.assessment?.proposal||j.decisions||j.notes||j.summary||'Belum ada isi notulensi.'}</p>
+          </div>
+          <div className="minutesDataTags">
+            {j.assessment?.proposal&&<span>Usulan</span>}
+            {j.decisions&&<span>Pembahasan</span>}
+            {j.notes&&<span>Catatan</span>}
           </div>
         </div>
         <div className="minutesActions"><Link className="btn ghost" href={'/jurnal/hasil/'+j.id}>Lihat <ArrowRight size={15}/></Link>{allowedWrite.includes(audience(j.journal_kind))&&<Link className="btn ghost" href={'/jurnal/buat?journal_id='+j.id}><FilePenLine size={15}/> Edit</Link>}</div>
-      </article>):<div className="card minutesEmpty"><History size={25}/><strong>Belum ada notulensi</strong><p>Belum ada catatan untuk bulan atau pencarian ini.</p>{canWrite&&<Link className="btn" href="/jurnal/tulis?mode=notulensi">Buat Notulensi <ArrowRight size={15}/></Link>}</div>}
+      </article>):<div className="card minutesEmpty"><History size={25}/><strong>Belum ada notulensi</strong><p>Belum ada catatan pada bulan yang dipilih. Pilih bulan lain di bagian Arsip per bulan.</p>{canWrite&&<Link className="btn" href="/jurnal/tulis?mode=notulensi">Buat Notulensi <ArrowRight size={15}/></Link>}</div>}
     </section>
   </main>;
 }

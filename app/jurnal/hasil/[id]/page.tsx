@@ -4,10 +4,11 @@ import {useParams} from 'next/navigation';
 import {useEffect,useState} from 'react';
 import {ArrowLeft,BookOpen,RefreshCw,Sparkles} from 'lucide-react';
 import '../../tulis/tulis.css';
+import '../../../notulensi/notulensi.css';
 import {isNotulensi} from '@/lib/journal-kind';
 
 type Analysis={status?:string;created_at?:string;summary?:string;suggestion?:string;matches?:Array<{target_id:string;title:string;relation:string;reason:string;quote:string}>;numeric_progress_updated?:boolean};
-type Journal={id:string;title:string;journal_date:string;journal_kind:string;started_at?:string;ended_at?:string;material?:string;summary?:string;decisions?:string;notes?:string;obstacles?:string;follow_up?:string;assessment?:{meeting_minutes?:boolean;proposal?:string;ai_target_analysis?:Analysis};state:string};
+type Journal={id:string;title:string;journal_date:string;journal_kind:string;started_at?:string;ended_at?:string;material?:string;summary?:string;decisions?:string;notes?:string;obstacles?:string;follow_up?:string;assessment?:{meeting_minutes?:boolean;proposal?:string;ai_target_analysis?:Analysis;source_text?:string;source_url?:string;source_original_date?:string;requires_attachment_review?:boolean;requires_date_review?:boolean};state:string};
 export default function JournalResult(){
  const {id}=useParams<{id:string}>();
  const [journal,setJournal]=useState<Journal|null>(null);
@@ -37,9 +38,27 @@ export default function JournalResult(){
    <section className="fj-panel">
     {loading?<p>Memuat jurnal…</p>:!journal?<p>{error||'Jurnal tidak ditemukan.'}</p>:<>
       {isMeeting?<>
-        {(journal.assessment?.proposal||journal.summary)&&<div className="fj-textblock"><strong>Usulan</strong><p>{journal.assessment?.proposal||journal.summary}</p></div>}
-        {journal.decisions&&<div className="fj-textblock"><strong>Keputusan</strong><p>{journal.decisions}</p></div>}
-        {(journal.notes||(journal.assessment?.proposal&&journal.summary!==journal.assessment.proposal?journal.summary:''))&&<div className="fj-textblock"><strong>Catatan</strong><p>{journal.notes||(journal.assessment?.proposal&&journal.summary!==journal.assessment.proposal?journal.summary:'')}</p></div>}
+        {(journal.assessment?.requires_attachment_review||journal.assessment?.requires_date_review)&&
+          <div className="minutesArchiveWarning" role="note">
+            {journal.assessment?.requires_attachment_review?'Lampiran gambar pada notulensi ini belum ditranskripsikan. Periksa dokumen sumber sebelum melengkapi.':'Hari yang tertulis di dokumen sumber tidak sesuai dengan tanggal kalender. Tanggal arsip mengikuti angka tanggal dalam sumber.'}
+          </div>}
+        <div className="minutesResultSections">
+          {[
+            {label:'Usulan',text:journal.assessment?.proposal||journal.summary||''},
+            {label:'Pembahasan / Keputusan',text:journal.decisions||''},
+            {label:'Catatan dan Evaluasi',text:journal.notes||(journal.assessment?.proposal&&journal.summary!==journal.assessment.proposal?journal.summary:'')}
+          ].filter(section=>section.text.trim()).map((section,index)=>
+            <section className="minutesResultBlock" key={section.label}>
+              <h2><span>{index+1}</span>{section.label}</h2>
+              <div className="minutesDocumentText">{section.text}</div>
+            </section>)}
+        </div>
+        {journal.assessment?.source_text&&<details className="minutesOriginal">
+          <summary>Lihat transkripsi asli tanpa pengubahan redaksi</summary>
+          <div className="minutesDocumentText">{journal.assessment.source_original_date}{'\n'}{journal.assessment.source_text}</div>
+        </details>}
+        {journal.assessment?.source_url?.startsWith('https://docs.google.com/document/')&&
+          <a className="minutesSourceLink" href={journal.assessment.source_url} target="_blank" rel="noopener noreferrer">Buka dokumen sumber</a>}
       </>:<>
         {journal.material&&<div className="fj-textblock"><strong>Materi</strong><p>{journal.material}</p></div>}
         {journal.summary&&<div className="fj-textblock"><strong>Catatan guru</strong><p>{journal.summary}</p></div>}
