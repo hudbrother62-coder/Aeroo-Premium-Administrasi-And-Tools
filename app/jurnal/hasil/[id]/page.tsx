@@ -47,7 +47,7 @@ export default function JournalResult(){
             {label:'Usulan',text:journal.assessment?.proposal||journal.summary||''},
             {label:'Pembahasan / Keputusan',text:journal.decisions||''},
             {label:'Catatan dan Evaluasi',text:journal.notes||(journal.assessment?.proposal&&journal.summary!==journal.assessment.proposal?journal.summary:'')}
-          ].filter(section=>section.text.trim()).map((section,index)=>
+          ].filter(section=>Boolean(section.text?.trim())).map((section,index)=>
             <section className="minutesResultBlock" key={section.label}>
               <h2><span>{index+1}</span>{section.label}</h2>
               <div className="minutesDocumentText">{section.text}</div>
