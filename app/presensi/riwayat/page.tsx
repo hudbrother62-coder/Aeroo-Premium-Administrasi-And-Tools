@@ -28,7 +28,7 @@ export default function Page(){
  function move(n:number){const d=new Date(Number(month.slice(0,4)),Number(month.slice(5,7))-1+n,1);setMonth(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'))}
  const chosen=events.filter(x=>x.event_date===date);
  const countStatus=(e:Meeting,status:'H'|'I'|'A')=>status==='H'?e.h:status==='I'?e.i:e.a;
- return <main className="attendancePage"><div className="pageHeader"><div><Link href="/presensi" className="journalBack"><ArrowLeft size={16}/> Presensi</Link><h1>Riwayat Presensi</h1></div></div>
+ return <main className="attendancePage"><div className="pageHeader"><div>{writeScopes.length>0?<Link href="/presensi" className="journalBack"><ArrowLeft size={16}/> Presensi</Link>:<Link href="/rekap?tab=presensi" className="journalBack"><ArrowLeft size={16}/> Rekap</Link>}<h1>Riwayat Presensi</h1></div></div>
  <div className="attendanceWorkspace">
  <section className="attendancePanel">
  <div className="attendanceFilters"><label>Kategori<select className="select" value={audience} onChange={e=>{setAudience(e.target.value);setClassId('')}}><option value="">Semua kategori</option>{scopes.map(x=><option key={x} value={x}>{audienceLabels[x]}</option>)}</select></label><label>Kelas<select className="select" value={classId} onChange={e=>setClassId(e.target.value)}><option value="">Semua kelas</option>{classes.filter(c=>scopes.includes(c.audience as Audience)&&(!audience||audience===c.audience)).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label></div>
