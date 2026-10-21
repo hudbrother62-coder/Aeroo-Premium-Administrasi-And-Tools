@@ -9,6 +9,7 @@ const tabs=[
   {href:'/presensi',label:'Isi Presensi',icon:ClipboardCheck},
   {href:'/presensi/riwayat',label:'Riwayat',icon:History},
   {href:'/presensi/rekap',label:'Rekap',icon:ChartNoAxesCombined},
+  {href:'/presensi/individu',label:'Rekap Individu',icon:ChartNoAxesCombined},
 ] as const;
 
 export default function PresensiLayout({children}:{children:ReactNode}){
