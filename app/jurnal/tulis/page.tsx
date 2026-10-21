@@ -140,7 +140,7 @@ export default function TulisJurnal(){
       const classroom=availableClasses.find(c=>c.id===linkedClass);
       const body={
         journal_kind:kind,journal_date:date,title:title.trim()||(minutesMode?'Musyawarah '+meetingType+' - '+date:'Jurnal '+(selectedAgenda?.title||availableActivities.find(a=>a.id===activityId)?.name||journalKinds.find(x=>x.value===kind)?.label||'kegiatan')+' - '+date),
-        event_id:minutesMode?null:e?.id||null,agenda_id:minutesMode?null:e?.agenda_id||selectedAgenda?.id||null,class_id:minutesMode?null:linkedClass||null,activity_type_id:minutesMode?null:e?.activity_type_id||selectedAgenda?.activity_type_id||activityId||null,
+        event_id:e?.id||null,agenda_id:e?.agenda_id||selectedAgenda?.id||null,class_id:linkedClass||null,activity_type_id:e?.activity_type_id||selectedAgenda?.activity_type_id||activityId||null,
         started_at:startedAt||null,ended_at:endedAt||null,
         material:isMeeting?null:material.trim()||null,
         summary:isMeeting?proposal.trim()||null:summary.trim()||null,
@@ -151,6 +151,8 @@ export default function TulisJurnal(){
         assessment:{free_form:true,source:'TEACHER_TEXT',meeting_minutes:isMeeting,meeting_type:minutesMode?meetingType:null,proposal:isMeeting?proposal.trim():null,class_assessment:{level_id:classroom?.level_id||null}},
         progress:[],revision:0,state:'COMPLETED'
       };
+      // Meeting notes have no attendance/agenda dependency; keep the established linkage for all ordinary journals.
+      if(minutesMode){body.event_id=null;body.agenda_id=null;body.class_id=null;body.activity_type_id=null;}
       const response=await fetch('/api/journals',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
       const result=await response.json();if(!response.ok)throw Error(result.error||'Jurnal gagal disimpan.');
       if(!result.id)throw Error('Respons penyimpanan belum memberi ID. Periksa riwayat sebelum mengulangi.');
