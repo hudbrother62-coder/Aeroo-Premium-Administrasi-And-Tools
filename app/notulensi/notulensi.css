@@ -61,3 +61,22 @@
  .minutesAccordion summary{align-items:flex-start}
  .minutesAccordion summary .minutesEntryHeading{min-width:0}
 }
+
+/* Structured historical meeting minutes, with date precision retained. */
+.minutesArchived .minutesEntryHeading{min-width:0}
+.minutesUnspecifiedDate{color:var(--muted);font-size:11px;border-left:1px solid var(--border);padding-left:9px}
+.minutesArchiveContent{padding-top:20px;min-width:0}
+.minutesArchiveSections{display:grid;gap:18px}
+.minutesArchiveSection{min-width:0}
+.minutesArchiveSection+.minutesArchiveSection{border-top:1px solid var(--border);padding-top:21px}
+.minutesArchiveSection h3{font-size:14px;letter-spacing:.015em;font-weight:800;color:var(--text);margin:0 0 14px;padding-left:11px;border-left:3px solid var(--teal)}
+.minutesArchiveLines{display:grid;gap:9px}
+.minutesArchiveLine{display:flex;align-items:baseline;gap:11px;line-height:1.75;font-size:13px;color:var(--text);max-width:100%;overflow-wrap:anywhere;padding:7px 12px;border-radius:8px;background:var(--surface-2)}
+.minutesArchiveLine:nth-child(even){background:transparent}
+.minutesArchiveLine.minutesArchiveDepth1{margin-left:18px;font-size:12.5px}
+.minutesArchiveLine.minutesArchiveDepth2{margin-left:36px;font-size:12.5px}
+.minutesArchiveMarker{color:var(--teal);font-weight:800;min-width:14px;flex:none;text-align:right}
+.minutesArchiveWords{white-space:pre-wrap;min-width:0;overflow-wrap:anywhere;flex:1}
+.minutesArchived .minutesArchiveWarning{margin-bottom:20px}
+.minutesArchived .minutesArchiveWarning strong{display:block;color:var(--text);margin-bottom:4px}
+@media(max-width:600px){.minutesArchiveLine{font-size:12.5px;line-height:1.7;padding:8px 9px}.minutesArchiveLine.minutesArchiveDepth1{margin-left:10px}.minutesArchiveLine.minutesArchiveDepth2{margin-left:20px}.minutesUnspecifiedDate{border:none;padding:0}}

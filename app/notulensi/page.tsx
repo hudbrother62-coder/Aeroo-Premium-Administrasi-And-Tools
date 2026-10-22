@@ -5,6 +5,7 @@ import {CalendarDays,ClipboardList,FilePenLine,Plus,Search,ExternalLink,FileText
 import {jakartaDate} from '@/lib/domain';
 import {isNotulensi,meetingTypes,normalizeMeetingType,type MeetingType} from '@/lib/journal-kind';
 import {readScopesForRole,writeScopesForRole,type Audience} from '@/lib/access';
+import MinutesArchiveEntry,{type ArchivedMinute} from '@/components/MinutesArchiveEntry';
 import '../jurnal/journal.css';
 import './notulensi.css';
 
@@ -77,6 +78,9 @@ export default function NotulensiPage(){
   const [query,setQuery]=useState('');
   const [archiveMonths,setArchiveMonths]=useState<string[]>([]);
   const [rows,setRows]=useState<Journal[]>([]);
+  const [archives,setArchives]=useState<ArchivedMinute[]>([]);
+  const [allArchives,setAllArchives]=useState<ArchivedMinute[]>([]);
+  const [allJournalMonths,setAllJournalMonths]=useState<Array<{month:string;type:MeetingType}>>([]);
   const [role,setRole]=useState('VIEWER');
   const [read,setRead]=useState<Audience[]|null>(null);
   const [write,setWrite]=useState<Audience[]|null>(null);
@@ -96,26 +100,42 @@ export default function NotulensiPage(){
     }).catch(()=>{}).finally(()=>{if(active)setReady(true)});
     return()=>{active=false};
   },[]);
+
   useEffect(()=>{
     const ctrl=new AbortController();
-    fetch('/api/journals?kind=PENGURUS',{cache:'no-store',signal:ctrl.signal})
-      .then(async r=>{const data=await r.json();if(!r.ok)throw Error(data.error||'Arsip tidak dapat dibaca');return data})
-      .then(data=>{
-        if(ctrl.signal.aborted||!Array.isArray(data))return;
-        const months=[...new Set((data as Journal[]).filter(j=>isNotulensi(j)).map(j=>j.journal_date.slice(0,7)))].sort().reverse();
-        setArchiveMonths(months);
-        const params=new URLSearchParams(window.location.search);
-        if(!params.get('month'))setMonth(current=>months.includes(current)?current:(months[0]||current));
-      }).catch(()=>{});
+    Promise.all([
+      fetch('/api/journals?kind=PENGURUS',{cache:'no-store',signal:ctrl.signal}),
+      fetch('/api/notulensi/arsip',{cache:'no-store',signal:ctrl.signal})
+    ]).then(async ([jr,ar])=>{
+      const [j,a]=await Promise.all([jr.json(),ar.json()]);
+      if(!jr.ok||!ar.ok)throw Error('Gagal memuat indeks arsip notulensi.');
+      if(!Array.isArray(j)||!Array.isArray(a))throw Error('Format indeks notulensi tidak valid.');
+      return {j:j as Journal[],a:a as ArchivedMinute[]};
+    }).then(({j,a})=>{
+      if(ctrl.signal.aborted)return;
+      setAllArchives(a);
+      const journalMonths=j.filter(isNotulensi).map(item=>({month:item.journal_date.slice(0,7),type:meetingType(item)}));
+      setAllJournalMonths(journalMonths);
+      const months=[...new Set([...journalMonths.map(x=>x.month),...a.map(x=>x.meeting_month)])].sort().reverse();
+      setArchiveMonths(months);
+      const params=new URLSearchParams(window.location.search);
+      if(!params.get('month'))setMonth(current=>months.includes(current)?current:(months[0]||current));
+    }).catch(()=>{});
     return()=>ctrl.abort();
   },[]);
   useEffect(()=>{
     const ctrl=new AbortController();
     setLoading(true);setError('');
-    fetch('/api/journals?'+new URLSearchParams({month}),{cache:'no-store',signal:ctrl.signal})
-      .then(async r=>{const data=await r.json();if(!r.ok)throw Error(data.error||'Gagal memuat notulensi');return data})
-      .then(data=>{if(!ctrl.signal.aborted)setRows(Array.isArray(data)?data:[])})
-      .catch(e=>{if(!ctrl.signal.aborted)setError(e instanceof Error?e.message:'Gagal memuat notulensi')})
+    Promise.all([
+      fetch('/api/journals?'+new URLSearchParams({month}),{cache:'no-store',signal:ctrl.signal}),
+      fetch('/api/notulensi/arsip?'+new URLSearchParams({month}),{cache:'no-store',signal:ctrl.signal})
+    ]).then(async ([jr,ar])=>{
+      const [j,a]=await Promise.all([jr.json(),ar.json()]);
+      if(!jr.ok||!ar.ok)throw Error(j.error||a.error||'Gagal memuat notulensi');
+      if(!Array.isArray(j)||!Array.isArray(a))throw Error('Format arsip tidak valid.');
+      return {j:j as Journal[],a:a as ArchivedMinute[]};
+    }).then(({j,a})=>{if(!ctrl.signal.aborted){setRows(j);setArchives(a)}})
+      .catch(e=>{if(!ctrl.signal.aborted){setError(e instanceof Error?e.message:'Gagal memuat notulensi');setRows([]);setArchives([])}})
       .finally(()=>{if(!ctrl.signal.aborted)setLoading(false)});
     return()=>ctrl.abort();
   },[month]);
@@ -127,7 +147,25 @@ export default function NotulensiPage(){
     &&(type==='ALL'||meetingType(j)===type)
     &&[j.title,j.summary,j.decisions,j.notes,j.assessment?.source_text].some(s=>(s||'').toLowerCase().includes(query.trim().toLowerCase()))
     ).sort((a,b)=>b.journal_date.localeCompare(a.journal_date)),[rows,allowedRead,type,query]);
-  const count=items.length;
+  const archiveItems=useMemo(()=>archives.filter(item=>
+    (type==='ALL'||item.meeting_type===type)&&allowedRead.includes('PENGURUS')&&
+    [item.title,item.source_text,item.source_heading,...item.sections.flatMap(section=>section.lines.map(line=>line.text))]
+      .some(text=>(text||'').toLocaleLowerCase('id-ID').includes(query.trim().toLocaleLowerCase('id-ID')))
+  ),[archives,type,allowedRead,query]);
+  const count=items.length+archiveItems.length;
+  const combined=useMemo(()=>{
+    const journalEntries=items.map(item=>({key:'journal:'+item.id,month:item.journal_date.slice(0,7),day:item.journal_date,kind:'journal' as const,journal:item}));
+    const archiveEntries=archiveItems.map(item=>({key:'archive:'+item.id,month:item.meeting_month,day:item.meeting_date||'',kind:'archive' as const,archive:item}));
+    return [...journalEntries,...archiveEntries].sort((a,b)=>b.month.localeCompare(a.month)||b.day.localeCompare(a.day)||a.key.localeCompare(b.key));
+  },[items,archiveItems]);
+  const changeMeetingType=(next:MeetingType|'ALL')=>{
+    setType(next);
+    const available=[...new Set([
+      ...allJournalMonths.filter(j=>next==='ALL'||j.type===next).map(j=>j.month),
+      ...allArchives.filter(a=>next==='ALL'||a.meeting_type===next).map(a=>a.meeting_month)
+    ])].sort().reverse();
+    if(available.length&&!available.includes(month))setMonth(available[0]);
+  };
   const monthDisplay=/^\d{4}-(0[1-9]|1[0-2])$/.test(month)?monthLabel(month):'Bulan dipilih';
   return <main className="journalWorkspace minutesWorkspace">
     <header className="pageHeader minutesHeader">
@@ -139,7 +177,7 @@ export default function NotulensiPage(){
       <label><span><CalendarDays size={16}/> Bulan</span>
         <input className="input" type="month" value={month} onChange={e=>setMonth(e.target.value)} aria-label="Pilih bulan notulensi"/></label>
       <label><span><ClipboardList size={16}/> Jenis musyawarah</span>
-        <select className="select" aria-label="Pilih jenis musyawarah" value={type} onChange={e=>setType(e.target.value as MeetingType|'ALL')}>
+        <select className="select" aria-label="Pilih jenis musyawarah" value={type} onChange={e=>changeMeetingType(e.target.value as MeetingType|'ALL')}>
           <option value="ALL">Semua jenis</option>
           {meetingTypes.map(t=><option key={t} value={t}>{t}</option>)}
         </select></label>
@@ -153,15 +191,18 @@ export default function NotulensiPage(){
     {error&&<div className="notice error" role="alert">{error}</div>}
     <section className="minutesList" aria-label="Isi notulensi">
       {loading?<div className="card minutesEmpty">Memuat notulensi…</div>
-      :count===1?<article className="card minutesFullCard">
-        <MinutesTitle journal={items[0]}/>
-        <MinutesContent journal={items[0]} editable={allowedWrite.includes(audience(items[0].journal_kind))}/>
-      </article>
-      :count>1?items.map(j=><details className="card minutesAccordion" key={j.id}>
-        <summary><MinutesTitle journal={j}/><span className="minutesExpandLabel">Buka isi</span></summary>
-        <MinutesContent journal={j} editable={allowedWrite.includes(audience(j.journal_kind))}/>
-      </details>)
-      :<div className="card minutesEmpty"><FileText size={25}/><strong>Belum ada notulensi</strong>
+      :count>0?combined.map(entry=>{
+        const opened=count===1;
+        return entry.kind==='journal'?
+          opened?<article className="card minutesFullCard" key={entry.key}>
+            <MinutesTitle journal={entry.journal}/><MinutesContent journal={entry.journal} editable={allowedWrite.includes(audience(entry.journal.journal_kind))}/>
+          </article>:
+          <details className="card minutesAccordion" key={entry.key}>
+            <summary><MinutesTitle journal={entry.journal}/><span className="minutesExpandLabel">Buka isi</span></summary>
+            <MinutesContent journal={entry.journal} editable={allowedWrite.includes(audience(entry.journal.journal_kind))}/>
+          </details>:
+          <MinutesArchiveEntry key={entry.key} item={entry.archive} collapsed={!opened}/>;
+      }):<div className="card minutesEmpty"><FileText size={25}/><strong>Belum ada notulensi</strong>
         <p>Tidak ada catatan untuk jenis dan bulan yang dipilih. Ganti filter untuk melihat arsip lainnya.</p>
         {canWrite&&<Link className="btn" href={'/jurnal/tulis?mode=notulensi&type='+encodeURIComponent(type==='ALL'?'Kelompok':type)}>Buat Notulensi</Link>}
       </div>}
