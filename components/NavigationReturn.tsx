@@ -71,7 +71,7 @@ export default function NavigationReturn(){
   const showBar=pathname!=='/'||!!(previous&&previous!==current);
   const onBack=(e:ReactMouseEvent<HTMLAnchorElement>)=>{if(dismissLayer())e.preventDefault();};
   return <>
-    {showBar&&<div className="simpulReturnBar">
+    {showBar&&!layer&&<div className="simpulReturnBar">
       <Link href={href} className="simpulReturnLink" onClick={onBack} aria-label="Kembali ke halaman sebelumnya">
         <ArrowLeft size={17}/><span>Kembali</span>
       </Link>

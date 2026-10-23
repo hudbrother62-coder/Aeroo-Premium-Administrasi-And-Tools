@@ -10,7 +10,6 @@ import {jakartaDate} from '@/lib/domain';
 import {audienceLabels,readScopesForRole,type Audience,type Role} from '@/lib/access';
 
 type ClassRow={id:string;name:string;audience:string;level_id?:string|null};
-type LevelRow={id:string;name:string;active?:boolean};
 type Status='H'|'I'|'A'|null;
 type Participant={id:string;name:string;class_name:string;level_name:string;status:Status;notes:string};
 type Meeting={id:string;title:string;date:string;audience:string;class_name:string;total:number;summary:{H:number;I:number;A:number;pending:number}};
@@ -24,8 +23,6 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
  const [month,setMonth]=useState(jakartaDate().slice(0,7));
  const [span,setSpan]=useState<1|3|6>(1);
  const [audience,setAudience]=useState('');
- const [levelId,setLevelId]=useState('');
- const [levels,setLevels]=useState<LevelRow[]>([]);
  const [classId,setClassId]=useState('');
  const [classes,setClasses]=useState<ClassRow[]>([]);
  const [readable,setReadable]=useState<Audience[]>([]);
@@ -42,11 +39,11 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
 
  useEffect(()=>{if(focusEventId){setMeetingId(focusEventId);setDetail('meetings');const selectedMonth=new URLSearchParams(window.location.search).get('month');if(selectedMonth&&/^\d{4}-(0[1-9]|1[0-2])$/.test(selectedMonth))setMonth(selectedMonth);}},[focusEventId]);
  useEffect(()=>{let live=true;
-  Promise.all([fetch('/api/classes'),fetch('/api/auth/me'),fetch('/api/levels')]).then(async results=>{
+  Promise.all([fetch('/api/classes'),fetch('/api/auth/me')]).then(async results=>{
     if(results.some(r=>!r.ok))throw Error('Gagal memuat filter.');
-    const [c,u,l]=await Promise.all(results.map(r=>r.json()));
+    const [c,u]=await Promise.all(results.map(r=>r.json()));
     if(!live)return;
-    setClasses(Array.isArray(c)?c:[]);setLevels(Array.isArray(l)?l:[]);
+    setClasses(Array.isArray(c)?c:[]);
     const access=(Array.isArray(u.read_scopes)?u.read_scopes:readScopesForRole((u.role||'VIEWER') as Role)) as Audience[];setReadable(access);if(access.length===1)setAudience(access[0]);
   }).catch(()=>{if(live)setError('Filter kelas belum dapat dimuat.');});
   return()=>{live=false};
@@ -60,7 +57,6 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
      const params=new URLSearchParams({month:m});
      if(audience)params.set('audience',audience);
      if(audience==='CABERAWIT'&&classId)params.set('class_id',classId);
-     if(audience==='MUDA_MUDI'&&levelId)params.set('level_id',levelId);
      const response=await fetch('/api/attendance/recap?'+params.toString(),{signal:controller.signal,cache:'no-store'});
      const json=await response.json();
      if(!response.ok)throw Error(json.error||'Rekap gagal dimuat.');
@@ -69,23 +65,22 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
      .catch(e=>{if(live){setError(e instanceof Error?e.message:'Rekap gagal dimuat.');setData(null)}})
      .finally(()=>{if(live)setLoading(false)});
    return()=>{live=false;controller.abort()};
- },[month,span,audience,classId,levelId]);
+ },[month,span,audience,classId]);
  useEffect(()=>{
    if(detail!=='meetings'||!meetingId||!data?.meetings.some(m=>m.id===meetingId)){setParticipants([]);setParticipantsError('');setParticipantsLoading(false);return;}
    let live=true;const controller=new AbortController();
    setParticipants([]);setParticipantsError('');setParticipantsLoading(true);
    const eventMonth=data?.meetings.find(m=>m.id===meetingId)?.date.slice(0,7)||month;
    const params=new URLSearchParams({month:eventMonth,event_id:meetingId});
-   if(audience)params.set('audience',audience);if(audience==='CABERAWIT'&&classId)params.set('class_id',classId);if(audience==='MUDA_MUDI'&&levelId)params.set('level_id',levelId);
+   if(audience)params.set('audience',audience);if(audience==='CABERAWIT'&&classId)params.set('class_id',classId);
    fetch('/api/attendance/recap?'+params.toString(),{signal:controller.signal})
      .then(async r=>{const j=await r.json();if(!r.ok)throw Error(j.error||'Rincian peserta gagal dimuat.');return j;})
      .then(j=>{if(live)setParticipants(Array.isArray(j.participants)?j.participants:[]);})
      .catch(e=>{if(live)setParticipantsError(e.message);})
      .finally(()=>{if(live)setParticipantsLoading(false);});
    return()=>{live=false;controller.abort()};
- },[detail,meetingId,month,audience,classId,levelId,data]);
+ },[detail,meetingId,month,audience,classId,data]);
  const availableClasses=classes.filter(c=>c.audience==='CABERAWIT');
- const availableLevels=levels.filter(l=>l.active!==false&&(/remaj/i.test(l.name)||/generasi produktif|genpro/i.test(l.name)));
  const meetings=data?.meetings||[];
  const meeting=meetings.find(m=>m.id===meetingId)||null;
  const people=useMemo(()=>(data?.individuals||[]).filter(p=>p.name.toLocaleLowerCase('id-ID').includes(search.toLocaleLowerCase('id-ID'))||p.class_name.toLocaleLowerCase('id-ID').includes(search.toLocaleLowerCase('id-ID'))),[data,search]);
@@ -108,14 +103,11 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
     <label>Rentang<select className="select" aria-label="Rentang rekap" value={span} onChange={e=>{setSpan(Number(e.target.value) as 1|3|6);setMeetingId('');}}>
       <option value={1}>1 bulan</option><option value={3}>3 bulan</option><option value={6}>6 bulan</option>
     </select></label>
-    <label>Lingkup<select className="select" value={audience} onChange={e=>{setAudience(e.target.value);setClassId('');setLevelId('');setMeetingId('');}}>
+    <label>Kategori<select className="select" value={audience} onChange={e=>{setAudience(e.target.value);setClassId('');setMeetingId('');}}>
       <option value="">Keseluruhan</option>{readable.map(a=><option key={a} value={a}>{audienceLabels[a]}</option>)}
     </select></label>
     {audience==='CABERAWIT'&&<label>Kelas<select className="select" value={classId} onChange={e=>{setClassId(e.target.value);setMeetingId('');}}>
       <option value="">Semua kelas</option>{availableClasses.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-    </select></label>}
-    {audience==='MUDA_MUDI'&&<label>Jenjang<select className="select" value={levelId} onChange={e=>{setLevelId(e.target.value);setMeetingId('');}}>
-      <option value="">Semua jenjang</option>{availableLevels.map(l=><option key={l.id} value={l.id}>{/generasi produktif/i.test(l.name)?'Genpro':l.name}</option>)}
     </select></label>}
    </section>
    {error&&<div className="notice error" role="alert">{error} Silakan coba filter yang lebih spesifik atau muat ulang.</div>}
@@ -167,7 +159,6 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
         const params=new URLSearchParams({month,span:String(span)});
         if(audience)params.set('audience',audience);
         if(audience==='CABERAWIT'&&classId)params.set('class_id',classId);
-        if(audience==='MUDA_MUDI'&&levelId)params.set('level_id',levelId);
         return <tr key={p.id}><td><strong>{p.name}</strong></td><td>{p.class_name||'—'}</td>
           <td>{p.H}</td><td>{p.I}</td><td>{p.A}</td><td>{p.pending}</td>
           <td>{p.percentage===null?'Belum diisi':p.percentage+'%'}</td>

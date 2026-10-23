@@ -8,3 +8,6 @@
 @media(min-width:900px){.simpulReturnBar{padding:18px 28px 0}.simpulDialogReturn{left:calc(var(--sidebar) + 24px)}.sidebarCollapsed .simpulDialogReturn{left:90px}}
 @media(max-width:700px){.simpulReturnBar{padding:11px 14px 0}.simpulDialogReturn{left:12px;top:max(10px,env(safe-area-inset-top))}}
 @media(prefers-reduced-motion:reduce){.simpulReturnLink{transition:none}}
+
+/* A single, global back control replaces per-page duplicates. */
+.pageContent .journalBack,.pageContent .fj-back,.pageContent .attendanceIndividualHeader>a:first-child,.pageContent .pageHeader a:has(svg.lucide-arrow-left){display:none!important}
