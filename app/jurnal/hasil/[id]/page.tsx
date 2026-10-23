@@ -71,10 +71,10 @@ export default function JournalResult(){
         {journal.assessment?.implementation&&<div className="fj-textblock"><strong>Pelaksanaan</strong><p>{journal.assessment.implementation}</p></div>}
         {journal.assessment?.evaluation&&<div className="fj-textblock"><strong>Evaluasi</strong><p>{journal.assessment.evaluation}</p></div>}
         {journal.assessment?.class_assessment?.observation&&<div className="fj-textblock"><strong>Observasi pembelajaran</strong><p>{journal.assessment.class_assessment.observation}</p></div>}
-        {(journal.assessment?.materials||[]).filter(m=>m.topic).length>0&&<div className="fj-textblock"><strong>Materi pembelajaran</strong><ul>{journal.assessment!.materials!.filter(m=>m.topic).map((m,i)=><li key={i}>{m.topic}{m.page?' · Halaman '+m.page:''}{m.note?' — '+m.note:''}</li>)}</ul></div>
+        {(journal.assessment?.materials||[]).filter(m=>m.topic).length>0&&<div className="fj-textblock"><strong>Materi pembelajaran</strong><ul>{journal.assessment!.materials!.filter(m=>m.topic).map((m,i)=><li key={i}>{m.topic}{m.page?' · Halaman '+m.page:''}{m.note?' — '+m.note:''}</li>)}</ul></div>}
         {journal.obstacles&&<div className="fj-textblock"><strong>Kendala</strong><p>{journal.obstacles}</p></div>}
         {journal.follow_up&&<div className="fj-textblock"><strong>Tindak lanjut</strong><p>{journal.follow_up}</p></div>}
-        {(journal.improvement_plan||journal.assessment?.class_assessment?.improvement_plan)&&<div className="fj-textblock"><strong>Rencana perbaikan</strong><p>{journal.improvement_plan||journal.assessment?.class_assessment?.improvement_plan}</p></div>
+        {(journal.improvement_plan||journal.assessment?.class_assessment?.improvement_plan)&&<div className="fj-textblock"><strong>Rencana perbaikan</strong><p>{journal.improvement_plan||journal.assessment?.class_assessment?.improvement_plan}</p></div>}
       </>}
       {!isMeeting&&<div className="fj-ai">
         <h3><Sparkles size={18}/> Pencocokan dengan target</h3>
@@ -86,7 +86,7 @@ export default function JournalResult(){
         {ai.suggestion&&<p><strong>Saran:</strong> {ai.suggestion}</p>}
         
         </>:<p>Belum dianalisis.</p>}
-        {canWrite&&<button type="button" className="fj-secondary" disabled={analyzing||journal.state==='ARCHIVED'} onClick={()=>void analyze()}><RefreshCw size={17}/>{analyzing?'Menganalisis…':ai?'Analisis ulang':'Analisis dengan Groq'}</button>}}
+        {canWrite&&<button type="button" className="fj-secondary" disabled={analyzing||journal.state==='ARCHIVED'} onClick={()=>void analyze()}><RefreshCw size={17}/>{analyzing?'Menganalisis…':ai?'Analisis ulang':'Analisis dengan Groq'}</button>}
         {error&&<div className="fj-error" role="alert">{error}</div>}
       </div>}
       <div className="fj-actions"><Link className="fj-secondary" href={isMeeting?'/notulensi':'/jurnal/riwayat'}>Riwayat</Link>{canWrite&&<Link className="fj-primary" href={isMeeting?'/jurnal/tulis?mode=notulensi':'/jurnal/tulis'}>{isMeeting?'Buat notulensi lagi':'Tulis jurnal lagi'}</Link>}</div>
