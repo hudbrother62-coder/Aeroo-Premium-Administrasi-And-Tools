@@ -8,21 +8,18 @@ import {isNotulensi} from '@/lib/journal-kind';
 import {readScopesForRole,writeScopesForRole,type Audience} from '@/lib/access';
 
 type Journal={id:string;class_id?:string;journal_date:string;journal_kind:string;title:string;state?:string;follow_up?:string;classes?:{id?:string;name?:string;level_id?:string};assessment?:{meeting_minutes?:boolean;class_assessment?:{level_id?:string};ai_target_analysis?:{matches?:Array<{target_id:string;relation?:string}>}};journal_progress?:Array<{member_id?:string;participant_key?:string;target_id?:string;progress_value?:number|null}>};
-type Level={id:string;name:string};
 type ClassRow={id:string;name:string;level_id?:string;audience:string};
-const kindLabels:Record<string,string>={PENGKAJIAN:'Pengkajian',KELOMPOK:'Kelompok',IBU_IBU:'Ibu-Ibu',PENGURUS:'Musyawarah',CABERAWIT_CLASS:'Caberawit Kelas',MUDA_MUDI_CLASS:'Muda-Mudi Kelas'};
+const kindLabels:Record<string,string>={PENGKAJIAN:'Pengkajian',KELOMPOK:'Kelompok',IBU_IBU:'Ibu-Ibu',PENGURUS:'Musyawarah',CABERAWIT_CLASS:'Caberawit Kelas',CABERAWIT_INDIVIDUAL:'Caberawit Individu',MUDA_MUDI_CLASS:'Muda-Mudi Kelas',MUDA_MUDI_INDIVIDUAL:'Muda-Mudi Individu'};
 const audienceFor=(kind:string):Audience=>(kind==='PENGKAJIAN'?'KELOMPOK':kind.startsWith('CABERAWIT')?'CABERAWIT':kind.startsWith('MUDA_MUDI')?'MUDA_MUDI':kind) as Audience;
 const monthLabel=(month:string)=>new Date(Number(month.slice(0,4)),Number(month.slice(5,7))-1,1).toLocaleDateString('id-ID',{month:'long',year:'numeric'});
 
 export default function JournalDashboard(){
   const[month,setMonth]=useState(jakartaDate().slice(0,7));
-  const[levelId,setLevelId]=useState('');
   const[classId,setClassId]=useState('');
   const[kind,setKind]=useState('');
   const[role,setRole]=useState('VIEWER');
   const[readScopes,setReadScopes]=useState<Audience[]|null>(null);
   const[writeScopes,setWriteScopes]=useState<Audience[]|null>(null);
-  const[levels,setLevels]=useState<Level[]>([]);
   const[classes,setClasses]=useState<ClassRow[]>([]);
   const[journals,setJournals]=useState<Journal[]>([]);
   const[loading,setLoading]=useState(true);
@@ -31,9 +28,8 @@ export default function JournalDashboard(){
 
   useEffect(()=>{
     let active=true;
-    Promise.allSettled([fetch('/api/levels').then(r=>r.json()),fetch('/api/classes').then(r=>r.json()),fetch('/api/auth/me').then(r=>r.json())]).then(([l,c,u])=>{
+    Promise.allSettled([fetch('/api/classes').then(r=>r.json()),fetch('/api/auth/me').then(r=>r.json())]).then(([c,u])=>{
       if(!active)return;
-      if(l.status==='fulfilled'&&Array.isArray(l.value))setLevels(l.value);
       if(c.status==='fulfilled'&&Array.isArray(c.value))setClasses(c.value);
       if(u.status==='fulfilled'&&u.value){
         setRole(u.value.role||'VIEWER');
@@ -62,13 +58,9 @@ export default function JournalDashboard(){
     if(!readable.includes(audienceFor(j.journal_kind)))return false;
     if(kind&&j.journal_kind!==kind)return false;
     if(classId&&(j.classes?.id||j.class_id)!==classId)return false;
-    if(levelId){
-      const journalLevel=j.assessment?.class_assessment?.level_id||j.classes?.level_id||classes.find(c=>c.id===(j.classes?.id||j.class_id))?.level_id;
-      if(journalLevel!==levelId)return false;
-    }
     return true;
-  }),[journals,kind,classId,levelId,classes,readable]);
-  const relevantClasses=classes.filter(c=>!levelId||c.level_id===levelId).filter(c=>readable.includes(c.audience as Audience));
+  }),[journals,kind,classId,readable]);
+  const relevantClasses=classes.filter(c=>readable.includes(c.audience as Audience)&&(!kind||c.audience===audienceFor(kind)));
   const done=filtered.filter(j=>j.state==='COMPLETED').length;
   const drafts=filtered.filter(j=>j.state==='DRAFT'||!j.state).length;
   const observed=new Set(filtered.flatMap(j=>(j.journal_progress||[]).map(p=>p.participant_key||p.member_id).filter((v):v is string=>Boolean(v)))).size;
@@ -101,9 +93,9 @@ export default function JournalDashboard(){
 
     <section className="journalFilterBar card" aria-label="Filter dashboard jurnal">
       <label>Bulan<input className="input" aria-label="Bulan dashboard jurnal" type="month" value={month} onChange={e=>setMonth(e.target.value)}/></label>
-      <label>Jenjang<select className="select" value={levelId} onChange={e=>{setLevelId(e.target.value);setClassId('')}}><option value="">Semua jenjang</option>{levels.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
+      
       <label>Kelas<select className="select" value={classId} onChange={e=>setClassId(e.target.value)}><option value="">Semua kelas</option>{relevantClasses.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
-      <label>Jenis jurnal<select className="select" value={kind} onChange={e=>setKind(e.target.value)}><option value="">Semua jenis</option>{availableKinds.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></label>
+      <label>Jenis jurnal<select className="select" value={kind} onChange={e=>{setKind(e.target.value);setClassId('')}}><option value="">Semua jenis</option>{availableKinds.map(([k,l])=><option key={k} value={k}>{l}</option>)}</select></label>
     </section>
 
     {error&&<div className="notice error section" role="alert">Data jurnal gagal dimuat: {error} <button className="btn ghost" onClick={()=>setRefresh(v=>v+1)}>Coba lagi</button></div>}
@@ -135,7 +127,7 @@ export default function JournalDashboard(){
 
     <section className="card section journalRecent">
       <div className="cardHead"><div><h2>Jurnal terbaru</h2></div>{role!=='VIEWER'&&<Link className="btn ghost" href="/jurnal/riwayat">Lihat riwayat <ArrowRight size={16}/></Link>}</div>
-      {loading?<div className="emptyState">Memuat jurnal…</div>:recent.length?<div className="journalRecentList">{recent.map(j=><div className="journalRecentItem" key={j.id}><div className="journalRecentIcon"><BookOpenText size={18}/></div><div className="journalRecentText"><strong>{j.title}</strong><span>{kindLabels[j.journal_kind]||j.journal_kind} · {j.classes?.name||classes.find(c=>c.id===j.class_id)?.name||'Lintas kelas'} · {j.journal_date}</span></div><span className="badge">{j.state==='COMPLETED'?'Selesai':j.state==='ARCHIVED'?'Arsip':'Draf'}</span>{role!=='VIEWER'&&<Link className="btn ghost" href={writable.includes(audienceFor(j.journal_kind))?'/jurnal/buat?journal_id='+j.id:'/jurnal/riwayat'}>Lihat <ArrowRight size={14}/></Link>}</div>)}</div>:<div className="journalEmpty"><BookOpenText size={27}/><strong>Belum ada jurnal untuk filter ini</strong>{canCreate&&<Link href="/jurnal/buat" className="btn">Tambah jurnal pertama</Link>}</div>}
+      {loading?<div className="emptyState">Memuat jurnal…</div>:recent.length?<div className="journalRecentList">{recent.map(j=><div className="journalRecentItem" key={j.id}><div className="journalRecentIcon"><BookOpenText size={18}/></div><div className="journalRecentText"><strong>{j.title}</strong><span>{kindLabels[j.journal_kind]||j.journal_kind} · {j.classes?.name||classes.find(c=>c.id===j.class_id)?.name||'Lintas kelas'} · {j.journal_date}</span></div><span className="badge">{j.state==='COMPLETED'?'Selesai':j.state==='ARCHIVED'?'Arsip':'Draf'}</span><Link className="btn ghost" href={'/jurnal/hasil/'+encodeURIComponent(j.id)}>Lihat detail <ArrowRight size={14}/></Link></div>)}</div>:<div className="journalEmpty"><BookOpenText size={27}/><strong>Belum ada jurnal untuk filter ini</strong>{canCreate&&<Link href="/jurnal/buat" className="btn">Tambah jurnal pertama</Link>}</div>}
     </section>
     <div className="journalIntegration"><Target size={18}/><Link href="/target">Target & Progres <ArrowRight size={13}/></Link></div>
   </div>;

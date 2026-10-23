@@ -16,9 +16,10 @@ type TargetMatch={target_id:string;title:string;reason:string;quote:string;relat
 type Analysis={summary:string;suggestion:string;matches:TargetMatch[];created_at:string;status:string};
 const journalKinds=[
   {value:'KELOMPOK',label:'Kegiatan Kelompok',audience:'KELOMPOK'},
+  {value:'PENGKAJIAN',label:'Pengkajian Kelompok',audience:'KELOMPOK'},
   {value:'CABERAWIT_CLASS',label:'Pembelajaran Caberawit',audience:'CABERAWIT'},
   {value:'MUDA_MUDI_CLASS',label:'Pembelajaran Muda-Mudi',audience:'MUDA_MUDI'},
-  {value:'IBU_IBU',label:'Kegiatan ibu-ibu',audience:'IBU_IBU'},
+  {value:'IBU_IBU',label:'Kegiatan Ibu-Ibu',audience:'IBU_IBU'},
   {value:'PENGURUS',label:'Rapat atau kegiatan pengurus',audience:'PENGURUS'}
 ];
 export default function TulisJurnal(){
