@@ -41,7 +41,7 @@ export default function DatabasePage(){
     try{
       const [c,g,u,l]=await Promise.all([fetch('/api/classes'),fetch('/api/categories'),fetch('/api/auth/me'),fetch('/api/levels')]);
       if(!c.ok||!g.ok||!u.ok||!l.ok)throw new Error('Filter database tidak dapat dimuat.');
-      const [cv,gv,uv,lv]=await Promise.all([c.json(),g.json(),u.json()]);
+      const [cv,gv,uv,lv]=await Promise.all([c.json(),g.json(),u.json(),l.json()]);
       setClasses(cv);setCategories(gv);setLevels(Array.isArray(lv)?lv:[]);setRole(uv.role);
        const read=(Array.isArray(uv.read_scopes)?uv.read_scopes:readScopesForRole(uv.role)) as Audience[];
        const write=(Array.isArray(uv.write_scopes)?uv.write_scopes:writeScopesForRole(uv.role)) as Audience[];
