@@ -86,7 +86,7 @@ export default function JournalResult(){
         {ai.suggestion&&<p><strong>Saran:</strong> {ai.suggestion}</p>}
         
         </>:<p>Belum dianalisis.</p>}
-        {canWrite&&<button type="button" className="fj-secondary" disabled={analyzing||journal.state==='ARCHIVED'} onClick={()=>void analyze()}><RefreshCw size={17}/>{analyzing?'Menganalisis…':ai?'Analisis ulang':'Analisis dengan Groq'}</button>}
+        {canWrite&&<button type="button" className="fj-secondary" disabled={analyzing||journal.state==='ARCHIVED'} onClick={()=>void analyze()}><RefreshCw size={17}/>{analyzing?'Menganalisis…':ai?'Analisis ulang':'Analisis dengan Groq'}</button>}}
         {error&&<div className="fj-error" role="alert">{error}</div>}
       </div>}
       <div className="fj-actions"><Link className="fj-secondary" href={isMeeting?'/notulensi':'/jurnal/riwayat'}>Riwayat</Link>{canWrite&&<Link className="fj-primary" href={isMeeting?'/jurnal/tulis?mode=notulensi':'/jurnal/tulis'}>{isMeeting?'Buat notulensi lagi':'Tulis jurnal lagi'}</Link>}</div>
