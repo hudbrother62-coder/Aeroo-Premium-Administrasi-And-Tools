@@ -2,7 +2,7 @@
 
 import {useEffect,useMemo,useState} from 'react';
 import Link from 'next/link';
-import {BarChart3,CalendarDays,ChevronDown,Download,Search,Users} from 'lucide-react';
+import {BarChart3,CalendarDays,ChevronDown,Download,RefreshCw,Search,Users} from 'lucide-react';
 import AttendanceTrendChart from '@/components/AttendanceTrendChart';
 import {monthsEnding,mergeRecapMonths,attendanceShares,type CombinedRecap} from '@/lib/attendance-trends';
 import '@/app/presensi/recap-analytics.css';
@@ -28,6 +28,8 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
  const [readable,setReadable]=useState<Audience[]>([]);
  const [data,setData]=useState<Recap|null>(null);
  const [error,setError]=useState('');
+ const [filterError,setFilterError]=useState('');
+ const [reload,setReload]=useState(0);
  const [loading,setLoading]=useState(true);
  const [detail,setDetail]=useState<Detail>(individualOnly?'individual':'overall');
  const [meetingId,setMeetingId]=useState(focusEventId);
@@ -45,7 +47,7 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
     if(!live)return;
     setClasses(Array.isArray(c)?c:[]);
     const access=(Array.isArray(u.read_scopes)?u.read_scopes:readScopesForRole((u.role||'VIEWER') as Role)) as Audience[];setReadable(access);if(access.length===1)setAudience(access[0]);
-  }).catch(()=>{if(live)setError('Filter kelas belum dapat dimuat.');});
+  }).catch(()=>{if(live)setFilterError('Pilihan kelas belum dapat dimuat. Rekap tetap dapat dibuka.');});
   return()=>{live=false};
  },[]);
 
@@ -53,19 +55,36 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
    const controller=new AbortController();let live=true;
    setLoading(true);setError('');setData(null);setParticipants([]);
    const activeMonths=monthsEnding(month,span);
-   Promise.all(activeMonths.map(async m=>{
+   Promise.allSettled(activeMonths.map(async m=>{
      const params=new URLSearchParams({month:m});
      if(audience)params.set('audience',audience);
      if(audience==='CABERAWIT'&&classId)params.set('class_id',classId);
+     // Only attendance records within the selected month are read.
      const response=await fetch('/api/attendance/recap?'+params.toString(),{signal:controller.signal,cache:'no-store'});
      const json=await response.json();
-     if(!response.ok)throw Error(json.error||'Rekap gagal dimuat.');
-     return json;
-   })).then(rows=>{if(live)setData(mergeRecapMonths(rows))})
+     if(!response.ok)throw Error(json.error||'Rekap bulan '+m+' gagal dimuat.');
+     if(!json||json.month!==m||!json.summary||!Array.isArray(json.meetings)||!Array.isArray(json.individuals))
+       throw Error('Format rekap '+m+' tidak valid.');
+     return json as Recap;
+   })).then(results=>{
+     if(!live)return;
+     const successful=results.filter((r):r is PromiseFulfilledResult<Recap>=>r.status==='fulfilled').map(r=>r.value);
+     if(successful.length){
+       setData(mergeRecapMonths(successful));
+       if(successful.length!==activeMonths.length){
+         const failed=results.flatMap((r,i)=>r.status==='rejected'?[activeMonths[i]]:[]);
+         setError('Rekap sementara: data '+failed.join(', ')+' belum berhasil dimuat. Tekan Muat ulang untuk melengkapi periode.');
+       }
+     }else{
+       const failure=results.find((r):r is PromiseRejectedResult=>r.status==='rejected');
+       setError(failure?.reason instanceof Error?failure.reason.message:'Rekap tidak dapat dimuat. Coba lagi.');
+       setData(null);
+     }
+   })
      .catch(e=>{if(live){setError(e instanceof Error?e.message:'Rekap gagal dimuat.');setData(null)}})
      .finally(()=>{if(live)setLoading(false)});
    return()=>{live=false;controller.abort()};
- },[month,span,audience,classId]);
+ },[month,span,audience,classId,reload]);
  useEffect(()=>{
    if(detail!=='meetings'||!meetingId||!data?.meetings.some(m=>m.id===meetingId)){setParticipants([]);setParticipantsError('');setParticipantsLoading(false);return;}
    let live=true;const controller=new AbortController();
@@ -97,7 +116,7 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
  }
  return <div className="attendanceRecap">
    {!embedded&&<div className="pageHeader"><h1>Rekap Presensi</h1></div>}
-   <div className="attendancePanelHead attendanceRecapHead"><div><h2>Analisis Presensi</h2></div><button type="button" className="btn ghost" onClick={()=>void exportExcel()} disabled={!data||loading||(detail==='meetings'&&!!meeting&& (participantsLoading||!!participantsError))}><Download size={16}/> Ekspor Excel</button></div>
+   <div className="attendancePanelHead attendanceRecapHead"><div><h2>Analisis Presensi</h2></div><div className="row"><button type="button" className="btn ghost" onClick={()=>setReload(v=>v+1)} disabled={loading}><RefreshCw size={16}/> Muat ulang</button><button type="button" className="btn ghost" onClick={()=>void exportExcel()} disabled={!data||loading||(detail==='meetings'&&!!meeting&& (participantsLoading||!!participantsError))}><Download size={16}/> Ekspor Excel</button></div></div>
    <section className="attendanceFilters attendanceRecapFilters attendancePeriodFilters">
     <label>Periode<input className="input" aria-label="Bulan rekap" type="month" value={month} onChange={e=>{setMonth(e.target.value);setMeetingId('');}}/></label>
     <label>Rentang<select className="select" aria-label="Rentang rekap" value={span} onChange={e=>{setSpan(Number(e.target.value) as 1|3|6);setMeetingId('');}}>
@@ -110,8 +129,9 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
       <option value="">Semua kelas</option>{availableClasses.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
     </select></label>}
    </section>
-   {error&&<div className="notice error" role="alert">{error} Silakan coba filter yang lebih spesifik atau muat ulang.</div>}
-   {loading?<div className="card"><div className="skeleton" style={{height:160}}/></div>:!data?<div className="attendanceEmpty card" role="status"><strong>Rekap belum bisa ditampilkan</strong><span>Data tidak diubah. Coba muat ulang atau pilih periode lain.</span></div>:<>
+   {filterError&&<div className="notice" role="status">{filterError}</div>}
+   {error&&<div className="notice error" role="alert">{error} <button className="smallAction" type="button" disabled={loading} onClick={()=>setReload(v=>v+1)}>Coba lagi</button></div>}
+   {loading?<div className="card"><div className="skeleton" style={{height:160}}/></div>:!data?<div className="attendanceEmpty card" role="status"><strong>Rekap belum berhasil dimuat</strong><span>Data presensi aman. Periksa koneksi atau coba bulan lain.</span><button type="button" className="btn secondary" onClick={()=>setReload(v=>v+1)}>Muat ulang rekap</button></div>:<>
    {!individualOnly&&<div className="attendanceKpiGrid">
      <div className="attendanceKpi"><span>Total pertemuan</span><strong>{data?.summary.meetings||0}</strong><small>Dalam filter yang dipilih</small></div>
      <div className="attendanceKpi"><span>Persentase hadir</span><strong>{overallRate===null?'—':overallRate+'%'}</strong><small>Dari status yang sudah dicatat</small></div>
