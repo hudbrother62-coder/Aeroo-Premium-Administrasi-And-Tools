@@ -73,11 +73,63 @@ export async function readRows(resource:string){
  if(!queries[resource])throw Error('Sumber tidak valid');const[table,select]=queries[resource];let q=s.from(table).select(select);if(resource==='members')q=q.eq('status','ACTIVE');if(resource==='targets')q=q.eq('active',true);if(resource==='progress')q=q.eq('journals.state','COMPLETED');const{data,error}=await q;if(error)throw Error(error.message);if(resource==='members')return (data||[]).map((p:any)=>projectMember(p));if(resource==='progress')return (data||[]).filter((r:any)=>{const j=Array.isArray(r.journals)?r.journals[0]:r.journals;const e=Array.isArray(j.attendance_events)?j.attendance_events[0]:j.attendance_events;return !j.event_id||(e?.state!=='CANCELLED'&&e?.attendance_records?.some((a:any)=>a.participant_key===r.participant_key&&a.status==='H'))}).map((r:any)=>({...r,member_id:r.member_id||r.participant_key}));return data||[];
 }
 export async function dataSummary(req:NextRequest){
- const month=req.nextUrl.searchParams.get('month')||jakartaDate().slice(0,7);if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))throw Error('Bulan tidak valid');const span=req.nextUrl.searchParams.get('span')==='6'?6:1;const start=new Date(Date.UTC(Number(month.slice(0,4)),Number(month.slice(5,7))-span,1)).toISOString().slice(0,10);const end=month+'-'+new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),0).getDate();const[people,events,journals]=await Promise.all([readRows('members'),readRows('attendance'),readRows('journals')]);
- const selected=events.filter(e=>e.event_date>=start&&e.event_date<=end&&e.state!=='CANCELLED');const entries=selected.flatMap(e=>e.attendance_records||[]);const cancelled=new Set(events.filter(e=>e.state==='CANCELLED').map(e=>e.id));const js=journals.filter(j=>!cancelled.has(j.event_id)&&j.state==='COMPLETED'&&j.journal_date>=start&&j.journal_date<=end);const map=new Map<string,any>();for(const p of people)map.set(p.id,{id:p.id,name:p.name,class_name:p.classes?.name||'',level_name:p.levels?.name||'',categories:p.member_categories?.map((c:any)=>c.categories?.name)||[],H:0,I:0,A:0,pending:0,journals:0});for(const r of entries){if(!map.has(r.participant_key))map.set(r.participant_key,{id:r.participant_key,name:r.member_name_snapshot,class_name:r.class_name_snapshot||'',level_name:r.level_name_snapshot||'',categories:[],H:0,I:0,A:0,pending:0,journals:0,archived:true});const p=map.get(r.participant_key);if(['H','I','A'].includes(r.status))p[r.status]++;else p.pending++}for(const j of js)if(map.has(j.member_id))map.get(j.member_id).journals++;
+ const month=req.nextUrl.searchParams.get('month')||jakartaDate().slice(0,7);
+ if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))throw Error('Bulan tidak valid');
+ const span=req.nextUrl.searchParams.get('span')==='6'?6:1;
+ const monthRange=Array.from({length:span},(_,i)=>{
+   const d=new Date(Date.UTC(Number(month.slice(0,4)),Number(month.slice(5,7))-span+i,1));
+   return d.toISOString().slice(0,7);
+ });
+ const start=monthRange[0]+'-01';
+ const end=month+'-'+new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),0).getDate();
+ const s=await db();
+ // Reuse the same bounded, permission-checked source as the live attendance recap.
+ // Do not retrieve every historical attendance record (which can be truncated by PostgREST).
+ const [people,journals,recapMonths]=await Promise.all([
+   readRows('members'),readRows('journals'),
+   Promise.all(monthRange.map(async m=>{
+     const {data,error}=await s.rpc('attendance_recap_scoped',{
+       p_month:m,p_audience:null,p_level_id:null,p_class_id:null,p_event_id:null
+     });
+     if(error)throw Error('Rekap '+m+' tidak dapat dimuat: '+error.message);
+     if(!data?.summary||!Array.isArray(data?.individuals))throw Error('Rekap '+m+' belum tersedia.');
+     return data;
+   }))
+ ]);
+ const map=new Map<string,any>();
+ for(const p of people)map.set(p.id,{
+   id:p.id,name:p.name,class_name:p.classes?.name||'',level_name:p.levels?.name||'',
+   categories:p.member_categories?.map((c:any)=>c.categories?.name).filter(Boolean)||[],
+   H:0,I:0,A:0,pending:0,journals:0
+ });
+ const totals={H:0,I:0,A:0,pending:0,meetings:0};
+ for(const recap of recapMonths){
+   for(const key of ['H','I','A','pending','meetings'] as const)totals[key]+=Number(recap.summary[key]||0);
+   for(const p of recap.individuals){
+     if(!map.has(p.id))map.set(p.id,{
+       id:p.id,name:p.name,class_name:p.class_name||'',level_name:p.level_name||'',
+       categories:[],H:0,I:0,A:0,pending:0,journals:0,archived:true
+     });
+     const item=map.get(p.id);
+     for(const key of ['H','I','A','pending'] as const)item[key]+=Number(p[key]||0);
+   }
+ }
+ const js=journals.filter((j:any)=>j.state==='COMPLETED'&&j.journal_date>=start&&j.journal_date<=end);
+ for(const j of js)if(j.member_id&&map.has(j.member_id))map.get(j.member_id).journals++;
  const has=(p:any,slug:string)=>p.member_categories?.some((c:any)=>c.categories?.slug===slug);
- return {month,span,counts:{total:people.length,caberawit:people.filter(p=>has(p,'caberawit')).length,muda_mudi:people.filter(p=>has(p,'muda-mudi')).length,ibu_ibu:people.filter(p=>has(p,'ibu-ibu')).length,pengurus:people.filter(p=>has(p,'pengurus')).length},attendance:{...summarizeAttendance(entries),meetings:selected.length},journals:js.length,individuals:[...map.values()].map(p=>({...p,percentage:p.H+p.I+p.A?Math.round(p.H/(p.H+p.I+p.A)*1000)/10:null}))};
+ const individuals=[...map.values()].map(p=>({...p,percentage:p.H+p.I+p.A?Math.round(p.H/(p.H+p.I+p.A)*1000)/10:null}));
+ return {
+   month,span,
+   counts:{total:people.length,caberawit:people.filter(p=>has(p,'caberawit')).length,
+     muda_mudi:people.filter(p=>has(p,'muda-mudi')).length,
+     ibu_ibu:people.filter(p=>has(p,'ibu-ibu')).length,
+     pengurus:people.filter(p=>has(p,'pengurus')).length},
+   attendance:{...totals,total:totals.H+totals.I+totals.A,
+     percentage:totals.H+totals.I+totals.A?Math.round(totals.H/(totals.H+totals.I+totals.A)*1000)/10:null},
+   journals:js.length,individuals
+ };
 }
+
 export async function publicDashboard(req:NextRequest){
  const month=req.nextUrl.searchParams.get('month')||jakartaDate().slice(0,7);
  const span=([1,3,6].includes(Number(req.nextUrl.searchParams.get('span')))?Number(req.nextUrl.searchParams.get('span')):1) as 1|3|6;
