@@ -7,12 +7,12 @@ import AttendanceRecap from '@/components/AttendanceRecap';
 type Summary={month:string;counts:{total:number;caberawit:number;muda_mudi:number;pengurus:number;ibu_ibu:number};attendance:{H:number;I:number;A:number;meetings:number};journals:number;individuals:Array<{id:string;name:string;categories:string[];class_name:string;level_name:string;H:number;I:number;A:number;percentage:number|null;journals:number}>};
 
 export default function RekapPage(){
-  const[tab,setTab]=useState<'ringkasan'|'presensi'>('ringkasan');
-  useEffect(()=>{if(new URLSearchParams(window.location.search).get('tab')==='presensi')setTab('presensi')},[]);
+  const[tab,setTab]=useState<'ringkasan'|'presensi'>('presensi');
+  useEffect(()=>{if(new URLSearchParams(window.location.search).get('tab')==='ringkasan')setTab('ringkasan')},[]);
   function switchTab(next:'ringkasan'|'presensi'){
     setTab(next);
     const url=new URL(window.location.href);
-    if(next==='presensi')url.searchParams.set('tab','presensi');
+    if(next==='ringkasan')url.searchParams.set('tab','ringkasan');
     else url.searchParams.delete('tab');
     window.history.replaceState(null,'',url.pathname+url.search);
   }
@@ -30,7 +30,7 @@ export default function RekapPage(){
 
   return <>
     <div className="pageHeader"><h1>Rekap</h1>{tab==='ringkasan'&&role!=='VIEWER'&&<div className="taskLinks">{(["xlsx","docx","pdf"] as const).map(format=><a key={format} className="btn secondary" href={"/api/reports/summary?"+new URLSearchParams({month,span:String(span),format})}>Ekspor {format==="xlsx"?"Excel":format==="docx"?"Word":"PDF"}</a>)}</div>}</div>
-    <div className="tabBar" role="tablist" aria-label="Jenis rekap"><button type="button" className={tab==='ringkasan'?'tab active':'tab'} role="tab" aria-selected={tab==='ringkasan'} onClick={()=>switchTab('ringkasan')}>Ringkasan Data</button><button type="button" className={tab==='presensi'?'tab active':'tab'} role="tab" aria-selected={tab==='presensi'} onClick={()=>switchTab('presensi')}>Riwayat Presensi</button></div>
+    <div className="tabBar" role="tablist" aria-label="Jenis rekap"><button type="button" className={tab==='ringkasan'?'tab active':'tab'} role="tab" aria-selected={tab==='ringkasan'} onClick={()=>switchTab('ringkasan')}>Ringkasan Data</button><button type="button" className={tab==='presensi'?'tab active':'tab'} role="tab" aria-selected={tab==='presensi'} onClick={()=>switchTab('presensi')}>Rekap Presensi</button></div>
     {tab==='presensi'?<AttendanceRecap/>:<>
     <div className="toolbar card"><input className="input" type="month" value={month} onChange={e=>setMonth(e.target.value)}/><select className="select" value={span} onChange={e=>setSpan(Number(e.target.value) as 1|6)}><option value={1}>Satu bulan</option><option value={6}>Enam bulan terakhir</option></select><div className="tabBar" style={{margin:0}}><button className={mode==='ALL'?'tab active':'tab'} onClick={()=>setMode('ALL')}>Keseluruhan</button><button className={mode==='PERSON'?'tab active':'tab'} onClick={()=>setMode('PERSON')}>1 Individu</button></div></div>
     {error&&<div className="notice error section">{error}</div>}
