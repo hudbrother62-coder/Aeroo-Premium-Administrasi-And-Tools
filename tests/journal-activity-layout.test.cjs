@@ -45,5 +45,6 @@ test('meeting journal is readable from history without learning-target AI',()=>{
   assert.match(result,/\{!isMeeting&&<div className="fj-ai">/);
   assert.match(result,/journal\.decisions/);
   assert.match(result,/journal\.notes/);
-  assert.match(history,/j\.assessment\?\.meeting_minutes\|\|j\.journal_kind==='PENGURUS'/);
+  assert.match(history,/!isNotulensi\(j\)/);
+  assert.match(history,/import \{isNotulensi\}/);
 });
