@@ -104,8 +104,9 @@ test('Excel gender summary retains colored headings, percentage values and corre
  assert.equal(sheet.getCell('C16').value,8);
  assert.equal(sheet.getCell('F18').value,63);
  assert.equal(sheet.getCell('G15').numFmt,'0.0"%"');
- assert.equal(sheet.autoFilter.from.row,tableHeaderRow);
- assert.equal(sheet.autoFilter.to.row,22);
+ const zip=await require('jszip').loadAsync(buffer);
+ const worksheetXml=await zip.file('xl/worksheets/sheet1.xml').async('string');
+ assert.match(worksheetXml,/<autoFilter ref="A21:G22"\/>/);
  const parsed=XLSX.read(buffer,{type:'array',WTF:true});
  assert.equal(parsed.Sheets.Ringkasan.B15.v,17);
  assert.equal(parsed.Sheets.Ringkasan.F18.v,63);
