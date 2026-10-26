@@ -36,7 +36,19 @@ function genderCode(value:unknown):'L'|'P'|''{
 }
 function textLines(value:unknown):string[]{
   if(value===null||value===undefined)return [];
-  return String(value).split(/\r\n|\r|\n|\t/g).map(v=>v.trim()).filter(Boolean);
+  const result:string[]=[];
+  for(const part of String(value).split(/\r\n|\r|\n|\t/g)){
+    let remaining=part.trim();
+    // Keep text fully visible in Excel instead of making one excessively tall row.
+    while(remaining.length>220){
+      const nearWord=remaining.lastIndexOf(' ',220);
+      const split=nearWord>=120?nearWord:220;
+      result.push(remaining.slice(0,split).trim());
+      remaining=remaining.slice(split).trimStart();
+    }
+    if(remaining)result.push(remaining);
+  }
+  return result;
 }
 function marked(records:RecordRow[]|null){return (records||[]).some(r=>['H','I','A'].includes(r.status||''));}
 function counter(records:RecordRow[]){return {
