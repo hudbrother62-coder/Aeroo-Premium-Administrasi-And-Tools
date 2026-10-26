@@ -2,6 +2,7 @@ import {NextRequest,NextResponse} from 'next/server';
 import * as XLSX from 'xlsx';
 import {db} from '@/lib/supabase-server';
 import {spreadsheetCell} from '@/lib/spreadsheet';
+import {styledReportXlsx} from '@/lib/report-xlsx-style';
 
 export const runtime='nodejs';
 
@@ -91,6 +92,11 @@ function addAttendanceRows(out:(string|number)[][],merges:XLSX.Range[],event:Eve
   const base=out.length;
   out.push(['SIMPUL — LAPORAN PRESENSI','','','','','','']);
   merges.push({s:{r:base,c:0},e:{r:base,c:6}});
+  for(const r of [base+1,base+2]){
+    merges.push({s:{r,c:1},e:{r,c:2}});
+    merges.push({s:{r,c:4},e:{r,c:6}});
+  }
+  merges.push({s:{r:base+3,c:1},e:{r:base+3,c:6}});
   out.push(['Kegiatan',cell(event.title),'','Kategori',cell(audienceNames[event.audience]||event.audience),'','']);
   out.push(['Tanggal',event.event_date,'','Kelas',cell(event.classes?.name||'-'),'','']);
   out.push(['Pengajar',cell(event.teacher_name||'-'),'','','','','']);
@@ -116,6 +122,7 @@ function addAttendanceRows(out:(string|number)[][],merges:XLSX.Range[],event:Eve
   out.push(['TOTAL',records.length,'HADIR',c.h,'IZIN',c.i,'ALFA',c.a]);
   out.push(['Belum diisi',c.empty,'','','','','']);
   out.push(['Keterangan','H = Hadir; I = Izin; A = Alfa; - = Belum diisi','','','','','']);
+  merges.push({s:{r:out.length-1,c:1},e:{r:out.length-1,c:6}});
   out.push(['','','','','','','']);
 }
 export async function GET(req:NextRequest){
@@ -212,7 +219,13 @@ export async function GET(req:NextRequest){
     wsJournal['!autofilter']={ref:'A1:F'+journalLines.length};
     XLSX.utils.book_append_sheet(wb,wsJournal,'Jurnal');
     const fileName='simpul-presensi-'+(eventId?events[0].event_date+'-'+eventId.slice(0,8):month)+'.xlsx';
-    const bytes=XLSX.write(wb,{type:'array',bookType:'xlsx'}) as ArrayBuffer;
+    const bytes=await styledReportXlsx(wb,[
+      {kind:'Ringkasan',rows:summary,minWidths:[18,27,18,11,10,10,16],maxWidths:[23,48,24,15,14,14,20],
+        merges:[{s:{r:0,c:0},e:{r:0,c:6}}],freezeRows:13},
+      {kind:'Presensi',rows:attendance,minWidths:[7,30,9,12,7,30,9],maxWidths:[9,46,11,15,9,46,11],
+        merges,freezeRows:events.length===1?6:0},
+      {kind:'Jurnal',rows:journalLines,minWidths:[15,25,24,18,7,40],maxWidths:[17,36,40,28,8,65],freezeRows:1}
+    ]);
     return new Response(bytes as BodyInit,{headers:{
       'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'Content-Disposition':'attachment; filename="'+fileName+'"',
