@@ -7,7 +7,7 @@ const history=fs.readFileSync('app/presensi/riwayat/page.tsx','utf8');
 
 test('attendance Excel route is valid TypeScript and calendar buttons are valid TSX',()=>{
   for(const [file,source,jsx] of [
-    ['route.ts',route,ts.JsxEmit.None],
+    ['route.ts',route,ts.JsxEmit.ReactJSX],
     ['page.tsx',history,ts.JsxEmit.ReactJSX],
   ]){
     const compiled=ts.transpileModule(source,{fileName:file,reportDiagnostics:true,
