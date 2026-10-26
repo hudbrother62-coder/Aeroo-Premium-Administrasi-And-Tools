@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx';
 import {db} from '@/lib/supabase-server';
 import {spreadsheetCell} from '@/lib/spreadsheet';
 import {styledReportXlsx} from '@/lib/report-xlsx-style';
+import {genderForRecord,kelompokGenderRecap} from '@/lib/attendance-gender-recap';
 
 export const runtime='nodejs';
 
@@ -28,12 +29,6 @@ const audienceNames:Record<string,string>={
 };
 const validId=(s:string)=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 const cell=(v:unknown)=>spreadsheetCell(String(v??'').trim());
-function genderCode(value:unknown):'L'|'P'|''{
-  const v=String(value??'').toUpperCase().trim().replace(/[\s_-]/g,'');
-  if(['L','LK','M','MALE','PRIA','LAKILAKI'].includes(v))return 'L';
-  if(['P','PR','F','FEMALE','WANITA','PEREMPUAN'].includes(v))return 'P';
-  return '';
-}
 function textLines(value:unknown):string[]{
   if(value===null||value===undefined)return [];
   const result:string[]=[];
@@ -98,7 +93,7 @@ function addAttendanceRows(out:(string|number)[][],merges:XLSX.Range[],event:Eve
     String(a.member_name_snapshot||'').localeCompare(String(b.member_name_snapshot||''),'id'));
   const male:RecordRow[]=[],female:RecordRow[]=[],unknown:RecordRow[]=[];
   records.forEach(r=>{
-    const sex=genderCode(gender.get(r.member_id||r.participant_key||''));
+    const sex=genderForRecord(r,gender);
     (sex==='L'?male:sex==='P'?female:unknown).push(r);
   });
   const base=out.length;
@@ -177,7 +172,7 @@ export async function GET(req:NextRequest){
     if(!events.length)return NextResponse.json({error:'Tidak ada presensi yang sudah diisi untuk pilihan ini.'},{status:404});
 
     const gender=new Map<string,string>();
-    const ids=[...new Set(events.flatMap(e=>(e.attendance_records||[]).map(r=>r.member_id||r.participant_key).filter((id):id is string=>!!id&&validId(id))))];
+    const ids=[...new Set(events.flatMap(e=>(e.attendance_records||[]).flatMap(r=>[r.member_id,r.participant_key]).filter((id):id is string=>!!id&&validId(id))))];
     for(let i=0;i<ids.length;i+=100){
       const {data,error}=await s.from('members').select('id,gender').in('id',ids.slice(i,i+100));
       if(error)throw Error('Data jenis kelamin anggota tidak dapat dibaca: '+error.message);
@@ -202,6 +197,7 @@ export async function GET(req:NextRequest){
 
     const wb=XLSX.utils.book_new();
     const totals=counter(events.flatMap(e=>e.attendance_records||[]));
+    const kelompokGender=kelompokGenderRecap(events,gender);
     const summary:(string|number)[][]=[
       ['SIMPUL — RINGKASAN LAPORAN PRESENSI',''],
       ['Periode',eventId?events[0].event_date:month],
@@ -209,14 +205,50 @@ export async function GET(req:NextRequest){
       ['Jumlah Pertemuan',events.length],['Jumlah Jurnal Terkait',journals.length],
       ['Hadir',totals.h],['Izin',totals.i],['Alfa',totals.a],
       ['Belum diisi',totals.empty],['Total Catatan',totals.h+totals.i+totals.a+totals.empty],
-      ['Catatan','Belum diisi tidak dihitung sebagai Alfa.'],
-      [],['TANGGAL','KEGIATAN','KATEGORI','HADIR','IZIN','ALFA','BELUM DIISI'],
-      ...events.map(e=>{const c=counter(e.attendance_records||[]);return [
-        e.event_date,cell(e.title),cell(audienceNames[e.audience]||e.audience),c.h,c.i,c.a,c.empty
-      ];}),
+      ['Catatan','Belum diisi tidak dihitung sebagai Alfa.']
     ];
-    const wsSummary=makeSheet(summary,[22,42,20,15,15,15,18],[{s:{r:0,c:0},e:{r:0,c:6}}]);
-    wsSummary['!autofilter']={ref:'A13:G'+summary.length};
+    const summaryMerges:XLSX.Range[]=[{s:{r:0,c:0},e:{r:0,c:6}}];
+    const addSection=(heading:string)=>{
+      const r=summary.length;summary.push([heading,'','','','','','']);
+      summaryMerges.push({s:{r,c:0},e:{r,c:6}});
+    };
+    if(kelompokGender){
+      summary.push([]);
+      addSection('REKAP PER JENIS KELAMIN — PENGAJIAN KELOMPOK');
+      summary.push(['JENIS KELAMIN','HADIR','IZIN','ALFA','BELUM DIISI','TOTAL CATATAN','KEHADIRAN (%)']);
+      const overall=kelompokGender.overall.filter(g=>g.gender!=='UNKNOWN'||g.counts.total>0);
+      for(const group of overall){
+        const c=group.counts;
+        summary.push([group.label,c.H,c.I,c.A,c.pending,c.total,c.percentage===null?'—':c.percentage]);
+      }
+      const total=kelompokGender.total;
+      summary.push(['TOTAL KELOMPOK',total.H,total.I,total.A,total.pending,total.total,total.percentage===null?'—':total.percentage]);
+      const noteRow=summary.length;
+      summary.push(['Keterangan','Total catatan dihitung per peserta di setiap pertemuan, bukan jumlah orang unik. Kehadiran = Hadir / (Hadir + Izin + Alfa).']);
+      summaryMerges.push({s:{r:noteRow,c:1},e:{r:noteRow,c:6}});
+      if(kelompokGender.meetings.length>1){
+        summary.push([]);
+        addSection('RINCIAN JENIS KELAMIN PER PERTEMUAN — KELOMPOK');
+        summary.push(['TANGGAL','KEGIATAN','JENIS KELAMIN','HADIR','IZIN','ALFA','BELUM DIISI']);
+        for(const meeting of kelompokGender.meetings){
+          for(const group of meeting.groups){
+            if(group.gender==='UNKNOWN'&&group.counts.total===0)continue;
+            const c=group.counts;
+            summary.push([meeting.date,cell(meeting.title),group.label,c.H,c.I,c.A,c.pending]);
+          }
+        }
+      }
+    }
+    summary.push([]);
+    const summaryTableHeader=summary.length+1;
+    summary.push(['TANGGAL','KEGIATAN','KATEGORI','HADIR','IZIN','ALFA','BELUM DIISI']);
+    for(const event of events){
+      const c=counter(event.attendance_records||[]);
+      summary.push([event.event_date,cell(event.title),cell(audienceNames[event.audience]||event.audience),c.h,c.i,c.a,c.empty]);
+    }
+    const summaryTableEnd=summary.length;
+    const wsSummary=makeSheet(summary,[22,42,20,15,15,15,18],summaryMerges);
+    wsSummary['!autofilter']={ref:'A'+summaryTableHeader+':G'+summaryTableEnd};
     XLSX.utils.book_append_sheet(wb,wsSummary,'Ringkasan');
     const attendance:(string|number)[][]=[],merges:XLSX.Range[]=[];
     events.forEach(e=>addAttendanceRows(attendance,merges,e,gender));
@@ -233,7 +265,7 @@ export async function GET(req:NextRequest){
     const fileName='simpul-presensi-'+(eventId?events[0].event_date+'-'+eventId.slice(0,8):month)+'.xlsx';
     const bytes=await styledReportXlsx(wb,[
       {kind:'Ringkasan',rows:summary,minWidths:[18,27,18,11,10,10,16],maxWidths:[23,48,24,15,14,14,20],
-        merges:[{s:{r:0,c:0},e:{r:0,c:6}}],freezeRows:13},
+        merges:summaryMerges,freezeRows:kelompokGender?1:13,mainTableHeaderRow:summaryTableHeader,mainTableEndRow:summaryTableEnd},
       {kind:'Presensi',rows:attendance,minWidths:[7,30,9,12,7,30,9],maxWidths:[9,46,11,15,9,46,11],
         merges,freezeRows:events.length===1?6:0},
       {kind:'Jurnal',rows:journalLines,minWidths:[15,25,24,18,7,40],maxWidths:[17,36,40,28,8,65],freezeRows:1}
