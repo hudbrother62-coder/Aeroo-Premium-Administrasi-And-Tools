@@ -9,6 +9,8 @@ export type StyledReportSheet={
   maxWidths:number[];
   merges?:XLSX.Range[];
   freezeRows?:number;
+  mainTableHeaderRow?:number;
+  mainTableEndRow?:number;
 };
 
 type Color={argb:string};
@@ -33,10 +35,36 @@ function decideRole(sheet:StyledReportSheet,index:number,col:number):Role{
   const row=sheet.rows[index]||[];
   const label=row[0];
   if(sheet.kind==='Ringkasan'){
+    const headerIndex=(sheet.mainTableHeaderRow||13)-1;
+    const tableEnd=sheet.mainTableEndRow||sheet.rows.length;
     if(index===0)return 'title';
-    if(index===12)return 'header';
-    if(index===11)return 'blank';
-    if(index>=13){
+    if(typeof label==='string'&&(
+      label.startsWith('REKAP PER JENIS KELAMIN')||
+      label.startsWith('RINCIAN JENIS KELAMIN')
+    ))return 'section';
+    if(label==='JENIS KELAMIN'||label==='TANGGAL'&&row[2]==='JENIS KELAMIN')
+      return 'header';
+    if(['Laki-laki','Perempuan','Belum tercatat','TOTAL KELOMPOK'].includes(String(label))){
+      if(label==='TOTAL KELOMPOK')return 'total';
+      if(col===0)return 'meta-label';
+      if(col===1)return 'present';
+      if(col===2)return 'permit';
+      if(col===3)return 'absent';
+      if(col===4)return 'pending';
+      if(col===5)return 'total';
+      return 'number';
+    }
+    if(label==='Keterangan'&&index>10)return 'note';
+    if(typeof label==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(label)
+      &&['Laki-laki','Perempuan','Belum tercatat'].includes(String(row[2]))){
+      if(col===3)return 'present';
+      if(col===4)return 'permit';
+      if(col===5)return 'absent';
+      if(col===6)return 'pending';
+      return index%2===0?'zebra':'body';
+    }
+    if(index===headerIndex)return 'header';
+    if(index>headerIndex&&index<tableEnd){
       if(col===3)return 'present';
       if(col===4)return 'permit';
       if(col===5)return 'absent';
@@ -44,11 +72,15 @@ function decideRole(sheet:StyledReportSheet,index:number,col:number):Role{
       return index%2===0?'zebra':'body';
     }
     if(index===10)return 'note';
-    if(col===0)return 'meta-label';
-    if(index===5&&col===1)return 'present';
-    if(index===6&&col===1)return 'permit';
-    if(index===7&&col===1)return 'absent';
-    return 'meta-value';
+    if(index===11||row.every(v=>v===''||v===undefined))return 'blank';
+    if(index<11){
+      if(col===0)return 'meta-label';
+      if(index===5&&col===1)return 'present';
+      if(index===6&&col===1)return 'permit';
+      if(index===7&&col===1)return 'absent';
+      return 'meta-value';
+    }
+    return index%2===0?'zebra':'body';
   }
   if(sheet.kind==='Jurnal'){
     if(index===0)return 'header';
@@ -82,7 +114,9 @@ function widthFor(sheet:StyledReportSheet,col:number){
   for(let i=0;i<sheet.rows.length;i++){
     const row=sheet.rows[i]||[];
     if(sheet.kind==='Presensi'&&['SIMPUL — LAPORAN PRESENSI','Keterangan','LAKI-LAKI','GENDER BELUM TERCATAT'].includes(String(row[0])))continue;
-    if(sheet.kind==='Ringkasan'&&(i===0||i===10))continue;
+    if(sheet.kind==='Ringkasan'&&(i===0||i===10||i>10&&(
+      String(row[0]).startsWith('REKAP PER JENIS KELAMIN')||
+      String(row[0]).startsWith('RINCIAN JENIS KELAMIN')||row[0]==='Keterangan')))continue;
     longest=Math.max(longest,String(row[col]??'').length);
   }
   return Math.min(sheet.maxWidths[col],Math.max(sheet.minWidths[col],Math.ceil(longest*1.06)+3));
@@ -91,7 +125,12 @@ function rowHeight(sheet:StyledReportSheet,index:number,widths:number[]){
   const row=sheet.rows[index]||[];
   if(row[0]==='SIMPUL — LAPORAN PRESENSI'||sheet.kind==='Ringkasan'&&index===0)return 34;
   if(sheet.kind==='Presensi'&&['LAKI-LAKI','GENDER BELUM TERCATAT'].includes(String(row[0])))return 28;
-  if(sheet.kind==='Ringkasan'&&index===12||sheet.kind==='Jurnal'&&index===0||row[0]==='NO')return 29;
+  if(sheet.kind==='Ringkasan'&&(
+    index===(sheet.mainTableHeaderRow||13)-1||
+    row[0]==='JENIS KELAMIN'||row[2]==='JENIS KELAMIN'||
+    String(row[0]||'').startsWith('REKAP PER JENIS KELAMIN')||
+    String(row[0]||'').startsWith('RINCIAN JENIS KELAMIN'))||
+    sheet.kind==='Jurnal'&&index===0||row[0]==='NO')return 29;
   if(!row.length||row.every(x=>x===''||x===undefined))return 12;
   let lines=1;
   for(let col=0;col<row.length;col++){
@@ -147,13 +186,17 @@ function buildSheet(workbook:ExcelJS.Workbook,sheet:StyledReportSheet){
       const style=decideRole(sheet,i,c);
       const isText=sheet.kind==='Jurnal'&&c!==4||sheet.kind==='Presensi'&&(c===1||c===5);
       applyStyle(cell,style,isText);
+      if(sheet.kind==='Ringkasan'&&c===6&&typeof value==='number'&&
+        ['Laki-laki','Perempuan','Belum tercatat','TOTAL KELOMPOK'].includes(String(values[0])))
+        cell.numFmt='0.0"%"';
     }
   }
   for(const merge of sheet.merges||[]){
     ws.mergeCells(merge.s.r+1,merge.s.c+1,merge.e.r+1,merge.e.c+1);
   }
-  if(sheet.kind==='Ringkasan'&&sheet.rows.length>=14){
-    ws.autoFilter={from:{row:13,column:1},to:{row:sheet.rows.length,column:7}};
+  if(sheet.kind==='Ringkasan'&&sheet.rows.length>=(sheet.mainTableHeaderRow||13)+1){
+    ws.autoFilter={from:{row:sheet.mainTableHeaderRow||13,column:1},
+      to:{row:sheet.mainTableEndRow||sheet.rows.length,column:7}};
   }
   if(sheet.kind==='Jurnal'&&sheet.rows.length>=2){
     ws.autoFilter={from:{row:1,column:1},to:{row:sheet.rows.length,column:6}};
