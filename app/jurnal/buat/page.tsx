@@ -8,6 +8,7 @@ import {writeScopesForRole,type Audience} from '@/lib/access';
 import {normalizeMeetingType,meetingTypes} from '@/lib/journal-kind';
 import {FormEvent,useEffect,useMemo,useState} from 'react';
 import {prepareJournalPayloadProgress} from '../helpers';
+import {matchingJournalEvents,uniqueJournalEvent} from '@/lib/journal-event-link';
 
 type Activity={id:string;name:string;audience:string};
 type ClassRow={id:string;name:string;audience:string;level_id?:string};
@@ -22,7 +23,8 @@ export default function Page(){
   const[classes,setClasses]=useState<ClassRow[]>([]);
   const[levels,setLevels]=useState<LevelRow[]>([]),[selectedLevel,setSelectedLevel]=useState('');
   const[targets,setTargets]=useState<TargetRow[]>([]);
-  const[events,setEvents]=useState<Array<{id:string;title:string;event_date:string;audience:string;level_id?:string;class_id?:string}>>([]);
+  const[events,setEvents]=useState<Array<{id:string;title:string;event_date:string;audience:string;state?:string;level_id?:string;class_id?:string|null;agenda_id?:string|null;activity_type_id?:string|null}>>([]);
+  const [eventsError,setEventsError]=useState('');
   const[materials,setMaterials]=useState([{topic:'',page:'',presenter:'',status:'BELUM',note:''}]);
   const[targetFilter,setTargetFilter]=useState('');
   const[study,setStudy]=useState({presenter:'',presenter_id:'',implementation:'',documentation:'',purpose:'',evaluation:'',theme:''});const[people,setPeople]=useState<Array<{id:string;name:string}>>([]);
@@ -35,7 +37,7 @@ export default function Page(){
     target_id:'',progress_value:'',progress_note:'',meeting_type:'Kelompok',event_id:'',agenda_id:'',absence:'HADIR',absence_reason:''
   });
 
-  useEffect(()=>{Promise.allSettled([fetch('/api/activity-types').then(r=>r.json()),fetch('/api/classes').then(r=>r.json()),fetch('/api/targets').then(r=>r.json()),fetch('/api/attendance').then(r=>r.json()),fetch('/api/levels').then(r=>r.json())]).then(([a,c,t,e,l])=>{setActivities(a.status==='fulfilled'&&Array.isArray(a.value)?a.value:[]);setClasses(c.status==='fulfilled'&&Array.isArray(c.value)?c.value:[]);setTargets(t.status==='fulfilled'&&Array.isArray(t.value)?t.value:[]);setEvents(e.status==='fulfilled'&&Array.isArray(e.value)?e.value:[]);setLevels(l.status==='fulfilled'&&Array.isArray(l.value)?l.value:[])})},[]);
+  useEffect(()=>{Promise.allSettled([fetch('/api/activity-types').then(r=>r.json()),fetch('/api/classes').then(r=>r.json()),fetch('/api/targets').then(r=>r.json()),fetch('/api/levels').then(r=>r.json())]).then(([a,c,t,l])=>{setActivities(a.status==='fulfilled'&&Array.isArray(a.value)?a.value:[]);setClasses(c.status==='fulfilled'&&Array.isArray(c.value)?c.value:[]);setTargets(t.status==='fulfilled'&&Array.isArray(t.value)?t.value:[]);setLevels(l.status==='fulfilled'&&Array.isArray(l.value)?l.value:[])})},[]);
   async function linkEvent(id:string){if(!id){setRoster([]);setForm(v=>({...v,event_id:''}));return}const r=await fetch('/api/attendance/'+id);const e=await r.json();if(!r.ok)throw new Error(e.error);setRoster(e.attendance_records||[]);setSelectedLevel(e.level_id||classes.find(c=>c.id===e.class_id)?.level_id||'');setForm(v=>({...v,event_id:id,agenda_id:e.agenda_id||'',class_id:e.class_id||'',journal_date:e.event_date,activity_type_id:e.activity_type_id||'',title:v.title||e.title,journal_kind:e.audience==='KELOMPOK'&&v.journal_kind==='PENGKAJIAN'?'PENGKAJIAN':e.audience==='CABERAWIT'?(v.journal_kind.startsWith('CABERAWIT')?v.journal_kind:'CABERAWIT_CLASS'):e.audience==='MUDA_MUDI'?(v.journal_kind.startsWith('MUDA_MUDI')?v.journal_kind:'MUDA_MUDI_CLASS'):e.audience}));}
   useEffect(()=>{const q=new URLSearchParams(window.location.search);const requestedKind=q.get('kind');if(kinds.some(([k])=>k===requestedKind))setForm(v=>({...v,journal_kind:requestedKind!}));const id=q.get('journal_id');if(id){void fetch('/api/journals/'+id).then(async r=>{const j=await r.json();if(!r.ok)throw new Error(j.error);setJournalId(id);setRevision(j.revision??0);setState(j.state||'DRAFT');setOriginalState(j.state||'DRAFT');setHistory(j.journal_revisions||[]);if(j.event_id)await linkEvent(j.event_id);setForm(v=>({...v,...Object.fromEntries(Object.keys(v).map(k=>[k,j[k]??v[k as keyof typeof v]])),target_id:j.assessment?.class_assessment?.target_id||'',progress_note:j.assessment?.class_assessment?.observation||'',meeting_type:normalizeMeetingType(j.assessment?.meeting_type,j.journal_kind),notes:j.notes||(j.assessment?.proposal&&j.summary&&j.summary!==j.assessment.proposal?j.summary:'')}));setMaterials(j.assessment?.materials?.length?j.assessment.materials.map((m:any)=>({...m,presenter:m.presenter||'',status:m.status||'BELUM',note:m.note||''})):[{topic:'',page:'',presenter:'',status:'BELUM',note:''}]);setStudy({presenter:j.assessment?.presenter||'',presenter_id:j.assessment?.presenter_id||'',implementation:j.assessment?.implementation||'',documentation:j.assessment?.documentation||'',purpose:j.assessment?.purpose||'',evaluation:j.assessment?.evaluation||'',theme:j.assessment?.theme||''});setGovernance({proposal:j.assessment?.proposal||j.summary||'',pic:j.assessment?.pic||'',deadline:j.assessment?.deadline||'',execution:j.assessment?.execution||''});setMeetingMinutes(Boolean(j.assessment?.meeting_minutes));setExistingAssessment(j.assessment||{});setProgress((j.journal_progress||[]).map((p:any)=>({member_id:p.member_id||p.participant_key,target_id:p.target_id||'',progress_value:p.progress_value===null?'':String(p.progress_value),progress_note:p.progress_note||'',follow_up:p.follow_up||''})))}).catch(e=>setError(e.message));return}const event=q.get('event_id');if(event)void linkEvent(event).catch(e=>setError(e.message));const agenda=q.get('agenda_id');if(agenda)void fetch('/api/agenda/'+agenda).then(async r=>{const g=await r.json();if(!r.ok)throw Error(g.error);if(!g.attendance_enabled){setForm(v=>({...v,agenda_id:agenda,event_id:'',journal_date:jakartaDate(new Date(g.starts_at)),title:g.title,activity_type_id:g.activity_type_id||'',class_id:g.class_id||'',journal_kind:g.audience==='KELOMPOK'&&v.journal_kind==='PENGKAJIAN'?'PENGKAJIAN':g.audience==='CABERAWIT'?'CABERAWIT_CLASS':g.audience==='MUDA_MUDI'?'MUDA_MUDI_CLASS':g.audience}));return null}return fetch('/api/attendance',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({agenda_id:agenda})})}).then(async r=>{if(!r)return;const e=await r.json();if(!r.ok)throw new Error(e.error);await linkEvent(e.id)}).catch(e=>setError(e.message))},[]);
 
@@ -45,6 +47,28 @@ export default function Page(){
   const cabClasses=useMemo(()=>classes.filter(c=>c.audience===(form.journal_kind.startsWith('MUDA_MUDI')?'MUDA_MUDI':'CABERAWIT')&&(!effectiveLevel||!c.level_id||c.level_id===effectiveLevel)),[classes,form.journal_kind,effectiveLevel]);
   const currentAudience=form.journal_kind==='IBU_IBU'?'IBU_IBU':form.journal_kind==='PENGURUS'?'PENGURUS':form.journal_kind.startsWith('CABERAWIT')?'CABERAWIT':form.journal_kind.startsWith('MUDA_MUDI')?'MUDA_MUDI':'KELOMPOK';
   const currentActivities=activities.filter(a=>a.audience===currentAudience);
+  // Date-scoped request also retrieves historical meetings beyond the default 1,000-row REST limit.
+  useEffect(()=>{
+    const controller=new AbortController();
+    setEvents([]);setEventsError('');
+    if(!form.journal_date)return()=>controller.abort();
+    fetch('/api/attendance?'+new URLSearchParams({from:form.journal_date,to:form.journal_date,audience:currentAudience}),{signal:controller.signal,cache:'no-store'})
+      .then(async r=>{const json=await r.json();if(!r.ok)throw Error(json.error||'Presensi gagal dimuat.');return json;})
+      .then(json=>{if(!controller.signal.aborted)setEvents(Array.isArray(json)?json:[]);})
+      .catch(e=>{if(!controller.signal.aborted)setEventsError(e instanceof Error?e.message:'Presensi belum tersedia.');});
+    return()=>controller.abort();
+  },[form.journal_date,currentAudience]);
+  const journalMatchInput={
+    journal_kind:form.journal_kind,journal_date:form.journal_date,
+    class_id:form.class_id||null,agenda_id:form.agenda_id||null,activity_type_id:form.activity_type_id||null
+  };
+  const dayMatches=matchingJournalEvents(journalMatchInput,events);
+  const suggestedEventId=uniqueJournalEvent(journalMatchInput,events);
+  // Auto-select only when exactly one matching session exists, never when ambiguous.
+  useEffect(()=>{
+    if(journalId||form.event_id||!suggestedEventId)return;
+    setForm(v=>v.event_id?v:{...v,event_id:suggestedEventId});
+  },[journalId,form.event_id,suggestedEventId]);
   const isMeetingJournal=form.journal_kind!=='PENGKAJIAN'&&(form.journal_kind==='PENGURUS'||meetingMinutes||/musyawarah|rapat|notulen/i.test([form.title,activities.find(a=>a.id===form.activity_type_id)?.name].filter(Boolean).join(' ')));
   const targetOptions=targets.filter(t=>(!effectiveLevel||!t.level_id||t.level_id===effectiveLevel)&&
     (!form.class_id||!t.class_id||t.class_id===form.class_id)&&
@@ -89,10 +113,13 @@ export default function Page(){
     <section className="card journalKindPicker"><div className="journalKindNumber">01</div><div className="journalKindContent"><h2>Jenis jurnal</h2><label>Jenis jurnal<select className="select" aria-label="Pilih jenis jurnal" value={form.journal_kind} onChange={e=>selectKind(e.target.value)} disabled={!!journalId}>{kinds.filter(([v])=>(scopedWrite??writeScopesForRole(role)).includes((v==='PENGKAJIAN'?'KELOMPOK':v.startsWith('CABERAWIT')?'CABERAWIT':v.startsWith('MUDA_MUDI')?'MUDA_MUDI':v) as Audience)).map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label></div></section>
     <form className="card section journalEntryForm" onSubmit={save}><div className="journalFormStep"><span>02</span><div><h2>Isi jurnal</h2></div></div>
       <div className="formGrid">
-        <label>Status dokumen<select className="select" value={state} onChange={e=>setState(e.target.value)}><option value="DRAFT">Draf</option><option value="COMPLETED">Selesai</option>{role==='ADMIN'&&<option value="ARCHIVED">Arsip</option>}</select></label><label>Pertemuan terkait {form.journal_kind.endsWith('_INDIVIDUAL')?'(wajib)':'(opsional)'}<select className="select" value={form.event_id} required={form.journal_kind.endsWith('_INDIVIDUAL')} onChange={e=>void linkEvent(e.target.value).catch(e=>setError(e.message))}><option value="">{form.journal_kind.endsWith('_INDIVIDUAL')?'Pilih presensi agar peserta tersedia':'Tanpa pertemuan / pilih presensi'}</option>{events.filter(e=>e.audience===currentAudience&&(scopedWrite??writeScopesForRole(role)).includes(e.audience as Audience)&&(!effectiveLevel||!e.level_id||e.level_id===effectiveLevel)).map(e=><option key={e.id} value={e.id}>{e.event_date} · {e.title}</option>)}</select></label>
-        <label>Tanggal<input className="input" type="date" value={form.journal_date} onChange={e=>set('journal_date',e.target.value)} required/></label>
+        <label>Status dokumen<select className="select" value={state} onChange={e=>setState(e.target.value)}><option value="DRAFT">Draf</option><option value="COMPLETED">Selesai</option>{role==='ADMIN'&&<option value="ARCHIVED">Arsip</option>}</select></label><label>Pertemuan terkait {form.journal_kind.endsWith('_INDIVIDUAL')?'(wajib)':'(otomatis jika cocok)'}<select className="select" value={form.event_id} required={form.journal_kind.endsWith('_INDIVIDUAL')} onChange={e=>void linkEvent(e.target.value).catch(e=>setError(e.message))}><option value="">Tanpa pertemuan / pilih presensi</option>{events.filter(e=>e.event_date===form.journal_date&&e.state!=='CANCELLED'&&e.audience===currentAudience&&(scopedWrite??writeScopesForRole(role)).includes(e.audience as Audience)&&(!effectiveLevel||!e.level_id||e.level_id===effectiveLevel)).map(e=><option key={e.id} value={e.id}>{e.event_date} · {e.title}</option>)}</select>
+          {form.event_id&&<small>Presensi terhubung untuk rekap dan ekspor Excel.</small>}
+          {!form.event_id&&dayMatches.length>1&&<small>Beberapa presensi cocok. Pilih pertemuan secara manual agar tidak tertukar.</small>}
+          {eventsError&&<small role="alert">Gagal memuat pilihan presensi: {eventsError}</small>}</label>
+        <label>Tanggal<input className="input" type="date" value={form.journal_date} onChange={e=>{setForm(v=>({...v,journal_date:e.target.value,event_id:'',agenda_id:''}));setRoster([]);}} required/></label>
         <label>Judul<input className="input" value={form.title} onChange={e=>set('title',e.target.value)} required/></label>
-        <label>Jenis kegiatan<select className="select" value={form.activity_type_id} onChange={e=>set('activity_type_id',e.target.value)}><option value="">Pilih</option>{currentActivities.map(a=><option value={a.id} key={a.id}>{a.name}</option>)}</select></label>
+        <label>Jenis kegiatan<select className="select" value={form.activity_type_id} onChange={e=>{setForm(v=>({...v,activity_type_id:e.target.value,event_id:'',agenda_id:''}));setRoster([]);}}><option value="">Pilih</option>{currentActivities.map(a=><option value={a.id} key={a.id}>{a.name}</option>)}</select></label>
 
         {isLearningKind&&<><label>Jenjang<select className="select" value={effectiveLevel} required={form.journal_kind.endsWith('_CLASS')} onChange={e=>{setSelectedLevel(e.target.value);setForm(v=>({...v,class_id:'',event_id:'',agenda_id:'',target_id:''}));setRoster([]);setProgress([])}}><option value="">Pilih jenjang</option>{levels.map(l=><option key={l.id} value={l.id}>{l.name}</option>)}</select></label><label>Kelas<select className="select" value={form.class_id} required={form.journal_kind.endsWith('_CLASS')} onChange={e=>{setForm(v=>({...v,class_id:e.target.value,event_id:'',agenda_id:'',target_id:''}));setRoster([]);setProgress([])}}><option value="">Pilih kelas</option>{cabClasses.map(c=><option value={c.id} key={c.id}>{c.name}{!c.level_id?' · belum dipetakan jenjang':''}</option>)}</select></label></>}
 
