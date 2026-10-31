@@ -197,6 +197,8 @@ export async function GET(req:NextRequest){
 
     const wb=XLSX.utils.book_new();
     const totals=counter(events.flatMap(e=>e.attendance_records||[]));
+    const totalWajib=totals.h+totals.i+totals.a;
+    const percentage=totalWajib?Number((100*totals.h/totalWajib).toFixed(2)):'—';
     const kelompokGender=kelompokGenderRecap(events,gender);
     const summary:(string|number)[][]=[
       ['SIMPUL — RINGKASAN LAPORAN PRESENSI',''],
@@ -207,10 +209,11 @@ export async function GET(req:NextRequest){
       ['Belum diisi',totals.empty],['Total Catatan',totals.h+totals.i+totals.a+totals.empty],
       ['Catatan','Belum diisi tidak dihitung sebagai Alfa.']
     ];
-    const summaryMerges:XLSX.Range[]=[{s:{r:0,c:0},e:{r:0,c:6}}];
+    summary.push(['Total wajib hadir (H+I+A)',totalWajib],['Persentase kehadiran (%)',percentage]);
+    const summaryMerges:XLSX.Range[]=[{s:{r:0,c:0},e:{r:0,c:8}}];
     const addSection=(heading:string)=>{
       const r=summary.length;summary.push([heading,'','','','','','']);
-      summaryMerges.push({s:{r,c:0},e:{r,c:6}});
+      summaryMerges.push({s:{r,c:0},e:{r,c:8}});
     };
     if(kelompokGender){
       summary.push([]);
@@ -225,7 +228,7 @@ export async function GET(req:NextRequest){
       summary.push(['TOTAL KELOMPOK',total.H,total.I,total.A,total.pending,total.total,total.percentage===null?'—':total.percentage]);
       const noteRow=summary.length;
       summary.push(['Keterangan','Total catatan dihitung per peserta di setiap pertemuan, bukan jumlah orang unik. Kehadiran = Hadir / (Hadir + Izin + Alfa).']);
-      summaryMerges.push({s:{r:noteRow,c:1},e:{r:noteRow,c:6}});
+      summaryMerges.push({s:{r:noteRow,c:1},e:{r:noteRow,c:8}});
       if(kelompokGender.meetings.length>1){
         summary.push([]);
         addSection('RINCIAN JENIS KELAMIN PER PERTEMUAN — KELOMPOK');
@@ -241,14 +244,15 @@ export async function GET(req:NextRequest){
     }
     summary.push([]);
     const summaryTableHeader=summary.length+1;
-    summary.push(['TANGGAL','KEGIATAN','KATEGORI','HADIR','IZIN','ALFA','BELUM DIISI']);
+    summary.push(['TANGGAL','KEGIATAN','KATEGORI','HADIR','IZIN','ALFA','BELUM DIISI','WAJIB HADIR','KEHADIRAN (%)']);
     for(const event of events){
       const c=counter(event.attendance_records||[]);
-      summary.push([event.event_date,cell(event.title),cell(audienceNames[event.audience]||event.audience),c.h,c.i,c.a,c.empty]);
+      const wajib=c.h+c.i+c.a;
+      summary.push([event.event_date,cell(event.title),cell(audienceNames[event.audience]||event.audience),c.h,c.i,c.a,c.empty,wajib,wajib?Number((100*c.h/wajib).toFixed(2)):'—']);
     }
     const summaryTableEnd=summary.length;
-    const wsSummary=makeSheet(summary,[22,42,20,15,15,15,18],summaryMerges);
-    wsSummary['!autofilter']={ref:'A'+summaryTableHeader+':G'+summaryTableEnd};
+    const wsSummary=makeSheet(summary,[32,42,20,15,15,15,18,18,19],summaryMerges);
+    wsSummary['!autofilter']={ref:'A'+summaryTableHeader+':I'+summaryTableEnd};
     XLSX.utils.book_append_sheet(wb,wsSummary,'Ringkasan');
     const attendance:(string|number)[][]=[],merges:XLSX.Range[]=[];
     events.forEach(e=>addAttendanceRows(attendance,merges,e,gender));
@@ -264,8 +268,8 @@ export async function GET(req:NextRequest){
     XLSX.utils.book_append_sheet(wb,wsJournal,'Jurnal');
     const fileName='simpul-presensi-'+(eventId?events[0].event_date+'-'+eventId.slice(0,8):month)+'.xlsx';
     const bytes=await styledReportXlsx(wb,[
-      {kind:'Ringkasan',rows:summary,minWidths:[18,27,18,11,10,10,16],maxWidths:[23,48,24,15,14,14,20],
-        merges:summaryMerges,freezeRows:kelompokGender?1:13,mainTableHeaderRow:summaryTableHeader,mainTableEndRow:summaryTableEnd},
+      {kind:'Ringkasan',rows:summary,minWidths:[23,27,18,11,10,10,16,16,18],maxWidths:[35,48,24,15,14,14,20,19,21],
+        merges:summaryMerges,freezeRows:kelompokGender?1:summaryTableHeader,mainTableHeaderRow:summaryTableHeader,mainTableEndRow:summaryTableEnd},
       {kind:'Presensi',rows:attendance,minWidths:[7,30,9,12,7,30,9],maxWidths:[9,46,11,15,9,46,11],
         merges,freezeRows:events.length===1?6:0},
       {kind:'Jurnal',rows:journalLines,minWidths:[15,25,24,18,7,40],maxWidths:[17,36,40,28,8,65],freezeRows:1}

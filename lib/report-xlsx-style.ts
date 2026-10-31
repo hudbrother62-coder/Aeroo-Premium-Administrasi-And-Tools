@@ -69,10 +69,13 @@ function decideRole(sheet:StyledReportSheet,index:number,col:number):Role{
       if(col===4)return 'permit';
       if(col===5)return 'absent';
       if(col===6)return 'pending';
+      if(col===7)return 'total';
+      if(col===8)return 'present';
       return index%2===0?'zebra':'body';
     }
     if(index===10)return 'note';
-    if(index===11||row.every(v=>v===''||v===undefined))return 'blank';
+    if(row.every(v=>v===''||v===undefined))return 'blank';
+    if(['Total wajib hadir (H+I+A)','Persentase kehadiran (%)'].includes(String(label)))return col===0?'meta-label':col===1?'total':'meta-value';
     if(index<11){
       if(col===0)return 'meta-label';
       if(index===5&&col===1)return 'present';
@@ -189,6 +192,9 @@ function buildSheet(workbook:ExcelJS.Workbook,sheet:StyledReportSheet){
       if(sheet.kind==='Ringkasan'&&c===6&&typeof value==='number'&&
         ['Laki-laki','Perempuan','Belum tercatat','TOTAL KELOMPOK'].includes(String(values[0])))
         cell.numFmt='0.0"%"';
+      if(sheet.kind==='Ringkasan'&&typeof value==='number'&&
+        (c===8&&/^\d{4}-\d{2}-\d{2}$/.test(String(values[0]))||c===1&&values[0]==='Persentase kehadiran (%)'))
+        cell.numFmt='0.00"%"';
     }
   }
   for(const merge of sheet.merges||[]){
@@ -196,7 +202,7 @@ function buildSheet(workbook:ExcelJS.Workbook,sheet:StyledReportSheet){
   }
   if(sheet.kind==='Ringkasan'&&sheet.rows.length>=(sheet.mainTableHeaderRow||13)+1){
     ws.autoFilter={from:{row:sheet.mainTableHeaderRow||13,column:1},
-      to:{row:sheet.mainTableEndRow||sheet.rows.length,column:7}};
+      to:{row:sheet.mainTableEndRow||sheet.rows.length,column:Math.max(7,(sheet.rows[(sheet.mainTableHeaderRow||13)-1]||[]).length)}};
   }
   if(sheet.kind==='Jurnal'&&sheet.rows.length>=2){
     ws.autoFilter={from:{row:1,column:1},to:{row:sheet.rows.length,column:6}};

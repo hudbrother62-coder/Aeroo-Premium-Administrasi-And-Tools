@@ -17,6 +17,8 @@ type Recap=CombinedRecap;
 const statusLabel=(s:Status)=>s==='H'?'Hadir':s==='I'?'Izin':s==='A'?'Alfa':'Belum diisi';
 const statusClass=(s:Status)=>s==='H'?'hadir':s==='I'?'izin':s==='A'?'alfa':'pending';
 const dayLabel=(date:string)=>new Date(date+'T12:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'});
+const presenceRate=(h:number,i:number,a:number):number|null=>{const wajib=h+i+a;return wajib?Number((100*h/wajib).toFixed(2)):null;};
+const formattedRate=(rate:number|null)=>rate===null?'—':rate.toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})+'%';
 type Detail='overall'|'meetings'|'individual';
 
 export default function AttendanceRecap({embedded=false,focusEventId='',individualOnly=false}:{embedded?:boolean;focusEventId?:string;individualOnly?:boolean}){
@@ -105,14 +107,33 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
  const people=useMemo(()=>(data?.individuals||[]).filter(p=>p.name.toLocaleLowerCase('id-ID').includes(search.toLocaleLowerCase('id-ID'))||p.class_name.toLocaleLowerCase('id-ID').includes(search.toLocaleLowerCase('id-ID'))),[data,search]);
  const visibleParticipants=participants.filter(p=>(statusFilter==='all'||(p.status||'pending')===statusFilter)&&p.name.toLocaleLowerCase('id-ID').includes(search.toLocaleLowerCase('id-ID')));
  const totalMarked=(data?.summary.H||0)+(data?.summary.I||0)+(data?.summary.A||0);
- const overallRate=totalMarked?Math.round((data?.summary.H||0)/totalMarked*1000)/10:null;
+ const overallRate=presenceRate(data?.summary.H||0,data?.summary.I||0,data?.summary.A||0);
  const shares=attendanceShares(data?.summary.H||0,data?.summary.I||0,data?.summary.A||0);
  const statuses=[{id:'H',label:'Hadir',value:data?.summary.H||0,percentage:shares?.[0]},{id:'I',label:'Izin',value:data?.summary.I||0,percentage:shares?.[1]},{id:'A',label:'Alfa',value:data?.summary.A||0,percentage:shares?.[2]},{id:'pending',label:'Belum diisi',value:data?.summary.pending||0,percentage:null}];
  async function exportExcel(){
-  const XLSX=await import('xlsx');
-  const rows=detail==='meetings'&&meeting?participants.map(p=>({Tanggal:meeting.date,Pertemuan:meeting.title,Nama:p.name,Kelas:p.class_name,Status:statusLabel(p.status),Keterangan:p.notes})):detail==='individual'?(data?.individuals||[]).map(p=>({Nama:p.name,Kelas:p.class_name,Hadir:p.H,Izin:p.I,Alfa:p.A,'Belum diisi':p.pending,'Persentase (%)':p.percentage??''})):meetings.map(m=>({Tanggal:m.date,Pertemuan:m.title,Lingkup:audienceLabels[m.audience as Audience]||m.audience,Kelas:m.class_name,Peserta:m.total,Hadir:m.summary.H,Izin:m.summary.I,Alfa:m.summary.A,'Belum diisi':m.summary.pending}));
-  const ws=XLSX.utils.json_to_sheet(rows.length?rows:[{Keterangan:'Tidak ada data untuk filter ini'}]);
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Rekap Presensi');XLSX.writeFile(wb,'rekap-presensi-'+month+'-'+span+'bulan.xlsx');
+   const XLSX=await import('xlsx');
+   const scoped=detail==='meetings'&&meeting?meeting.summary:data?.summary;
+   const h=scoped?.H||0,i=scoped?.I||0,a=scoped?.A||0,pending=scoped?.pending||0;
+   const rows=detail==='meetings'&&meeting
+     ?participants.map(p=>({Tanggal:meeting.date,Pertemuan:meeting.title,Nama:p.name,Kelas:p.class_name,Status:statusLabel(p.status),Keterangan:p.notes}))
+     :detail==='individual'
+     ?(data?.individuals||[]).map(p=>({Nama:p.name,Kelas:p.class_name,Hadir:p.H,Izin:p.I,Alfa:p.A,'Belum diisi':p.pending,'Wajib hadir':p.H+p.I+p.A,'Kehadiran (%)':presenceRate(p.H,p.I,p.A)??'—'}))
+     :meetings.map(m=>({Tanggal:m.date,Pertemuan:m.title,Lingkup:audienceLabels[m.audience as Audience]||m.audience,Kelas:m.class_name,Peserta:m.total,Hadir:m.summary.H,Izin:m.summary.I,Alfa:m.summary.A,'Belum diisi':m.summary.pending,'Wajib hadir':m.summary.H+m.summary.I+m.summary.A,'Kehadiran (%)':presenceRate(m.summary.H,m.summary.I,m.summary.A)??'—'}));
+   const wb=XLSX.utils.book_new();
+   const summary=XLSX.utils.aoa_to_sheet([
+     ['SIMPUL — RINGKASAN PRESENSI'],
+     ['Periode',month],['Rentang',span+' bulan'],
+     ['Kategori',audience?audienceLabels[audience as Audience]||audience:'Keseluruhan'],
+     ['Hadir',h],['Izin',i],['Alfa',a],['Belum diisi',pending],
+     ['Wajib hadir (H+I+A)',h+i+a],
+     ['Persentase kehadiran (%)',presenceRate(h,i,a)??'—'],
+     ['Catatan','Belum diisi tidak dihitung sebagai Alfa dan tidak masuk total wajib hadir hingga statusnya dicatat.']
+   ]);
+   summary['!cols']=[{wch:34},{wch:76}];
+   XLSX.utils.book_append_sheet(wb,summary,'Ringkasan');
+   const ws=XLSX.utils.json_to_sheet(rows.length?rows:[{Keterangan:'Tidak ada data untuk filter ini'}]);
+   XLSX.utils.book_append_sheet(wb,ws,'Rekap Presensi');
+   XLSX.writeFile(wb,'rekap-presensi-'+month+'-'+span+'bulan.xlsx');
  }
  return <div className="attendanceRecap">
    {!embedded&&<div className="pageHeader"><h1>Rekap Presensi</h1></div>}
@@ -134,7 +155,8 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
    {loading?<div className="card"><div className="skeleton" style={{height:160}}/></div>:!data?<div className="attendanceEmpty card" role="status"><strong>Rekap belum berhasil dimuat</strong><span>Data presensi aman. Periksa koneksi atau coba bulan lain.</span><button type="button" className="btn secondary" onClick={()=>setReload(v=>v+1)}>Muat ulang rekap</button></div>:<>
    {!individualOnly&&<div className="attendanceKpiGrid">
      <div className="attendanceKpi"><span>Total pertemuan</span><strong>{data?.summary.meetings||0}</strong><small>Dalam filter yang dipilih</small></div>
-     <div className="attendanceKpi"><span>Persentase hadir</span><strong>{overallRate===null?'—':overallRate+'%'}</strong><small>Dari status yang sudah dicatat</small></div>
+     <div className="attendanceKpi"><span>Wajib hadir (H+I+A)</span><strong>{totalMarked}</strong><small>Hadir + Izin + Alfa</small></div>
+     <div className="attendanceKpi"><span>Persentase hadir</span><strong>{formattedRate(overallRate)}</strong><small>Hadir ÷ wajib hadir × 100%</small></div>
      <div className="attendanceKpi"><span>Jumlah hadir</span><strong>{data?.summary.H||0}</strong><small>Akumulasi seluruh pertemuan</small></div>
      <div className="attendanceKpi"><span>Belum diisi</span><strong>{data?.summary.pending||0}</strong><small>Tidak otomatis dianggap alfa</small></div>
    </div>}
@@ -153,12 +175,12 @@ export default function AttendanceRecap({embedded=false,focusEventId='',individu
    {span>1&&detail==='overall'&&!individualOnly&&<AttendanceTrendChart points={data.trend} title="Tren kehadiran per bulan"/>}
    {detail==='meetings'&&!individualOnly&&<div className="attendanceMeetingExplorer">
      <section className="attendancePanel attendanceMeetingPicker"><div className="attendancePanelHead"><div><h2>Daftar Pertemuan</h2><p>{meetings.length} kegiatan dalam {span} bulan</p></div></div>
-       <div className="attendanceMeetingPickList">{meetings.map(m=><button type="button" key={m.id} className={'attendanceMeetingPick'+(m.id===meetingId?' selected':'')} onClick={()=>{setMeetingId(m.id);setParticipants([]);setParticipantsLoading(true);setSearch('');setStatusFilter('all');}}><strong>{m.title}</strong><span>{dayLabel(m.date)} · {m.class_name||audienceLabels[m.audience as Audience]||m.audience}</span><small>{m.total} peserta · {m.summary.H} hadir</small></button>)}</div>
+       <div className="attendanceMeetingPickList">{meetings.map(m=><button type="button" key={m.id} className={'attendanceMeetingPick'+(m.id===meetingId?' selected':'')} onClick={()=>{setMeetingId(m.id);setParticipants([]);setParticipantsLoading(true);setSearch('');setStatusFilter('all');}}><strong>{m.title}</strong><span>{dayLabel(m.date)} · {m.class_name||audienceLabels[m.audience as Audience]||m.audience}</span><small>{m.total} peserta · {m.summary.H+m.summary.I+m.summary.A} wajib hadir · {formattedRate(presenceRate(m.summary.H,m.summary.I,m.summary.A))}</small></button>)}</div>
        {!meetings.length&&<div className="attendanceEmpty"><CalendarDays/><strong>Belum ada pertemuan</strong><span>Coba periode atau filter lainnya.</span></div>}
      </section>
      <section className="attendancePanel attendanceMeetingDetails">
        {meeting?<><div className="attendancePanelHead"><div><span className="attendanceEyebrow">{dayLabel(meeting.date)}</span><h2>{meeting.title}</h2><p>{meeting.class_name||audienceLabels[meeting.audience as Audience]||meeting.audience} · {meeting.total} peserta</p></div></div>
-       <div className="attendanceSmallMetrics"><span>{meeting.summary.H} Hadir</span><span>{meeting.summary.I} Izin</span><span>{meeting.summary.A} Alfa</span><span>{meeting.summary.pending} Belum</span></div>
+       <div className="attendanceSmallMetrics"><span>{meeting.summary.H} Hadir</span><span>{meeting.summary.I} Izin</span><span>{meeting.summary.A} Alfa</span><span>{meeting.summary.H+meeting.summary.I+meeting.summary.A} Wajib hadir</span><span>{formattedRate(presenceRate(meeting.summary.H,meeting.summary.I,meeting.summary.A))} kehadiran</span><span>{meeting.summary.pending} Belum</span></div>
        <div className="attendanceDetailFilters"><label className="attendanceSearch"><Search size={16}/><input className="input" type="search" placeholder="Cari nama peserta" value={search} onChange={e=>setSearch(e.target.value)}/></label><select className="select" aria-label="Filter status" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}><option value="all">Semua status</option><option value="H">Hadir</option><option value="I">Izin</option><option value="A">Alfa</option><option value="pending">Belum diisi</option></select></div>
        {participantsLoading&&<div className="card"><div className="skeleton" style={{height:90}}/></div>}
        {participantsError&&<div className="notice error" role="alert">{participantsError}</div>}

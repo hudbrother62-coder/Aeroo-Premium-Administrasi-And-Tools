@@ -29,3 +29,10 @@ test('monthly and meeting exports use recorded status and linked journals',()=>{
   assert.match(route,/X-Content-Type-Options/);
   assert.match(route,/!.*validId\(eventId\)/);
 });
+
+test('wajib hadir and percent show in exported rekap',()=>{
+ assert.match(route,/const totalWajib=totals\.h\+totals\.i\+totals\.a/);
+ assert.match(route,/Total wajib hadir \(H\+I\+A\)/);
+ assert.match(route,/Persentase kehadiran \(%\)/);
+ assert.match(route,/WAJIB HADIR','KEHADIRAN \(%\)/);
+});
